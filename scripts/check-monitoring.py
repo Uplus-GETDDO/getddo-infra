@@ -41,12 +41,22 @@ def main():
         rules = []
         for dashboard in (OBS / 'grafana/dashboards').glob('*.json'):
             for panel in json.loads(dashboard.read_text())['panels']:
+                if panel.get('type') == 'text':
+                    continue
                 for target in panel['targets']:
                     if 'expr' in target:
                         rules.append({'record': f'validation:panel_{len(rules)}', 'expr': target['expr'].replace('$server', '.*')})
         path = Path(name) / 'rules.yml'
         path.write_text(yaml.safe_dump({'groups': [{'name': 'validation', 'rules': rules}]}))
         subprocess.run([promtool, 'check', 'rules', str(path)], check=True)
+        fixture = OBS / 'grafana/query-tests.yml'
+        tests = yaml.safe_load(fixture.read_text())
+        expressions = {rule['expr'] for rule in rules}
+        for case in tests['tests']:
+            for test in case['promql_expr_test']:
+                if test['expr'] not in expressions:
+                    raise ValueError('Query scenario no longer matches a provisioned dashboard expression')
+        subprocess.run([promtool, 'test', 'rules', str(fixture)], check=True)
     print('PASS: Compose, monitoring YAML/JSON, Prometheus configuration and dashboard PromQL')
 
 

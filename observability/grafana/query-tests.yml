@@ -1,0 +1,230 @@
+evaluation_interval: 1m
+rule_files: []
+tests:
+- input_series:
+  - &id001
+    series: http_server_requests_seconds_count{environment="prod",server="A",status="200",uri="/api/v1/events"}
+    values: 0+60x5
+  - &id002
+    series: http_server_requests_seconds_count{environment="prod",server="A",status="200",uri="/v3/api-docs"}
+    values: 0+600x5
+  - series: up{job="api",environment="prod",server="A"}
+    values: 1+0x5
+  interval: 1m
+  name: requests without 5xx are zero errors; health checks excluded
+  promql_expr_test:
+  - eval_time: 5m
+    exp_samples:
+    - labels: '{}'
+      value: 1
+    expr: sum (rate(http_server_requests_seconds_count{environment="prod",server=~".*",uri!~"/actuator.*|/v3/api-docs.*|/swagger-ui.*"}[5m]))
+  - eval_time: 5m
+    exp_samples:
+    - labels: '{}'
+      value: 0
+    expr: 100 * sum(((sum by (server) (rate(http_server_requests_seconds_count{environment="prod",server=~".*",uri!~"/actuator.*|/v3/api-docs.*|/swagger-ui.*",status=~"5.."}[5m]))
+      or (0 * sum by (server) (rate(http_server_requests_seconds_count{environment="prod",server=~".*",uri!~"/actuator.*|/v3/api-docs.*|/swagger-ui.*"}[5m]))))
+      and on(server) (up{job="api",environment="prod",server=~".*"} == 1))) / (sum((sum
+      by (server) (rate(http_server_requests_seconds_count{environment="prod",server=~".*",uri!~"/actuator.*|/v3/api-docs.*|/swagger-ui.*"}[5m]))
+      and on(server) (up{job="api",environment="prod",server=~".*"} == 1))) > 0)
+- input_series:
+  - series: http_server_requests_seconds_count{environment="prod",server="A",status="200",uri="/api/v1/events"}
+    values: 0+0x5
+  - series: up{job="api",environment="prod",server="A"}
+    values: 1+0x5
+  interval: 1m
+  name: no requests is undefined error rate, not healthy zero
+  promql_expr_test:
+  - eval_time: 5m
+    exp_samples:
+    - labels: '{}'
+      value: 0
+    expr: sum (rate(http_server_requests_seconds_count{environment="prod",server=~".*",uri!~"/actuator.*|/v3/api-docs.*|/swagger-ui.*"}[5m]))
+  - eval_time: 5m
+    exp_samples: []
+    expr: 100 * sum(((sum by (server) (rate(http_server_requests_seconds_count{environment="prod",server=~".*",uri!~"/actuator.*|/v3/api-docs.*|/swagger-ui.*",status=~"5.."}[5m]))
+      or (0 * sum by (server) (rate(http_server_requests_seconds_count{environment="prod",server=~".*",uri!~"/actuator.*|/v3/api-docs.*|/swagger-ui.*"}[5m]))))
+      and on(server) (up{job="api",environment="prod",server=~".*"} == 1))) / (sum((sum
+      by (server) (rate(http_server_requests_seconds_count{environment="prod",server=~".*",uri!~"/actuator.*|/v3/api-docs.*|/swagger-ui.*"}[5m]))
+      and on(server) (up{job="api",environment="prod",server=~".*"} == 1))) > 0)
+- input_series: []
+  interval: 1m
+  name: missing telemetry is not zero traffic or zero errors
+  promql_expr_test:
+  - eval_time: 5m
+    exp_samples: []
+    expr: sum (rate(http_server_requests_seconds_count{environment="prod",server=~".*",uri!~"/actuator.*|/v3/api-docs.*|/swagger-ui.*"}[5m]))
+  - eval_time: 5m
+    exp_samples: []
+    expr: 100 * sum(((sum by (server) (rate(http_server_requests_seconds_count{environment="prod",server=~".*",uri!~"/actuator.*|/v3/api-docs.*|/swagger-ui.*",status=~"5.."}[5m]))
+      or (0 * sum by (server) (rate(http_server_requests_seconds_count{environment="prod",server=~".*",uri!~"/actuator.*|/v3/api-docs.*|/swagger-ui.*"}[5m]))))
+      and on(server) (up{job="api",environment="prod",server=~".*"} == 1))) / (sum((sum
+      by (server) (rate(http_server_requests_seconds_count{environment="prod",server=~".*",uri!~"/actuator.*|/v3/api-docs.*|/swagger-ui.*"}[5m]))
+      and on(server) (up{job="api",environment="prod",server=~".*"} == 1))) > 0)
+- input_series:
+  - *id001
+  - *id002
+  - series: http_server_requests_seconds_count{environment="prod",server="A",status="500",uri="/api/v1/events"}
+    values: 0+30x5
+  - series: up{job="api",environment="prod",server="A"}
+    values: 1+0x5
+  interval: 1m
+  name: 5xx divided by all API requests; docs do not dilute failures
+  promql_expr_test:
+  - eval_time: 5m
+    exp_samples:
+    - labels: '{}'
+      value: 1.5
+    expr: sum (rate(http_server_requests_seconds_count{environment="prod",server=~".*",uri!~"/actuator.*|/v3/api-docs.*|/swagger-ui.*"}[5m]))
+  - eval_time: 5m
+    exp_samples:
+    - labels: '{}'
+      value: 33.333333333333336
+    expr: 100 * sum(((sum by (server) (rate(http_server_requests_seconds_count{environment="prod",server=~".*",uri!~"/actuator.*|/v3/api-docs.*|/swagger-ui.*",status=~"5.."}[5m]))
+      or (0 * sum by (server) (rate(http_server_requests_seconds_count{environment="prod",server=~".*",uri!~"/actuator.*|/v3/api-docs.*|/swagger-ui.*"}[5m]))))
+      and on(server) (up{job="api",environment="prod",server=~".*"} == 1))) / (sum((sum
+      by (server) (rate(http_server_requests_seconds_count{environment="prod",server=~".*",uri!~"/actuator.*|/v3/api-docs.*|/swagger-ui.*"}[5m]))
+      and on(server) (up{job="api",environment="prod",server=~".*"} == 1))) > 0)
+- input_series:
+  - series: hikaricp_connections_active{environment="prod",server="A",pool="main"}
+    values: 5+0x5
+  - series: hikaricp_connections_max{environment="prod",server="A",pool="main"}
+    values: 10+0x5
+  - series: up{job="api",environment="prod",server="A"}
+    values: 1+0x5
+  interval: 1m
+  name: saturation uses configured DB capacity
+  promql_expr_test:
+  - eval_time: 5m
+    exp_samples:
+    - labels: '{}'
+      value: 50
+    expr: max(100 * hikaricp_connections_active{environment="prod",server=~".*"} /
+      (hikaricp_connections_max{environment="prod",server=~".*"} > 0))
+- input_series:
+  - series: hikaricp_connections_active{environment="prod",server="A",pool="main"}
+    values: 5+0x5
+  - series: hikaricp_connections_max{environment="prod",server="A",pool="main"}
+    values: 0+0x5
+  - series: up{job="api",environment="prod",server="A"}
+    values: 1+0x5
+  interval: 1m
+  name: unknown pool capacity does not yield Infinity
+  promql_expr_test:
+  - eval_time: 5m
+    exp_samples: []
+    expr: max(100 * hikaricp_connections_active{environment="prod",server=~".*"} /
+      (hikaricp_connections_max{environment="prod",server=~".*"} > 0))
+- input_series:
+  - series: http_server_requests_seconds_bucket{environment="prod",server="A",uri="/api/v1/events",status="200",le="0.1"}
+    values: 0+0x5
+  - series: http_server_requests_seconds_bucket{environment="prod",server="A",uri="/api/v1/events",status="200",le="1.0"}
+    values: 0+60x5
+  - series: http_server_requests_seconds_bucket{environment="prod",server="A",uri="/api/v1/events",status="200",le="+Inf"}
+    values: 0+60x5
+  - series: http_server_requests_seconds_bucket{environment="prod",server="A",uri="/api/v1/events",status="500",le="0.1"}
+    values: 0+600x5
+  - series: http_server_requests_seconds_bucket{environment="prod",server="A",uri="/api/v1/events",status="500",le="1.0"}
+    values: 0+600x5
+  - series: http_server_requests_seconds_bucket{environment="prod",server="A",uri="/api/v1/events",status="500",le="+Inf"}
+    values: 0+600x5
+  - series: up{job="api",environment="prod",server="A"}
+    values: 1+0x5
+  interval: 1m
+  name: fast errors cannot make successful-request p95 look faster
+  promql_expr_test:
+  - eval_time: 5m
+    exp_samples:
+    - labels: '{}'
+      value: 0.955
+    expr: histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{environment="prod",server=~".*",uri!~"/actuator.*|/v3/api-docs.*|/swagger-ui.*",status=~"[23].."}[5m])))
+- input_series:
+  - series: tomcat_threads_busy_threads{environment="prod",server="A",name="http-nio-8080"}
+    values: 25+0x5
+  - series: tomcat_threads_current_threads{environment="prod",server="A",name="http-nio-8080"}
+    values: 50+0x5
+  - series: tomcat_threads_config_max_threads{environment="prod",server="A",name="http-nio-8080"}
+    values: 200+0x5
+  - series: up{job="api",environment="prod",server="A"}
+    values: 1+0x5
+  interval: 1m
+  name: Tomcat uses configured maximum, not current threads
+  promql_expr_test:
+  - eval_time: 5m
+    exp_samples:
+    - labels: '{environment="prod",server="A",name="http-nio-8080"}'
+      value: 12.5
+    expr: 100 * tomcat_threads_busy_threads{environment="prod",server=~".*"} / (tomcat_threads_config_max_threads{environment="prod",server=~".*"}
+      > 0)
+- input_series:
+  - series: node_memory_MemAvailable_bytes{environment="prod",server="A"}
+    values: 600+0x5
+  - series: node_memory_MemTotal_bytes{environment="prod",server="A"}
+    values: 1000+0x5
+  - series: up{job="api",environment="prod",server="A"}
+    values: 1+0x5
+  interval: 1m
+  name: host memory uses available memory
+  promql_expr_test:
+  - eval_time: 5m
+    exp_samples:
+    - labels: '{}'
+      value: 40
+    expr: max(100 * (1 - node_memory_MemAvailable_bytes{environment="prod",server=~".*"}
+      / node_memory_MemTotal_bytes{environment="prod",server=~".*"}))
+- input_series:
+  - series: http_server_requests_seconds_count{environment="prod",server="A",status="200",uri="/api/v1/events"}
+    values: 0+60x5
+  - series: up{job="api",environment="prod",server="A"}
+    values: 0+0x5
+  interval: 1m
+  name: failed scrape with recent request samples must not create healthy zero
+  promql_expr_test:
+  - eval_time: 5m
+    exp_samples: []
+    expr: 100 * sum(((sum by (server) (rate(http_server_requests_seconds_count{environment="prod",server=~".*",uri!~"/actuator.*|/v3/api-docs.*|/swagger-ui.*",status=~"5.."}[5m]))
+      or (0 * sum by (server) (rate(http_server_requests_seconds_count{environment="prod",server=~".*",uri!~"/actuator.*|/v3/api-docs.*|/swagger-ui.*"}[5m]))))
+      and on(server) (up{job="api",environment="prod",server=~".*"} == 1))) / (sum((sum
+      by (server) (rate(http_server_requests_seconds_count{environment="prod",server=~".*",uri!~"/actuator.*|/v3/api-docs.*|/swagger-ui.*"}[5m]))
+      and on(server) (up{job="api",environment="prod",server=~".*"} == 1))) > 0)
+  - eval_time: 5m
+    exp_samples: []
+    expr: ((sum by (server) (rate(http_server_requests_seconds_count{environment="prod",server=~".*",uri!~"/actuator.*|/v3/api-docs.*|/swagger-ui.*",status=~"5.."}[5m]))
+      or (0 * sum by (server) (rate(http_server_requests_seconds_count{environment="prod",server=~".*",uri!~"/actuator.*|/v3/api-docs.*|/swagger-ui.*"}[5m]))))
+      and on(server) (up{job="api",environment="prod",server=~".*"} == 1))
+- input_series:
+  - series: http_server_requests_seconds_count{environment="prod",server="A",status="200",uri="/api/v1/events"}
+    values: 0+60x5
+  interval: 1m
+  name: missing up with lingering request samples must not create zero
+  promql_expr_test:
+  - eval_time: 5m
+    exp_samples: []
+    expr: 100 * sum(((sum by (server) (rate(http_server_requests_seconds_count{environment="prod",server=~".*",uri!~"/actuator.*|/v3/api-docs.*|/swagger-ui.*",status=~"5.."}[5m]))
+      or (0 * sum by (server) (rate(http_server_requests_seconds_count{environment="prod",server=~".*",uri!~"/actuator.*|/v3/api-docs.*|/swagger-ui.*"}[5m]))))
+      and on(server) (up{job="api",environment="prod",server=~".*"} == 1))) / (sum((sum
+      by (server) (rate(http_server_requests_seconds_count{environment="prod",server=~".*",uri!~"/actuator.*|/v3/api-docs.*|/swagger-ui.*"}[5m]))
+      and on(server) (up{job="api",environment="prod",server=~".*"} == 1))) > 0)
+- input_series:
+  - series: http_server_requests_seconds_count{environment="prod",server="A",status="200",uri="/api/v1/events"}
+    values: 0+60x5
+  - series: http_server_requests_seconds_count{environment="prod",server="A",status="500",uri="/api/v1/events"}
+    values: 0+30x5
+  - series: up{job="api",environment="prod",server="A"}
+    values: 1+0x5
+  - series: http_server_requests_seconds_count{environment="prod",server="C",status="500",uri="/api/v1/events"}
+    values: 0+600x5
+  - series: up{job="api",environment="prod",server="C"}
+    values: 0+0x5
+  interval: 1m
+  name: partial scrape failure filters numerator and denominator identically
+  promql_expr_test:
+  - eval_time: 5m
+    exp_samples:
+    - labels: '{}'
+      value: 33.333333333333336
+    expr: 100 * sum(((sum by (server) (rate(http_server_requests_seconds_count{environment="prod",server=~".*",uri!~"/actuator.*|/v3/api-docs.*|/swagger-ui.*",status=~"5.."}[5m]))
+      or (0 * sum by (server) (rate(http_server_requests_seconds_count{environment="prod",server=~".*",uri!~"/actuator.*|/v3/api-docs.*|/swagger-ui.*"}[5m]))))
+      and on(server) (up{job="api",environment="prod",server=~".*"} == 1))) / (sum((sum
+      by (server) (rate(http_server_requests_seconds_count{environment="prod",server=~".*",uri!~"/actuator.*|/v3/api-docs.*|/swagger-ui.*"}[5m]))
+      and on(server) (up{job="api",environment="prod",server=~".*"} == 1))) > 0)

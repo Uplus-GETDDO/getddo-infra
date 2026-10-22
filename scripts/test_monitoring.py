@@ -16,6 +16,31 @@ spec.loader.exec_module(targets)
 
 
 class MonitoringTests(unittest.TestCase):
+    def test_text_panels_do_not_hide_missing_graph_queries(self):
+        spec = importlib.util.spec_from_file_location('check_monitoring', ROOT / 'scripts/check-monitoring.py')
+        check = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(check)
+        with tempfile.TemporaryDirectory() as name:
+            obs = Path(name)
+            (obs / 'grafana/dashboards').mkdir(parents=True)
+            (obs / 'grafana/query-tests.yml').write_text('{"tests": []}')
+            (obs / 'compose.yaml').write_text('{"services": {"grafana": {}}}')
+            for graph, valid in [({'type': 'timeseries', 'targets': [{'expr': 'up'}]}, True), ({'type': 'timeseries'}, False)]:
+                with self.subTest(valid_graph=valid):
+                    (obs / 'grafana/dashboards/test.json').write_text(json.dumps({'panels': [{'type': 'text'}, graph]}))
+                    checked = []
+                    def capture(args, **kwargs):
+                        if args[1:3] == ['check', 'rules']:
+                            checked.extend(check.yaml.safe_load(Path(args[-1]).read_text())['groups'][0]['rules'])
+                    with patch.object(check, 'OBS', obs), patch.object(check.subprocess, 'run', side_effect=capture):
+                        if valid:
+                            check.main()
+                            self.assertEqual([rule['expr'] for rule in checked], ['up'])
+                        else:
+                            with self.assertRaises(KeyError):
+                                check.main()
+                            self.assertEqual(checked, [])
+
     def test_tmpfs_accepts_only_strings_or_lists_before_compose(self):
         spec = importlib.util.spec_from_file_location('check_monitoring', ROOT / 'scripts/check-monitoring.py')
         check = importlib.util.module_from_spec(spec)
@@ -24,6 +49,7 @@ class MonitoringTests(unittest.TestCase):
             obs = Path(name)
             (obs / 'prometheus').mkdir()
             (obs / 'grafana/dashboards').mkdir(parents=True)
+            (obs / 'grafana/query-tests.yml').write_text('{"tests": []}')
             for tmpfs, valid in [('/tmp:rw', True), (['/tmp:rw'], True), ({'/tmp': 'rw'}, False), (None, False), (42, False), (['relative'], False), ([42], False)]:
                 with self.subTest(tmpfs=tmpfs):
                     (obs / 'compose.yaml').write_text(json.dumps({'services': {'grafana': {'tmpfs': tmpfs}}}))
