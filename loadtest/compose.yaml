@@ -1,0 +1,65 @@
+name: getddo-stage-loadtest
+x-runtime: &runtime
+  build:
+    context: ..
+    dockerfile: loadtest/Dockerfile
+  image: getddo-stage-locust:2.47.0
+  user: "0:0"
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  tmpfs: ["/tmp:rw,noexec,nosuid,size=64m"]
+  restart: "no"
+  networks: [control]
+  logging:
+    driver: json-file
+    options: {max-size: "10m", max-file: "2"}
+services:
+  master:
+    <<: *runtime
+    cpus: 0.5
+    mem_limit: 768m
+    command: ["--master", "--web-host", "0.0.0.0", "--web-port", "8089", "--web-login", "--web-base-path", "/locust", "--csv", "/reports/run", "--csv-full-history", "--stop-timeout", "15"]
+    ports:
+      - "${LOCUST_BIND_IP:?Set Locust EC2 private IPv4}:8089:8089"
+      - "${LOCUST_BIND_IP:?Set Locust EC2 private IPv4}:9646:9646"
+    volumes:
+      - type: bind
+        source: /etc/getddo-loadtest/manifest.json
+        target: /etc/getddo-loadtest/manifest.json
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: /run/getddo-staging/locust
+        target: /run/secrets
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: /run/getddo-staging/locust-scenario
+        target: /run/scenario
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: /var/lib/getddo-loadtest/reports
+        target: /reports
+        bind: {create_host_path: false}
+  worker:
+    <<: *runtime
+    cpus: 0.65
+    mem_limit: 768m
+    command: ["--worker", "--master-host", "master", "--web-base-path", "/locust", "--stop-timeout", "15"]
+    depends_on: [master]
+    volumes:
+      - type: bind
+        source: /etc/getddo-loadtest/manifest.json
+        target: /etc/getddo-loadtest/manifest.json
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
+        source: /run/getddo-staging/locust-scenario
+        target: /run/scenario
+        read_only: true
+        bind: {create_host_path: false}
+networks:
+  control:
+    driver: bridge
