@@ -25,7 +25,7 @@ run "private_and_persistent" {
   }
   assert {
     condition     = aws_instance.monitoring.volume_tags["Name"] == "getddo-prod-monitoring-root" && aws_ebs_volume.data.tags["Name"] == "getddo-prod-monitoring-data"
-    error_message = "Launch volume tags and independently managed data tags must stay distinct; runtime no-drift plans verify ignore_changes after attachment."
+    error_message = "Launch volume tags and the separately managed data EBS must use distinct names; this mock checks planned values only."
   }
   assert {
     condition     = aws_ebs_volume.data.encrypted && aws_ebs_volume.data.size == 30 && !aws_volume_attachment.data.force_detach
