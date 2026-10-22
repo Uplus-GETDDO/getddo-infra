@@ -1,0 +1,66 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ReadSeoulCertificates",
+      "Effect": "Allow",
+      "Action": [
+        "acm:ListCertificates"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "DescribeSeoulCertificates",
+      "Effect": "Allow",
+      "Action": [
+        "acm:DescribeCertificate",
+        "acm:ListTagsForCertificate"
+      ],
+      "Resource": "arn:aws:acm:ap-northeast-2:942466928325:certificate/*"
+    },
+    {
+      "Sid": "RequestTaggedStageHostname",
+      "Effect": "Allow",
+      "Action": [
+        "acm:RequestCertificate"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2",
+          "aws:RequestTag/Environment": "staging",
+          "acm:ValidationMethod": "DNS"
+        },
+        "ForAllValues:StringLike": {
+          "acm:DomainNames": [
+            "staging.*",
+            "*.staging.*"
+          ]
+        },
+        "Null": {
+          "acm:DomainNames": "false"
+        }
+      }
+    },
+    {
+      "Sid": "ManageTaggedStageCertificate",
+      "Effect": "Allow",
+      "Action": [
+        "acm:AddTagsToCertificate",
+        "acm:RemoveTagsFromCertificate",
+        "acm:DeleteCertificate"
+      ],
+      "Resource": "arn:aws:acm:ap-northeast-2:942466928325:certificate/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:ResourceTag/Environment": "staging"
+        }
+      }
+    }
+  ]
+}

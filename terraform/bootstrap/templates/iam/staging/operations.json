@@ -1,0 +1,136 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ManageStageLoadBalancing",
+      "Effect": "Allow",
+      "Action": [
+        "elasticloadbalancing:CreateLoadBalancer",
+        "elasticloadbalancing:DeleteLoadBalancer",
+        "elasticloadbalancing:ModifyLoadBalancerAttributes",
+        "elasticloadbalancing:SetSecurityGroups",
+        "elasticloadbalancing:SetSubnets",
+        "elasticloadbalancing:CreateTargetGroup",
+        "elasticloadbalancing:DeleteTargetGroup",
+        "elasticloadbalancing:ModifyTargetGroup",
+        "elasticloadbalancing:ModifyTargetGroupAttributes",
+        "elasticloadbalancing:RegisterTargets",
+        "elasticloadbalancing:DeregisterTargets",
+        "elasticloadbalancing:CreateListener",
+        "elasticloadbalancing:DeleteListener",
+        "elasticloadbalancing:ModifyListener",
+        "elasticloadbalancing:ModifyListenerAttributes",
+        "elasticloadbalancing:CreateRule",
+        "elasticloadbalancing:DeleteRule",
+        "elasticloadbalancing:ModifyRule",
+        "elasticloadbalancing:SetRulePriorities",
+        "elasticloadbalancing:AddTags",
+        "elasticloadbalancing:RemoveTags",
+        "elasticloadbalancing:AddListenerCertificates",
+        "elasticloadbalancing:RemoveListenerCertificates"
+      ],
+      "Resource": [
+        "arn:aws:elasticloadbalancing:ap-northeast-2:942466928325:loadbalancer/app/getddo-staging-*/*",
+        "arn:aws:elasticloadbalancing:ap-northeast-2:942466928325:targetgroup/getddo-staging-*/*",
+        "arn:aws:elasticloadbalancing:ap-northeast-2:942466928325:listener/app/getddo-staging-*/*/*",
+        "arn:aws:elasticloadbalancing:ap-northeast-2:942466928325:listener-rule/app/getddo-staging-*/*/*/*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "StageState",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::getddo-tfstate-942466928325-ap-northeast-2/staging/terraform.tfstate",
+        "arn:aws:s3:::getddo-tfstate-942466928325-ap-northeast-2/staging/terraform.tfstate.tflock"
+      ]
+    },
+    {
+      "Sid": "StageStateUnlock",
+      "Effect": "Allow",
+      "Action": [
+        "s3:DeleteObject"
+      ],
+      "Resource": "arn:aws:s3:::getddo-tfstate-942466928325-ap-northeast-2/staging/terraform.tfstate.tflock"
+    },
+    {
+      "Sid": "StageArtifacts",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject"
+      ],
+      "Resource": "arn:aws:s3:::getddo-deploy-942466928325-ap-northeast-2/staging/*"
+    },
+    {
+      "Sid": "StageParameters",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:PutParameter",
+        "ssm:GetParameter",
+        "ssm:GetParameters",
+        "ssm:GetParametersByPath",
+        "ssm:DeleteParameter",
+        "ssm:DeleteParameters",
+        "ssm:AddTagsToResource",
+        "ssm:RemoveTagsFromResource",
+        "ssm:ListTagsForResource"
+      ],
+      "Resource": "arn:aws:ssm:ap-northeast-2:942466928325:parameter/getddo/staging/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "StageHostOperations",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:SendCommand",
+        "ssm:StartSession"
+      ],
+      "Resource": "arn:aws:ec2:ap-northeast-2:942466928325:instance/*",
+      "Condition": {
+        "StringEquals": {
+          "ssm:resourceTag/Environment": "staging"
+        }
+      }
+    },
+    {
+      "Sid": "StageLogs",
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:DeleteLogGroup",
+        "logs:PutRetentionPolicy",
+        "logs:DeleteRetentionPolicy",
+        "logs:TagResource",
+        "logs:UntagResource",
+        "logs:ListTagsForResource",
+        "logs:DescribeLogStreams",
+        "logs:GetLogEvents",
+        "logs:FilterLogEvents",
+        "logs:StartQuery",
+        "logs:GetQueryResults"
+      ],
+      "Resource": [
+        "arn:aws:logs:ap-northeast-2:942466928325:log-group:/getddo/staging/*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
+    }
+  ]
+}

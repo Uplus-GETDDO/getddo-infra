@@ -1,0 +1,171 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ManageStageDatabase",
+      "Effect": "Allow",
+      "Action": [
+        "rds:DeleteDBInstance",
+        "rds:RebootDBInstance",
+        "rds:DescribeDBInstances",
+        "rds:AddTagsToResource",
+        "rds:RemoveTagsFromResource",
+        "rds:ListTagsForResource"
+      ],
+      "Resource": "arn:aws:rds:ap-northeast-2:942466928325:db:getddo-staging-*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "StageDatabaseCreationDependencies",
+      "Effect": "Allow",
+      "Action": [
+        "rds:CreateDBInstance",
+        "rds:RestoreDBInstanceFromDBSnapshot",
+        "rds:RestoreDBInstanceToPointInTime"
+      ],
+      "Resource": [
+        "arn:aws:rds:ap-northeast-2:942466928325:subgrp:getddo-staging-*",
+        "arn:aws:rds:ap-northeast-2:942466928325:pg:default.mysql8.4",
+        "arn:aws:rds:ap-northeast-2:942466928325:og:default:mysql-8-4"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "CreatePrivateStageDatabase",
+      "Effect": "Allow",
+      "Action": [
+        "rds:CreateDBInstance"
+      ],
+      "Resource": "arn:aws:rds:ap-northeast-2:942466928325:db:getddo-staging-*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        },
+        "Bool": {
+          "rds:PubliclyAccessible": "false"
+        }
+      }
+    },
+    {
+      "Sid": "ManageStageDatabaseSubnet",
+      "Effect": "Allow",
+      "Action": [
+        "rds:CreateDBSubnetGroup",
+        "rds:ModifyDBSubnetGroup",
+        "rds:DeleteDBSubnetGroup",
+        "rds:DescribeDBSubnetGroups",
+        "rds:AddTagsToResource",
+        "rds:RemoveTagsFromResource",
+        "rds:ListTagsForResource"
+      ],
+      "Resource": "arn:aws:rds:ap-northeast-2:942466928325:subgrp:getddo-staging-*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "StageSnapshotRecovery",
+      "Effect": "Allow",
+      "Action": [
+        "rds:CreateDBSnapshot",
+        "rds:DeleteDBSnapshot",
+        "rds:AddTagsToResource",
+        "rds:RemoveTagsFromResource",
+        "rds:ListTagsForResource"
+      ],
+      "Resource": [
+        "arn:aws:rds:ap-northeast-2:942466928325:db:getddo-staging-*",
+        "arn:aws:rds:ap-northeast-2:942466928325:snapshot:getddo-staging-*",
+        "arn:aws:rds:ap-northeast-2:942466928325:snapshot:rds:getddo-staging-*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "ManageStageRedis",
+      "Effect": "Allow",
+      "Action": [
+        "elasticache:CreateReplicationGroup",
+        "elasticache:ModifyReplicationGroup",
+        "elasticache:DeleteReplicationGroup",
+        "elasticache:CreateCacheSubnetGroup",
+        "elasticache:ModifyCacheSubnetGroup",
+        "elasticache:DeleteCacheSubnetGroup",
+        "elasticache:AddTagsToResource",
+        "elasticache:RemoveTagsFromResource",
+        "elasticache:ListTagsForResource"
+      ],
+      "Resource": [
+        "arn:aws:elasticache:ap-northeast-2:942466928325:replicationgroup:getddo-staging-*",
+        "arn:aws:elasticache:ap-northeast-2:942466928325:cluster:getddo-staging-*",
+        "arn:aws:elasticache:ap-northeast-2:942466928325:subnetgroup:getddo-staging-*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "DefaultRedisParameters",
+      "Effect": "Allow",
+      "Action": [
+        "elasticache:CreateReplicationGroup",
+        "elasticache:ModifyReplicationGroup"
+      ],
+      "Resource": [
+        "arn:aws:elasticache:ap-northeast-2:942466928325:parametergroup:default.redis*",
+        "arn:aws:elasticache:ap-northeast-2:942466928325:parametergroup:default.valkey*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "ModifyPrivateStageDatabase",
+      "Effect": "Allow",
+      "Action": [
+        "rds:ModifyDBInstance"
+      ],
+      "Resource": "arn:aws:rds:ap-northeast-2:942466928325:db:getddo-staging-*",
+      "Condition": {
+        "BoolIfExists": {
+          "rds:PubliclyAccessible": "false"
+        }
+      }
+    },
+    {
+      "Sid": "RestorePrivateStageDatabase",
+      "Effect": "Allow",
+      "Action": [
+        "rds:RestoreDBInstanceFromDBSnapshot",
+        "rds:RestoreDBInstanceToPointInTime"
+      ],
+      "Resource": [
+        "arn:aws:rds:ap-northeast-2:942466928325:db:getddo-staging-*",
+        "arn:aws:rds:ap-northeast-2:942466928325:snapshot:getddo-staging-*",
+        "arn:aws:rds:ap-northeast-2:942466928325:snapshot:rds:getddo-staging-*"
+      ],
+      "Condition": {
+        "Bool": {
+          "rds:PubliclyAccessible": "false"
+        }
+      }
+    }
+  ]
+}

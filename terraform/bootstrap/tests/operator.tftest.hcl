@@ -65,7 +65,7 @@ override_resource {
 run "existing_operator_policy_boundary" {
   command = plan
   assert {
-    condition     = length(aws_iam_policy.operator) == 10 && aws_iam_group.operator.name == "getddo-dev-terraform-gyeongju" && aws_iam_user_group_membership.operator.user == "gyeongju" && aws_iam_user_group_membership.operator.groups == toset(["getddo-dev-terraform-gyeongju"])
+    condition     = length(aws_iam_policy.operator) == 10 && aws_iam_group.operator.name == "getddo-dev-terraform-gyeongju" && aws_iam_user_group_membership.operator.user == "gyeongju" && aws_iam_user_group_membership.operator.groups == toset(["getddo-dev-terraform-gyeongju", "getddo-staging-terraform-gyeongju"])
     error_message = "Preserve ten independent policies and the dedicated gyeongju group."
   }
   assert {
@@ -91,5 +91,21 @@ run "operator_attachment_mapping" {
       ])
     )
     error_message = "Every operator policy must stay attached to its matching manifest key and dedicated group."
+  }
+}
+
+run "staging_operator_boundary" {
+  command = plan
+  assert {
+    condition     = aws_iam_group.staging.name == "getddo-staging-terraform-gyeongju" && length(aws_iam_group_policy_attachment.staging) == 5 && aws_iam_policy.staging_runtime_boundary.name == "GetddoStagingRuntimeBoundary"
+    error_message = "Keep staging policies on the same user's separate group without exceeding the existing group's attachment quota."
+  }
+  assert {
+    condition     = jsondecode(aws_iam_policy.staging["identity"].policy).Statement[0].Condition.StringEquals["iam:PermissionsBoundary"] == "arn:aws:iam::942466928325:policy/GetddoStagingRuntimeBoundary" && alltrue([for s in jsondecode(aws_iam_policy.staging["identity"].policy).Statement : !contains(s.Action, "iam:DeleteRolePermissionsBoundary") && !contains(s.Action, "iam:CreatePolicyVersion")])
+    error_message = "Runtime role creation must require a fixed boundary that the operator cannot remove or edit."
+  }
+  assert {
+    condition     = alltrue([for s in jsondecode(aws_iam_policy.staging["operations"].policy).Statement : !contains(s.Action, "s3:DeleteObject") || length(regexall("terraform.tfstate$", join(",", try(tolist(s.Resource), [tostring(s.Resource)])))) == 0])
+    error_message = "Staging cleanup may release locks and artifacts but must not delete State."
   }
 }
