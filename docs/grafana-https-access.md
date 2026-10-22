@@ -32,3 +32,14 @@ HTTPS는 기존 CloudFront에서 종료하고 VPC 내부 ALB→Grafana 구간은
 - [Grafana 하위 경로·프록시 설정](https://grafana.com/tutorials/run-grafana-behind-a-proxy/)
 - [CloudFront 관리형 Origin Request Policy](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/using-managed-origin-request-policies.html)
 - [기존 구축/백업 검증 기록](monitoring-runtime-verification.md) — GD-299 당시 SSM 접속 결과를 기록한 과거 문서이며, GD-302 적용 후 일반 접속은 이 문서를 따른다.
+
+## 실제 적용·검증 — 2026-10-22
+
+- `gyeongju`로 monitoring 5개 생성, prod CloudFront 1개 수정 적용. 삭제/교체 없음. 두 root 전체 재계획 모두 `No changes`.
+- 기존 모니터에서 Grafana만 재생성했고 기존 admin 비밀번호·DB·Prometheus 데이터/프로세스는 보존했다. ALB Grafana target healthy, CloudFront Deployed.
+- 외부 HTTPS 로그인 페이지/health·기존 API 문서 HTTP 200. 기존 admin으로 로그인 성공, 대시보드 2개 및 공개 경로를 통한 Prometheus 실제 쿼리에서 6개 target up 확인.
+- 비로그인 user API 401, 세션 쿠키 Secure/HttpOnly 및 `/grafana` 경로 확인, 외부 Origin POST 403, 로그아웃 후 기존 쿠키 재사용 401.
+- 모니터 SG 3000 인바운드는 ALB SG만 허용하고 IPv4/IPv6 CIDR 허용 없음. Prometheus 9090을 게시하지 않는다.
+- Terraform mock: bootstrap 6개·prod 21개·monitoring 4개 통과. 스크립트 테스트 14개와 daemon 없는 Compose/Prometheus/14개 PromQL 검증 통과. 로컬 Docker 통합 테스트는 실행하지 않았다.
+- 변경 파일을 실제 Grafana·DB·Redis 비밀번호와 메모리에서 대조하고 AWS access key/private key 패턴도 검사했다. 실제 비밀값, `.env`, 자격 증명, State/plan은 Git/PR에 포함하지 않았다. 비밀번호·세션 쿠키는 검증 출력에 남기지 않았다.
+- 최초 GD-299의 SSM 접속 검증은 과거 기록이며, 현재 일반 접속은 HTTPS `/grafana/`를 사용한다. 브라우저 모든 패널의 육안 검사·부하 시험을 수행한 것은 아니다.
