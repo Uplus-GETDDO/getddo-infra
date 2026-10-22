@@ -65,7 +65,7 @@ override_resource {
 run "existing_operator_policy_boundary" {
   command = plan
   assert {
-    condition     = length(aws_iam_policy.operator) == 10 && aws_iam_group.operator.name == "getddo-dev-terraform-gyeongju" && aws_iam_user_group_membership.operator.user == "gyeongju" && aws_iam_user_group_membership.operator.groups == toset(["getddo-dev-terraform-gyeongju"])
+    condition     = length(aws_iam_policy.operator) == 10 && aws_iam_group.operator.name == "getddo-dev-terraform-gyeongju" && aws_iam_user_group_membership.operator.user == "gyeongju" && aws_iam_user_group_membership.operator.groups == toset(["getddo-dev-terraform-gyeongju", "getddo-staging-terraform-gyeongju"])
     error_message = "Preserve ten independent policies and the dedicated gyeongju group."
   }
   assert {
@@ -91,5 +91,47 @@ run "operator_attachment_mapping" {
       ])
     )
     error_message = "Every operator policy must stay attached to its matching manifest key and dedicated group."
+  }
+}
+
+run "staging_operator_boundary" {
+  command = plan
+  assert {
+    condition     = aws_iam_group.staging.name == "getddo-staging-terraform-gyeongju" && length(aws_iam_group_policy_attachment.staging) == 5 && aws_iam_policy.staging_runtime_boundary.name == "GetddoStagingRuntimeBoundary"
+    error_message = "Keep staging policies on the same user's separate group without exceeding the existing group's attachment quota."
+  }
+  assert {
+    condition = jsondecode(aws_iam_policy.staging["identity"].policy).Statement[0].Condition.StringEquals["iam:PermissionsBoundary"] == "arn:aws:iam::942466928325:policy/GetddoStagingRuntimeBoundary" && alltrue(flatten([for policy in concat(values(aws_iam_policy.staging), values(aws_iam_policy.operator)) : [
+      for statement in jsondecode(policy.policy).Statement : [
+        for action in statement.Action : !anytrue([for forbidden in ["iam:DeleteRolePermissionsBoundary", "iam:PutRolePermissionsBoundary", "iam:CreatePolicyVersion", "iam:SetDefaultPolicyVersion", "iam:DeletePolicy", "iam:DeletePolicyVersion"] : can(regex("(?i)^${replace(replace(action, "*", ".*"), "?", ".")}$", forbidden))])
+      ] if statement.Effect == "Allow"
+    ]]))
+    error_message = "Runtime role creation must require a fixed boundary that the operator cannot remove or edit."
+  }
+  assert {
+    condition = alltrue([for s in jsondecode(aws_iam_policy.staging["operations"].policy).Statement :
+      !anytrue([for action in s.Action : can(regex("(?i)^${replace(replace(action, "*", ".*"), "?", ".")}$", "s3:DeleteObject"))]) || alltrue([for arn in try(tolist(s.Resource), [tostring(s.Resource)]) : contains(["arn:aws:s3:::getddo-tfstate-942466928325-ap-northeast-2/staging/terraform.tfstate.tflock", "arn:aws:s3:::getddo-deploy-942466928325-ap-northeast-2/staging/*"], arn)])
+    ])
+    error_message = "Staging cleanup may release locks and artifacts but must not delete State."
+  }
+}
+
+run "protect_resource_identity_tags" {
+  command = plan
+  assert {
+    condition     = length([for s in jsondecode(aws_iam_policy.staging["compute"].policy).Statement : s if s.Effect == "Deny" && contains(s.Action, "ec2:CreateTags") && contains(s.Action, "ec2:DeleteTags") && contains(s.Condition.StringNotEqualsIfExists["ec2:CreateAction"], "RunInstances") && !contains(s.Condition.StringNotEqualsIfExists["ec2:CreateAction"], "CreateTags") && s.Condition.StringNotEqualsIfExists["ec2:ResourceTag/Environment"] == "staging"]) == 1
+    error_message = "Existing production resources must not be relabeled to acquire new staging lifecycle permissions."
+  }
+}
+
+run "stage_database_modification_is_not_granted" {
+  command = plan
+  assert {
+    condition = alltrue([for s in jsondecode(aws_iam_policy.staging["data"].policy).Statement :
+      !anytrue([for action in s.Action : can(regex("(?i)^${replace(replace(action, "*", ".*"), "?", ".")}$", "rds:ModifyDBInstance"))]) if s.Effect == "Allow"
+      ]) && alltrue([for sid in ["CreatePrivateStageDatabase", "RestorePrivateStageDatabase"] :
+      length([for s in jsondecode(aws_iam_policy.staging["data"].policy).Statement : s if s.Sid == sid && s.Condition.Bool["rds:PubliclyAccessible"] == "false"]) == 1
+    ])
+    error_message = "Do not grant stage DB modification using an unsupported public-access condition; preserve private creation and restore."
   }
 }

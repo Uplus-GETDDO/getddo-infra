@@ -1,0 +1,127 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "CreateBoundedStageRole",
+      "Effect": "Allow",
+      "Action": [
+        "iam:CreateRole"
+      ],
+      "Resource": [
+        "arn:aws:iam::942466928325:role/getddo-staging-api",
+        "arn:aws:iam::942466928325:role/getddo-staging-locust"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "iam:PermissionsBoundary": "arn:aws:iam::942466928325:policy/GetddoStagingRuntimeBoundary"
+        }
+      }
+    },
+    {
+      "Sid": "ManageStageRole",
+      "Effect": "Allow",
+      "Action": [
+        "iam:DeleteRole",
+        "iam:GetRole",
+        "iam:GetRolePolicy",
+        "iam:PutRolePolicy",
+        "iam:DeleteRolePolicy",
+        "iam:ListRolePolicies",
+        "iam:ListAttachedRolePolicies",
+        "iam:ListInstanceProfilesForRole",
+        "iam:ListRoleTags",
+        "iam:TagRole",
+        "iam:UntagRole",
+        "iam:UpdateAssumeRolePolicy"
+      ],
+      "Resource": [
+        "arn:aws:iam::942466928325:role/getddo-staging-api",
+        "arn:aws:iam::942466928325:role/getddo-staging-locust"
+      ]
+    },
+    {
+      "Sid": "ReadFixedBoundary",
+      "Effect": "Allow",
+      "Action": [
+        "iam:GetPolicy",
+        "iam:GetPolicyVersion",
+        "iam:ListPolicyVersions"
+      ],
+      "Resource": "arn:aws:iam::942466928325:policy/GetddoStagingRuntimeBoundary"
+    },
+    {
+      "Sid": "ManageStageProfiles",
+      "Effect": "Allow",
+      "Action": [
+        "iam:CreateInstanceProfile",
+        "iam:DeleteInstanceProfile",
+        "iam:GetInstanceProfile",
+        "iam:AddRoleToInstanceProfile",
+        "iam:RemoveRoleFromInstanceProfile",
+        "iam:ListInstanceProfileTags",
+        "iam:TagInstanceProfile",
+        "iam:UntagInstanceProfile"
+      ],
+      "Resource": [
+        "arn:aws:iam::942466928325:instance-profile/getddo-staging-api",
+        "arn:aws:iam::942466928325:instance-profile/getddo-staging-locust"
+      ]
+    },
+    {
+      "Sid": "PassStageRoleToEc2",
+      "Effect": "Allow",
+      "Action": [
+        "iam:PassRole"
+      ],
+      "Resource": [
+        "arn:aws:iam::942466928325:role/getddo-staging-api",
+        "arn:aws:iam::942466928325:role/getddo-staging-locust"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "iam:PassedToService": "ec2.amazonaws.com"
+        }
+      }
+    },
+    {
+      "Sid": "ReadOwnIamPermissions",
+      "Effect": "Allow",
+      "Action": [
+        "iam:GetUser",
+        "iam:ListGroupsForUser",
+        "iam:ListAttachedUserPolicies",
+        "iam:ListUserPolicies",
+        "iam:GetUserPolicy",
+        "iam:SimulatePrincipalPolicy"
+      ],
+      "Resource": "arn:aws:iam::942466928325:user/gyeongju"
+    },
+    {
+      "Sid": "ReadOwnOperatorGroups",
+      "Effect": "Allow",
+      "Action": [
+        "iam:GetGroup",
+        "iam:ListAttachedGroupPolicies",
+        "iam:ListGroupPolicies",
+        "iam:GetGroupPolicy"
+      ],
+      "Resource": [
+        "arn:aws:iam::942466928325:group/getddo-dev-terraform-gyeongju",
+        "arn:aws:iam::942466928325:group/getddo-staging-terraform-gyeongju"
+      ]
+    },
+    {
+      "Sid": "ReadOperatorPolicyDocuments",
+      "Effect": "Allow",
+      "Action": [
+        "iam:GetPolicy",
+        "iam:GetPolicyVersion",
+        "iam:ListPolicyVersions"
+      ],
+      "Resource": [
+        "arn:aws:iam::942466928325:policy/GetddoDevOperator*",
+        "arn:aws:iam::942466928325:policy/GetddoStagingOperator-*"
+      ]
+    }
+  ]
+}

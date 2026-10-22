@@ -7,6 +7,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location('targets', ROOT / 'scripts/monitoring-targets.py')
@@ -15,6 +16,26 @@ spec.loader.exec_module(targets)
 
 
 class MonitoringTests(unittest.TestCase):
+    def test_tmpfs_accepts_only_strings_or_lists_before_compose(self):
+        spec = importlib.util.spec_from_file_location('check_monitoring', ROOT / 'scripts/check-monitoring.py')
+        check = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(check)
+        with tempfile.TemporaryDirectory() as name:
+            obs = Path(name)
+            (obs / 'prometheus').mkdir()
+            (obs / 'grafana/dashboards').mkdir(parents=True)
+            for tmpfs, valid in [('/tmp:rw', True), (['/tmp:rw'], True), ({'/tmp': 'rw'}, False), (None, False), (42, False), (['relative'], False), ([42], False)]:
+                with self.subTest(tmpfs=tmpfs):
+                    (obs / 'compose.yaml').write_text(json.dumps({'services': {'grafana': {'tmpfs': tmpfs}}}))
+                    with patch.object(check, 'OBS', obs), patch.object(check.subprocess, 'run') as run:
+                        if valid:
+                            check.main()
+                            self.assertTrue(run.called)
+                        else:
+                            with self.assertRaises(ValueError):
+                                check.main()
+                            run.assert_not_called()
+
     def test_target_contract(self):
         api, node = targets.targets({'A': '10.20.0.10', 'C': '10.20.1.10'}, '10.20.0.20')
         self.assertEqual([t['labels']['server'] for t in api], ['A', 'C'])

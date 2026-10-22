@@ -22,7 +22,7 @@ resource "aws_iam_group_policy_attachment" "operator" {
 # aws_iam_group_membership does not support import; permissions remain unchanged.
 resource "aws_iam_user_group_membership" "operator" {
   user   = local.operator_manifest.user_name
-  groups = [aws_iam_group.operator.name]
+  groups = [aws_iam_group.operator.name, aws_iam_group.staging.name]
 }
 resource "aws_iam_group_policy" "operator_two_api" {
   name   = "two-api-management"

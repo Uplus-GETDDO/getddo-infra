@@ -80,7 +80,8 @@
       "Action": [
         "ssm:PutParameter",
         "ssm:AddTagsToResource",
-        "ssm:ListTagsForResource"
+        "ssm:ListTagsForResource",
+        "ssm:GetParameter"
       ],
       "Resource": "arn:aws:ssm:ap-northeast-2:942466928325:parameter/getddo/monitoring/grafana/admin-password",
       "Condition": {

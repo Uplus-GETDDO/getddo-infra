@@ -1,0 +1,191 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "LaunchApi",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:RunInstances"
+      ],
+      "Resource": "arn:aws:ec2:ap-northeast-2:942466928325:instance/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestTag/Environment": "staging",
+          "aws:RequestTag/Name": [
+            "getddo-staging-api-a",
+            "getddo-staging-api-c"
+          ],
+          "ec2:InstanceType": [
+            "t3.small"
+          ],
+          "ec2:MetadataHttpTokens": "required",
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "LaunchLocust",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:RunInstances"
+      ],
+      "Resource": "arn:aws:ec2:ap-northeast-2:942466928325:instance/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestTag/Environment": "staging",
+          "aws:RequestTag/Name": [
+            "getddo-staging-locust"
+          ],
+          "ec2:InstanceType": [
+            "t3.medium",
+            "t3.large"
+          ],
+          "ec2:MetadataHttpTokens": "required",
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "LaunchEncryptedStageDisks",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:RunInstances"
+      ],
+      "Resource": "arn:aws:ec2:ap-northeast-2:942466928325:volume/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestTag/Environment": "staging",
+          "ec2:VolumeType": "gp3"
+        },
+        "Bool": {
+          "ec2:Encrypted": "true"
+        }
+      }
+    },
+    {
+      "Sid": "ManageStageInstances",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:StartInstances",
+        "ec2:StopInstances",
+        "ec2:RebootInstances",
+        "ec2:TerminateInstances"
+      ],
+      "Resource": "arn:aws:ec2:ap-northeast-2:942466928325:instance/*",
+      "Condition": {
+        "StringEquals": {
+          "ec2:ResourceTag/Environment": "staging"
+        }
+      }
+    },
+    {
+      "Sid": "DeleteStageNetworkOnly",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DeleteSecurityGroup"
+      ],
+      "Resource": "arn:aws:ec2:ap-northeast-2:942466928325:security-group/*",
+      "Condition": {
+        "StringEquals": {
+          "ec2:ResourceTag/Environment": "staging"
+        }
+      }
+    },
+    {
+      "Sid": "CreateEncryptedStageDisks",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:CreateVolume"
+      ],
+      "Resource": "arn:aws:ec2:ap-northeast-2:942466928325:volume/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestTag/Environment": "staging",
+          "ec2:VolumeType": "gp3"
+        },
+        "Bool": {
+          "ec2:Encrypted": "true"
+        }
+      }
+    },
+    {
+      "Sid": "ManageStageDisks",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:AttachVolume",
+        "ec2:DetachVolume",
+        "ec2:DeleteVolume"
+      ],
+      "Resource": "arn:aws:ec2:ap-northeast-2:942466928325:volume/*",
+      "Condition": {
+        "StringEquals": {
+          "ec2:ResourceTag/Environment": "staging"
+        }
+      }
+    },
+    {
+      "Sid": "AttachToStageInstances",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:AttachVolume",
+        "ec2:DetachVolume"
+      ],
+      "Resource": "arn:aws:ec2:ap-northeast-2:942466928325:instance/*",
+      "Condition": {
+        "StringEquals": {
+          "ec2:ResourceTag/Environment": "staging"
+        }
+      }
+    },
+    {
+      "Sid": "ProtectExistingResourceIdentityTags",
+      "Effect": "Deny",
+      "Action": [
+        "ec2:CreateTags",
+        "ec2:DeleteTags"
+      ],
+      "Resource": "arn:aws:ec2:ap-northeast-2:942466928325:*/*",
+      "Condition": {
+        "StringNotEqualsIfExists": {
+          "ec2:ResourceTag/Environment": "staging",
+          "ec2:CreateAction": [
+            "RunInstances",
+            "CreateVolume",
+            "CreateSecurityGroup",
+            "CreateNetworkInterface",
+            "CreateSubnet",
+            "CreateVpc",
+            "CreateRouteTable",
+            "CreateInternetGateway",
+            "ImportKeyPair",
+            "CreateInstanceConnectEndpoint",
+            "AuthorizeSecurityGroupIngress",
+            "AuthorizeSecurityGroupEgress"
+          ]
+        },
+        "ForAnyValue:StringEquals": {
+          "aws:TagKeys": [
+            "Environment",
+            "Name"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "ProtectExistingTagsFromBulkDeletion",
+      "Effect": "Deny",
+      "Action": [
+        "ec2:DeleteTags"
+      ],
+      "Resource": "arn:aws:ec2:ap-northeast-2:942466928325:*/*",
+      "Condition": {
+        "StringNotEqualsIfExists": {
+          "ec2:ResourceTag/Environment": "staging"
+        },
+        "Null": {
+          "aws:TagKeys": "true"
+        }
+      }
+    }
+  ]
+}

@@ -24,6 +24,9 @@ resource "aws_instance" "monitoring" {
   tags        = { Name = "getddo-prod-monitoring" }
   volume_tags = { Name = "getddo-prod-monitoring-root" }
   lifecycle {
+    # volume_tags supplies launch tags but aggregates attached disks on refresh.
+    # Never reapply it over the independently tagged data EBS after attachment.
+    ignore_changes = [volume_tags]
     precondition {
       condition = anytrue([for r in data.aws_route_table.existing.routes :
         r.cidr_block == "0.0.0.0/0" && startswith(coalesce(r.gateway_id, "none"), "igw-")

@@ -50,9 +50,13 @@ resource "aws_iam_role_policy" "read" {
         Resource = "*"
       },
       {
-        Effect   = "Allow"
-        Action   = ["logs:DescribeLogStreams", "logs:GetLogEvents", "logs:FilterLogEvents", "logs:StartQuery", "logs:GetQueryResults", "logs:GetLogGroupFields"]
-        Resource = ["arn:aws:logs:ap-northeast-2:942466928325:log-group:/getddo/dev/api", "arn:aws:logs:ap-northeast-2:942466928325:log-group:/getddo/dev/api:*"]
+        Effect = "Allow"
+        Action = ["logs:DescribeLogStreams", "logs:GetLogEvents", "logs:FilterLogEvents", "logs:StartQuery", "logs:GetQueryResults", "logs:GetLogGroupFields"]
+        Resource = [
+          "arn:aws:logs:ap-northeast-2:942466928325:log-group:/getddo/dev/api",
+          "arn:aws:logs:ap-northeast-2:942466928325:log-group:/getddo/dev/api:*",
+          "arn:aws:logs:ap-northeast-2:942466928325:log-group:/getddo/staging/*"
+        ]
       },
       {
         Effect   = "Allow", Action = ["ssm:GetParameter"]
