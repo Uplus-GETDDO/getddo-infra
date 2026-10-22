@@ -39,3 +39,7 @@ loadtest/results/
 /local-reference/
 
 /infrastructure-design-migration.html
+
+# Generated monitoring targets and AWS-dimension dashboards are operator-local.
+/observability/prometheus/*-targets.json
+/observability/grafana/dashboards/cloudwatch-generated.json

@@ -143,6 +143,101 @@
           "ec2:Encrypted": "true"
         }
       }
+    },
+    {
+      "Sid": "LaunchMonitoringHostOnly",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:RunInstances"
+      ],
+      "Resource": "arn:aws:ec2:ap-northeast-2:942466928325:instance/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2",
+          "aws:RequestTag/Name": "getddo-prod-monitoring",
+          "ec2:InstanceType": "t3.medium",
+          "ec2:MetadataHttpTokens": "required"
+        }
+      }
+    },
+    {
+      "Sid": "LaunchEncryptedMonitoringRoot",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:RunInstances"
+      ],
+      "Resource": "arn:aws:ec2:ap-northeast-2:942466928325:volume/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestTag/Name": "getddo-prod-monitoring-root"
+        },
+        "Bool": {
+          "ec2:Encrypted": "true"
+        }
+      }
+    },
+    {
+      "Sid": "CreateMonitoringDataVolume",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:CreateVolume"
+      ],
+      "Resource": "arn:aws:ec2:ap-northeast-2:942466928325:volume/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestTag/Name": "getddo-prod-monitoring-data",
+          "ec2:VolumeType": "gp3",
+          "ec2:AvailabilityZone": "ap-northeast-2a"
+        },
+        "NumericEquals": {
+          "ec2:VolumeSize": "30"
+        },
+        "Bool": {
+          "ec2:Encrypted": "true"
+        }
+      }
+    },
+    {
+      "Sid": "AttachMonitoringVolumeSide",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:AttachVolume",
+        "ec2:DetachVolume"
+      ],
+      "Resource": "arn:aws:ec2:ap-northeast-2:942466928325:volume/*",
+      "Condition": {
+        "StringEquals": {
+          "ec2:ResourceTag/Name": "getddo-prod-monitoring-data"
+        }
+      }
+    },
+    {
+      "Sid": "AttachMonitoringInstanceSide",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:AttachVolume",
+        "ec2:DetachVolume",
+        "ec2:TerminateInstances"
+      ],
+      "Resource": "arn:aws:ec2:ap-northeast-2:942466928325:instance/*",
+      "Condition": {
+        "StringEquals": {
+          "ec2:ResourceTag/Name": "getddo-prod-monitoring"
+        }
+      }
+    },
+    {
+      "Sid": "DeleteMonitoringSecurityGroup",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DeleteSecurityGroup"
+      ],
+      "Resource": "arn:aws:ec2:ap-northeast-2:942466928325:security-group/*",
+      "Condition": {
+        "StringEquals": {
+          "ec2:ResourceTag/Name": "getddo-prod-monitoring"
+        }
+      }
     }
   ]
 }

@@ -1,0 +1,28 @@
+global:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+  evaluation_interval: 15s
+scrape_configs:
+  - job_name: api
+    metrics_path: /actuator/prometheus
+    sample_limit: 50000
+    target_limit: 2
+    label_limit: 64
+    label_name_length_limit: 128
+    label_value_length_limit: 2048
+    body_size_limit: 16MB
+    file_sd_configs:
+      - files: [/etc/prometheus/api-targets.json]
+  - job_name: node
+    sample_limit: 10000
+    target_limit: 3
+    label_limit: 32
+    label_name_length_limit: 128
+    label_value_length_limit: 1024
+    body_size_limit: 8MB
+    file_sd_configs:
+      - files: [/etc/prometheus/node-targets.json]
+  - job_name: prometheus
+    static_configs:
+      - targets: [localhost:9090]
+        labels: {environment: prod, server: monitoring}
