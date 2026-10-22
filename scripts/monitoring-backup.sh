@@ -17,6 +17,9 @@ case ${1:-} in
     recover() {
       status=$?
       trap - EXIT
+      if (( status != 0 )); then
+        rm -f -- "$archive" "$archive.sha256" || echo "Failed to remove incomplete backup files." >&2
+      fi
       restart_status=0
       if "$unit_active"; then
         systemctl start getddo-monitoring || restart_status=$?

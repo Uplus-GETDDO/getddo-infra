@@ -33,7 +33,16 @@ python3 scripts/monitoring-targets.py \
   --cloudwatch-dashboard "$PRIVATE_RENDER_DIR/cloudwatch-generated.json"
 ```
 
-Copy generated JSON files with mode 0644 (including when the operator uses umask 077), keeping the private render directory outside Git. Copy the two target JSON files into `/opt/getddo-monitoring/observability/prometheus/` and the generated dashboard into its Grafana dashboards directory. Those generated repository paths are ignored by Git. Refresh targets after any A/C replacement; targets keep the default private-IP:port `instance` label, `environment=prod`, `server=A|C|monitoring`, and `job=api|node`. CloudWatch panels reuse the existing `getddo-dev-overview` dimensions and legacy `environment=dev` searches; their display remains Prod. Do not rename existing metrics or resource IDs.
+On the monitoring host, install the generated JSON files with explicit permissions (also under `umask 077`), keeping the private render directory outside Git:
+
+```sh
+sudo install -m 0644 "$PRIVATE_RENDER_DIR/prometheus/api-targets.json" /opt/getddo-monitoring/observability/prometheus/api-targets.json
+sudo install -m 0644 "$PRIVATE_RENDER_DIR/prometheus/node-targets.json" /opt/getddo-monitoring/observability/prometheus/node-targets.json
+sudo install -m 0644 "$PRIVATE_RENDER_DIR/cloudwatch-generated.json" /opt/getddo-monitoring/observability/grafana/dashboards/cloudwatch-generated.json
+stat -c '%a %n' /opt/getddo-monitoring/observability/prometheus/{api,node}-targets.json /opt/getddo-monitoring/observability/grafana/dashboards/cloudwatch-generated.json
+```
+
+Verify all three files report `644` before starting the stack. Those generated repository paths are ignored by Git. Refresh targets after any A/C replacement; targets keep the default private-IP:port `instance` label, `environment=prod`, `server=A|C|monitoring`, and `job=api|node`. CloudWatch panels reuse the existing `getddo-dev-overview` dimensions and legacy `environment=dev` searches; their display remains Prod. Do not rename existing metrics or resource IDs.
 
 Run `scripts/install-node-exporter.sh` locally on each approved A/C/monitoring host, then start `getddo-monitoring` only on the new monitor. The exporter, Prometheus, Grafana and Compose releases are checksum/digest pinned. The Docker drop-in is installed **only on the new monitor**, before Docker is enabled: Docker itself checks the expected mounted EBS and prepares the volatile secret before it can restart containers. The main unit repeats the mount guard. Bind mounts disable automatic path creation, so missing disks or secret files fail closed. No global API Docker settings change.
 

@@ -97,7 +97,7 @@ docker() {
   esac
   return 0
 }
-tar() { echo OFFLINE_ARCHIVE; [[ $FAIL_AT != tar ]] || return 23; touch "$archive"; }
+tar() { echo OFFLINE_ARCHIVE; touch "$archive"; [[ $FAIL_AT != tar ]] || return 23; }
 sha256sum() { [[ $FAIL_AT != checksum ]] || return 24; command sha256sum "$@"; }
 """
         with tempfile.TemporaryDirectory() as name:
@@ -121,6 +121,8 @@ sha256sum() { [[ $FAIL_AT != checksum ]] || return 24; command sha256sum "$@"; }
                             self.assertEqual('CONTAINER_START prometheus' in result.stdout, unit == 'no' and containers == 'yes')
                             self.assertEqual('OFFLINE_ARCHIVE' in result.stdout,
                                              failure in ['none', 'tar', 'checksum'])
+                            self.assertEqual(archive.exists(), failure == 'none')
+                            self.assertEqual(Path(str(archive) + '.sha256').exists(), failure == 'none')
                             if recovery and restart_status:
                                 self.assertIn('recovery failed', result.stderr)
 
