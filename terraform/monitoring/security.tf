@@ -1,5 +1,6 @@
 resource "aws_security_group" "monitoring" {
-  name        = "getddo-prod-monitoring"
+  name = "getddo-prod-monitoring"
+  # Retain the historical AWS description: changing it replaces this attached SG.
   description = "No inbound management ports; use SSM forwarding to loopback Grafana"
   vpc_id      = data.aws_vpc.existing.id
   tags        = { Name = "getddo-prod-monitoring" }

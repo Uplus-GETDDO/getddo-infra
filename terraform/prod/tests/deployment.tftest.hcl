@@ -224,10 +224,10 @@ run "private_images_and_read_only_cloudfront_origin" {
 
   assert {
     condition = (
-      one(aws_cloudfront_distribution.api.ordered_cache_behavior).path_pattern == "/images/*" &&
-      one(aws_cloudfront_distribution.api.ordered_cache_behavior).target_origin_id == "getddo-dev-images" &&
-      toset(one(aws_cloudfront_distribution.api.ordered_cache_behavior).allowed_methods) == toset(["GET", "HEAD"]) &&
-      one(aws_cloudfront_distribution.api.ordered_cache_behavior).cache_policy_id == "658327ea-f89d-4fab-a63d-7e88639e58f6" &&
+      one([for behavior in aws_cloudfront_distribution.api.ordered_cache_behavior : behavior if behavior.path_pattern == "/images/*"]).path_pattern == "/images/*" &&
+      one([for behavior in aws_cloudfront_distribution.api.ordered_cache_behavior : behavior if behavior.path_pattern == "/images/*"]).target_origin_id == "getddo-dev-images" &&
+      toset(one([for behavior in aws_cloudfront_distribution.api.ordered_cache_behavior : behavior if behavior.path_pattern == "/images/*"]).allowed_methods) == toset(["GET", "HEAD"]) &&
+      one([for behavior in aws_cloudfront_distribution.api.ordered_cache_behavior : behavior if behavior.path_pattern == "/images/*"]).cache_policy_id == "658327ea-f89d-4fab-a63d-7e88639e58f6" &&
       aws_cloudfront_distribution.api.default_cache_behavior[0].cache_policy_id == "4135ea2d-6df8-44a3-9df3-4b5a84be39ad" &&
       length([for origin in aws_cloudfront_distribution.api.origin : origin if origin.origin_id == "getddo-dev-images" && origin.origin_access_control_id == aws_cloudfront_origin_access_control.images.id]) == 1
     )
@@ -358,5 +358,13 @@ run "deployment_lock_has_only_exact_object_write_and_delete" {
       jsondecode(aws_iam_role_policy.github_cd_two_api.policy).Statement[3].Condition.StringEquals["aws:RequestedRegion"] == "ap-northeast-2"
     )
     error_message = "CD lock permission must allow only put/delete of the exact deployment lock object."
+  }
+}
+
+run "grafana_session_forwarding" {
+  command = plan
+  assert {
+    condition     = length([for behavior in aws_cloudfront_distribution.api.ordered_cache_behavior : behavior if contains(["/grafana", "/grafana/*"], behavior.path_pattern) && behavior.target_origin_id == "getddo-dev-api-alb" && behavior.cache_policy_id == "4135ea2d-6df8-44a3-9df3-4b5a84be39ad" && behavior.origin_request_policy_id == "216adef6-5c7f-47e4-b989-5492eafa07d3" && behavior.viewer_protocol_policy == "https-only" && contains(behavior.allowed_methods, "POST")]) == 2
+    error_message = "Grafana requires both exact and child paths, no caching, HTTPS, and original viewer Host/cookies for login."
   }
 }

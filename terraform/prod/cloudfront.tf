@@ -104,6 +104,22 @@ resource "aws_cloudfront_distribution" "api" {
     response_headers_policy_id = data.aws_cloudfront_response_headers_policy.api.id
   }
 
+  # Only these two paths use Grafana's login forwarding; API/image behavior stays intact.
+  dynamic "ordered_cache_behavior" {
+    for_each = ["/grafana", "/grafana/*"]
+    content {
+      path_pattern               = ordered_cache_behavior.value
+      target_origin_id           = "getddo-dev-api-alb"
+      viewer_protocol_policy     = "https-only"
+      allowed_methods            = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+      cached_methods             = ["GET", "HEAD"]
+      compress                   = true
+      cache_policy_id            = data.aws_cloudfront_cache_policy.api.id
+      origin_request_policy_id   = data.aws_cloudfront_origin_request_policy.grafana.id
+      response_headers_policy_id = data.aws_cloudfront_response_headers_policy.api.id
+    }
+  }
+
   default_cache_behavior {
     target_origin_id = "getddo-dev-api-alb"
 
@@ -137,4 +153,9 @@ resource "aws_cloudfront_distribution" "api" {
 
   # AWS 서비스 보안 그룹 → ALB 인바운드가 준비된 뒤 배포를 활성화한다.
   depends_on = [aws_vpc_security_group_ingress_rule.alb_from_cloudfront]
+}
+
+# Grafana's CSRF checks require the original viewer Host alongside Origin and cookies.
+data "aws_cloudfront_origin_request_policy" "grafana" {
+  id = "216adef6-5c7f-47e4-b989-5492eafa07d3" # Managed-AllViewer
 }

@@ -100,3 +100,7 @@ CI는 Terraform과 스크립트·설정 검사를 두 job으로 실행합니다.
 - [서버 접속](terraform/prod/access.tf)
 - [이미지 저장소](terraform/prod/storage.tf) · [CloudFront](terraform/prod/cloudfront.tf)
 - [Redis](terraform/prod/redis.tf)
+
+## 운영 Grafana
+
+기존 HTTPS 주소의 `/grafana/`에서 기존 admin 계정으로 로그인한다. 비밀번호는 전용 SecureString에서 관리하고 Git에 넣지 않는다. [접속·적용·복구 절차](docs/grafana-https-access.md)를 참고한다.
