@@ -146,8 +146,8 @@
     },
     {
       "id": 103,
-      "title": "오류 · HTTP 5xx 비율 (5분)",
-      "description": "5xx / 전체 API 요청 × 100. 4xx·업무상 실패는 서버 오류로 세지 않습니다. 요청이 있고 5xx 시계열만 없을 때 0%; 요청이 없거나 미수집이면 —. 확정 SLO를 뜻하지 않습니다.",
+      "title": "오류 · 수집 정상 API의 5xx (%)",
+      "description": "5xx / 전체 API 요청 × 100. 4xx·업무상 실패는 서버 오류로 세지 않습니다. 요청이 있고 5xx 시계열만 없을 때 0%; 요청이 없거나 미수집이면 —. 확정 SLO를 뜻하지 않습니다. 현재 up=1인 서버만 분자·분모에 같은 조건으로 포함합니다. 일부 서버가 수집 실패면 전체 서비스의 오류율이 아니므로 A/C 수집 상태를 함께 확인하세요.",
       "type": "stat",
       "gridPos": {
         "x": 12,
@@ -162,7 +162,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "100 * (sum (rate(http_server_requests_seconds_count{environment=\"prod\",server=~\"$server\",uri!~\"/actuator.*|/v3/api-docs.*|/swagger-ui.*\",status=~\"5..\"}[5m])) or (0 * sum (rate(http_server_requests_seconds_count{environment=\"prod\",server=~\"$server\",uri!~\"/actuator.*|/v3/api-docs.*|/swagger-ui.*\"}[5m])))) / (sum (rate(http_server_requests_seconds_count{environment=\"prod\",server=~\"$server\",uri!~\"/actuator.*|/v3/api-docs.*|/swagger-ui.*\"}[5m])) > 0)",
+          "expr": "100 * sum(((sum by (server) (rate(http_server_requests_seconds_count{environment=\"prod\",server=~\"$server\",uri!~\"/actuator.*|/v3/api-docs.*|/swagger-ui.*\",status=~\"5..\"}[5m])) or (0 * sum by (server) (rate(http_server_requests_seconds_count{environment=\"prod\",server=~\"$server\",uri!~\"/actuator.*|/v3/api-docs.*|/swagger-ui.*\"}[5m])))) and on(server) (up{job=\"api\",environment=\"prod\",server=~\"$server\"} == 1))) / (sum((sum by (server) (rate(http_server_requests_seconds_count{environment=\"prod\",server=~\"$server\",uri!~\"/actuator.*|/v3/api-docs.*|/swagger-ui.*\"}[5m])) and on(server) (up{job=\"api\",environment=\"prod\",server=~\"$server\"} == 1))) > 0)",
           "legendFormat": "{{server}}",
           "instant": true
         }
@@ -835,7 +835,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "(sum by (server) (rate(http_server_requests_seconds_count{environment=\"prod\",server=~\"$server\",uri!~\"/actuator.*|/v3/api-docs.*|/swagger-ui.*\",status=~\"5..\"}[5m])) or (0 * sum by (server) (rate(http_server_requests_seconds_count{environment=\"prod\",server=~\"$server\",uri!~\"/actuator.*|/v3/api-docs.*|/swagger-ui.*\"}[5m]))))",
+          "expr": "((sum by (server) (rate(http_server_requests_seconds_count{environment=\"prod\",server=~\"$server\",uri!~\"/actuator.*|/v3/api-docs.*|/swagger-ui.*\",status=~\"5..\"}[5m])) or (0 * sum by (server) (rate(http_server_requests_seconds_count{environment=\"prod\",server=~\"$server\",uri!~\"/actuator.*|/v3/api-docs.*|/swagger-ui.*\"}[5m])))) and on(server) (up{job=\"api\",environment=\"prod\",server=~\"$server\"} == 1))",
           "legendFormat": "{{server}} {{instance}} {{__name__}}"
         }
       ],
@@ -851,7 +851,7 @@
           "mode": "multi"
         }
       },
-      "description": "요청 카운터가 있는 서버에 대해서만 5xx 부재를 0으로 표시합니다. 미수집 서버를 0으로 채우지 않습니다."
+      "description": "현재 up=1인 서버에 대해서만 5xx 부재를 0으로 표시합니다. 최근 요청 샘플이 남아 있어도 수집 실패/누락 서버는 0으로 채우지 않습니다."
     },
     {
       "id": 5,

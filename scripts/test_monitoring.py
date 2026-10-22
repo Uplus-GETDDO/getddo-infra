@@ -23,6 +23,7 @@ class MonitoringTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as name:
             obs = Path(name)
             (obs / 'grafana/dashboards').mkdir(parents=True)
+            (obs / 'grafana/query-tests.yml').write_text('{"tests": []}')
             (obs / 'compose.yaml').write_text('{"services": {"grafana": {}}}')
             for graph, valid in [({'type': 'timeseries', 'targets': [{'expr': 'up'}]}, True), ({'type': 'timeseries'}, False)]:
                 with self.subTest(valid_graph=valid):
@@ -48,6 +49,7 @@ class MonitoringTests(unittest.TestCase):
             obs = Path(name)
             (obs / 'prometheus').mkdir()
             (obs / 'grafana/dashboards').mkdir(parents=True)
+            (obs / 'grafana/query-tests.yml').write_text('{"tests": []}')
             for tmpfs, valid in [('/tmp:rw', True), (['/tmp:rw'], True), ({'/tmp': 'rw'}, False), (None, False), (42, False), (['relative'], False), ([42], False)]:
                 with self.subTest(tmpfs=tmpfs):
                     (obs / 'compose.yaml').write_text(json.dumps({'services': {'grafana': {'tmpfs': tmpfs}}}))
