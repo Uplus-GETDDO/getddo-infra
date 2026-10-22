@@ -17,6 +17,12 @@ def main():
             yaml.safe_load(path.read_text())
         elif path.suffix == '.json':
             json.loads(path.read_text())
+    # YAML flow-list commas can accidentally turn tmpfs options into extra mount paths.
+    services = yaml.safe_load((OBS / 'compose.yaml').read_text())['services']
+    for service in services.values():
+        for mount in service.get('tmpfs', []):
+            if not isinstance(mount, str) or not mount.split(':', 1)[0].startswith('/'):
+                raise ValueError('Every tmpfs mount must have an absolute container path; quote comma-separated options')
     compose = os.environ.get('COMPOSE_BIN', 'docker')
     command = [compose] if 'COMPOSE_BIN' in os.environ else [compose, 'compose']
     subprocess.run(command + ['-f', str(OBS / 'compose.yaml'), 'config', '--quiet'], check=True)
