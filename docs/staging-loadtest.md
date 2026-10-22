@@ -8,6 +8,17 @@
 
 Python 3.12, boto3 1.40.59, AWS CLI, Git과 Terraform을 사용한다. 기존 `getddo-dev` 프로필로 실행한다. 런타임에 관리자/root 자격 증명을 전달하지 않는다.
 
+AWS CLI `aws login`을 쓰는 로컬 환경에서 고정 SDK가 로그인 캐시를 직접 읽지 못하면, CLI 로그인용 프로필과 SDK의 `credential_process`를 연결한다. 같은 IAM 사용자 세션을 사용하며 액세스 키를 파일이나 명령 인자에 복사하지 않는다. 다음 예시는 기존 `gyeongju` 사용자와 `getddo-dev` 실행 프로필을 연결한다. root 세션을 연결하지 않는다.
+
+```sh
+aws configure set login_session arn:aws:iam::942466928325:user/gyeongju --profile getddo-cli-login
+aws configure set region ap-northeast-2 --profile getddo-cli-login
+aws configure set credential_process 'aws configure export-credentials --profile getddo-cli-login --format process' --profile getddo-dev
+aws sts get-caller-identity --profile getddo-dev
+```
+
+기존 로그인 세션이 유효하면 재로그인 없이 공유한다. 세션이 만료되면 `aws login --profile getddo-cli-login --region ap-northeast-2 --remote`로 같은 IAM 사용자 인증을 갱신한다. `credential_process`의 출력은 SDK가 파이프로만 읽으므로 직접 출력·저장하지 않는다. CodeBuild와 EC2는 자체 역할의 자격 증명을 사용한다.
+
 1. Infra·백엔드 리뷰 지적을 반영하고 CI를 확인한다. 백엔드는 PR head SHA로 생성한 `staging-image-SHA-ATTEMPT` 산출물을 사용한다. `main` 운영 CD로 배포하지 않는다.
 2. 깨끗한 두 checkout과 CI 이미지로 bundle을 만든다. commit SHA, OCI image ID, 이미지 archive SHA256과 전체 bundle SHA256을 각각 검증한다. 아래 대문자 항목은 실제 값으로 대체한다.
 
