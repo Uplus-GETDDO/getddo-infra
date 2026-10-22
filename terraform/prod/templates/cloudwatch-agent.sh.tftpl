@@ -1,0 +1,12 @@
+# C 준비 단계는 호스트 지표 수집까지만 수행한다. 앱·워커·ALB 등록은 실행하지 않는다.
+dnf install -y amazon-cloudwatch-agent
+install -d -m 0755 /opt/aws/amazon-cloudwatch-agent/etc
+cat > /opt/aws/amazon-cloudwatch-agent/etc/cloudwatch-agent.json <<'GETDDO_CW_AGENT_JSON'
+${cloudwatch_agent_config}
+GETDDO_CW_AGENT_JSON
+systemctl enable amazon-cloudwatch-agent
+/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+  -a fetch-config -m ec2 -s \
+  -c file:/opt/aws/amazon-cloudwatch-agent/etc/cloudwatch-agent.json
+/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a status
+systemctl is-active --quiet amazon-cloudwatch-agent

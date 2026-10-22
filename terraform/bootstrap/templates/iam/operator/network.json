@@ -1,0 +1,148 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ReadSeoulNetworkAndCompute",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DescribeIamInstanceProfileAssociations",
+        "ec2:DescribeImages",
+        "ec2:DescribeInstanceAttribute",
+        "ec2:DescribeInstanceConnectEndpoints",
+        "ec2:DescribeInstanceCreditSpecifications",
+        "ec2:DescribeInstanceStatus",
+        "ec2:DescribeInstanceTypeOfferings",
+        "ec2:DescribeInstanceTypes",
+        "ec2:DescribeInstances",
+        "ec2:DescribeInternetGateways",
+        "ec2:DescribeKeyPairs",
+        "ec2:DescribeNetworkAcls",
+        "ec2:DescribeNetworkInterfaces",
+        "ec2:DescribeRouteTables",
+        "ec2:DescribeSecurityGroupRules",
+        "ec2:DescribeSecurityGroups",
+        "ec2:DescribeSubnets",
+        "ec2:DescribeTags",
+        "ec2:DescribeVolumes",
+        "ec2:DescribeVolumesModifications",
+        "ec2:DescribeVpcAttribute",
+        "ec2:DescribeVpcs"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "ConfigureSeoulNetworkAndCompute",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:AssociateIamInstanceProfile",
+        "ec2:AssociateRouteTable",
+        "ec2:AttachInternetGateway",
+        "ec2:AuthorizeSecurityGroupEgress",
+        "ec2:AuthorizeSecurityGroupIngress",
+        "ec2:CreateInstanceConnectEndpoint",
+        "ec2:CreateInternetGateway",
+        "ec2:CreateNetworkInterface",
+        "ec2:CreateRoute",
+        "ec2:CreateRouteTable",
+        "ec2:CreateSecurityGroup",
+        "ec2:CreateSubnet",
+        "ec2:CreateTags",
+        "ec2:CreateVpc",
+        "ec2:DeleteTags",
+        "ec2:DisassociateIamInstanceProfile",
+        "ec2:ImportKeyPair",
+        "ec2:ModifyInstanceAttribute",
+        "ec2:ModifyInstanceCreditSpecification",
+        "ec2:ModifyInstanceMetadataOptions",
+        "ec2:ModifySubnetAttribute",
+        "ec2:ModifyVpcAttribute",
+        "ec2:ReplaceIamInstanceProfileAssociation",
+        "ec2:RevokeSecurityGroupEgress",
+        "ec2:RevokeSecurityGroupIngress"
+      ],
+      "Resource": "arn:aws:ec2:ap-northeast-2:942466928325:*/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "ReadInstanceConsoleAndAttributes",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DescribeInstanceAttribute",
+        "ec2:GetConsoleOutput"
+      ],
+      "Resource": "arn:aws:ec2:ap-northeast-2:942466928325:instance/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "LaunchNamedSmallInstance",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:RunInstances"
+      ],
+      "Resource": "arn:aws:ec2:ap-northeast-2:942466928325:instance/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2",
+          "aws:RequestTag/Name": [
+            "getddo-dev-api",
+            "getddo-dev-api-c"
+          ],
+          "ec2:InstanceType": "t3.small",
+          "ec2:MetadataHttpTokens": "required"
+        }
+      }
+    },
+    {
+      "Sid": "LaunchDependencies",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:RunInstances"
+      ],
+      "Resource": [
+        "arn:aws:ec2:ap-northeast-2:942466928325:subnet/*",
+        "arn:aws:ec2:ap-northeast-2:942466928325:security-group/*",
+        "arn:aws:ec2:ap-northeast-2:942466928325:key-pair/*",
+        "arn:aws:ec2:ap-northeast-2:942466928325:network-interface/*",
+        "arn:aws:ec2:ap-northeast-2::image/*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "LaunchEncryptedRootVolume",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:RunInstances"
+      ],
+      "Resource": "arn:aws:ec2:ap-northeast-2:942466928325:volume/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2",
+          "aws:RequestTag/Name": [
+            "getddo-dev-api-root",
+            "getddo-dev-api-c-root"
+          ]
+        },
+        "Bool": {
+          "ec2:Encrypted": "true"
+        }
+      }
+    }
+  ]
+}

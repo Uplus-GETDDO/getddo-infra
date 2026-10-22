@@ -1,0 +1,24 @@
+name: Validate infrastructure
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  terraform:
+    name: Terraform 검증
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.16.5
+          terraform_wrapper: false
+      - run: python3 scripts/validate.py terraform
+  scripts_config:
+    name: 스크립트·설정 검증
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 scripts/validate.py scripts

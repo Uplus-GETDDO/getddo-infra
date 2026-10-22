@@ -1,0 +1,4 @@
+admin_ipv4_cidr = "203.0.113.10/32" # Replace with the operator public IP
+ami_id = "ami-0870825cefcaafcc8" # Verify current pinned service AMI before changing
+ssh_public_key = "ssh-ed25519 REPLACE_WITH_YOUR_PUBLIC_KEY"
+# DB/Redis ephemeral inputs are provided through the execution environment, not this file.

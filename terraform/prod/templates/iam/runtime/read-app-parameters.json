@@ -1,0 +1,39 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ReadApplicationParameters",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:GetParameter",
+        "ssm:GetParameters",
+        "ssm:GetParametersByPath"
+      ],
+      "Resource": [
+        "arn:aws:ssm:ap-northeast-2:942466928325:parameter/getddo/dev/app",
+        "arn:aws:ssm:ap-northeast-2:942466928325:parameter/getddo/dev/app/*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "DecryptApplicationParametersThroughSsm",
+      "Effect": "Allow",
+      "Action": [
+        "kms:Decrypt"
+      ],
+      "Resource": "arn:aws:kms:ap-northeast-2:942466928325:key/2b7cc9dc-603d-439a-92c1-8a270a183d76",
+      "Condition": {
+        "StringEquals": {
+          "kms:ViaService": "ssm.ap-northeast-2.amazonaws.com"
+        },
+        "StringLike": {
+          "kms:EncryptionContext:PARAMETER_ARN": "arn:aws:ssm:ap-northeast-2:942466928325:parameter/getddo/dev/app/*"
+        }
+      }
+    }
+  ]
+}

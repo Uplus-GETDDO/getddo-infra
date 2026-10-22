@@ -1,0 +1,66 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "SendOnlyToNamedSecondApi",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:SendCommand"
+      ],
+      "Resource": "arn:aws:ec2:ap-northeast-2:942466928325:instance/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2",
+          "ssm:resourceTag/Name": "getddo-dev-api-c"
+        }
+      }
+    },
+    {
+      "Sid": "ManageOnlyExistingApiTargetMembership",
+      "Effect": "Allow",
+      "Action": [
+        "elasticloadbalancing:RegisterTargets",
+        "elasticloadbalancing:DeregisterTargets"
+      ],
+      "Resource": "arn:aws:elasticloadbalancing:ap-northeast-2:942466928325:targetgroup/getddo-dev-api-tg/5821861b8038bff0",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "ReadSeoulRolloutMetadata",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DescribeInstances",
+        "ec2:DescribeInstanceStatus",
+        "ssm:DescribeInstanceInformation",
+        "elasticloadbalancing:DescribeLoadBalancers",
+        "elasticloadbalancing:DescribeTargetGroups",
+        "elasticloadbalancing:DescribeTargetGroupAttributes",
+        "elasticloadbalancing:DescribeTargetHealth"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "ManageOnlyContainerDeploymentLock",
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject",
+        "s3:DeleteObject"
+      ],
+      "Resource": "arn:aws:s3:::getddo-deploy-942466928325-ap-northeast-2/locks/container-deploy.json",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
+    }
+  ]
+}

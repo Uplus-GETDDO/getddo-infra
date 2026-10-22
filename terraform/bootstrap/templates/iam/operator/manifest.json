@@ -1,0 +1,50 @@
+{
+  "account_id": "942466928325",
+  "region": "ap-northeast-2",
+  "user_name": "gyeongju",
+  "group_name": "getddo-dev-terraform-gyeongju",
+  "policies": [
+    {
+      "name": "GetddoDevOperatorObservability",
+      "file": "observability.json",
+      "description": "GETDDO development CloudWatch metrics, logs and dashboard management"
+    },
+    {
+      "name": "GetddoDevOperatorElastiCache",
+      "file": "elasticache.json",
+      "description": "GETDDO dev node-based ElastiCache provisioning in Seoul"
+    },
+    {
+      "name": "GetddoDevOperatorParameters",
+      "file": "parameters.json"
+    },
+    {
+      "name": "GetddoDevOperatorLoadBalancing",
+      "file": "load-balancing.json"
+    },
+    {
+      "name": "GetddoDevOperatorCloudFront",
+      "file": "cloudfront.json"
+    },
+    {
+      "name": "GetddoDevOperatorNetwork",
+      "file": "network.json"
+    },
+    {
+      "name": "GetddoDevOperatorDatabase",
+      "file": "database.json"
+    },
+    {
+      "name": "GetddoDevOperatorStorage",
+      "file": "storage.json"
+    },
+    {
+      "name": "GetddoDevOperatorIdentity",
+      "file": "identity.json"
+    },
+    {
+      "name": "GetddoDevOperatorOperations",
+      "file": "operations.json"
+    }
+  ]
+}

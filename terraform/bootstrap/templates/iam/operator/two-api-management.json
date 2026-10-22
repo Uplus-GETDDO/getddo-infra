@@ -1,0 +1,20 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ManageNamedSecondApiWithApprovedDocuments",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:SendCommand",
+        "ssm:StartSession"
+      ],
+      "Resource": "arn:aws:ec2:ap-northeast-2:942466928325:instance/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2",
+          "ssm:resourceTag/Name": "getddo-dev-api-c"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,137 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ListOidcProviders",
+      "Effect": "Allow",
+      "Action": [
+        "iam:ListOpenIDConnectProviders"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "ManageGitHubProvider",
+      "Effect": "Allow",
+      "Action": [
+        "iam:AddClientIDToOpenIDConnectProvider",
+        "iam:CreateOpenIDConnectProvider",
+        "iam:GetOpenIDConnectProvider",
+        "iam:ListOpenIDConnectProviderTags",
+        "iam:RemoveClientIDFromOpenIDConnectProvider",
+        "iam:TagOpenIDConnectProvider",
+        "iam:UntagOpenIDConnectProvider",
+        "iam:UpdateOpenIDConnectProviderThumbprint"
+      ],
+      "Resource": "arn:aws:iam::942466928325:oidc-provider/token.actions.githubusercontent.com"
+    },
+    {
+      "Sid": "ManageDeploymentRoles",
+      "Effect": "Allow",
+      "Action": [
+        "iam:CreateRole",
+        "iam:DeleteRolePolicy",
+        "iam:GetRole",
+        "iam:GetRolePolicy",
+        "iam:ListAttachedRolePolicies",
+        "iam:ListInstanceProfilesForRole",
+        "iam:ListRolePolicies",
+        "iam:ListRoleTags",
+        "iam:PutRolePolicy",
+        "iam:TagRole",
+        "iam:UntagRole",
+        "iam:UpdateAssumeRolePolicy",
+        "iam:UpdateRole",
+        "iam:UpdateRoleDescription"
+      ],
+      "Resource": [
+        "arn:aws:iam::942466928325:role/getddo-dev-api",
+        "arn:aws:iam::942466928325:role/getddo-dev-github-cd"
+      ]
+    },
+    {
+      "Sid": "AttachOnlySsmCore",
+      "Effect": "Allow",
+      "Action": [
+        "iam:AttachRolePolicy",
+        "iam:DetachRolePolicy"
+      ],
+      "Resource": "arn:aws:iam::942466928325:role/getddo-dev-api",
+      "Condition": {
+        "ArnEquals": {
+          "iam:PolicyARN": "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+        }
+      }
+    },
+    {
+      "Sid": "ReadSsmCorePolicy",
+      "Effect": "Allow",
+      "Action": [
+        "iam:GetPolicy",
+        "iam:GetPolicyVersion"
+      ],
+      "Resource": "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+    },
+    {
+      "Sid": "ManageApiInstanceProfile",
+      "Effect": "Allow",
+      "Action": [
+        "iam:AddRoleToInstanceProfile",
+        "iam:CreateInstanceProfile",
+        "iam:GetInstanceProfile",
+        "iam:ListInstanceProfileTags",
+        "iam:RemoveRoleFromInstanceProfile",
+        "iam:TagInstanceProfile",
+        "iam:UntagInstanceProfile"
+      ],
+      "Resource": "arn:aws:iam::942466928325:instance-profile/getddo-dev-api"
+    },
+    {
+      "Sid": "PassOnlyApiRoleToEc2",
+      "Effect": "Allow",
+      "Action": [
+        "iam:PassRole"
+      ],
+      "Resource": "arn:aws:iam::942466928325:role/getddo-dev-api",
+      "Condition": {
+        "StringEquals": {
+          "iam:PassedToService": "ec2.amazonaws.com"
+        }
+      }
+    },
+    {
+      "Sid": "CreateRequiredServiceLinkedRoles",
+      "Effect": "Allow",
+      "Action": [
+        "iam:CreateServiceLinkedRole"
+      ],
+      "Resource": [
+        "arn:aws:iam::942466928325:role/aws-service-role/rds.amazonaws.com/AWSServiceRoleForRDS",
+        "arn:aws:iam::942466928325:role/aws-service-role/ec2-instance-connect.amazonaws.com/AWSServiceRoleForEc2InstanceConnect"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "iam:AWSServiceName": [
+            "rds.amazonaws.com",
+            "ec2-instance-connect.amazonaws.com"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "ListRoleMetadataForConsole",
+      "Effect": "Allow",
+      "Action": [
+        "iam:ListRoles"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "ReadOwnAccountRegionMetadata",
+      "Effect": "Allow",
+      "Action": [
+        "account:ListRegions"
+      ],
+      "Resource": "arn:aws:account::942466928325:account"
+    }
+  ]
+}

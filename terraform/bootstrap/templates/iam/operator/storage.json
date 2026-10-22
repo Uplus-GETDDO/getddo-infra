@@ -1,0 +1,102 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "LocateAndListStateBucket",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetBucketLocation",
+        "s3:ListBucket"
+      ],
+      "Resource": "arn:aws:s3:::getddo-tfstate-942466928325-ap-northeast-2"
+    },
+    {
+      "Sid": "ReadAndWriteDevState",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::getddo-tfstate-942466928325-ap-northeast-2/dev/terraform.tfstate",
+        "arn:aws:s3:::getddo-tfstate-942466928325-ap-northeast-2/dev/terraform.tfstate.tflock"
+      ]
+    },
+    {
+      "Sid": "ReleaseDevStateLock",
+      "Effect": "Allow",
+      "Action": [
+        "s3:DeleteObject"
+      ],
+      "Resource": "arn:aws:s3:::getddo-tfstate-942466928325-ap-northeast-2/dev/terraform.tfstate.tflock"
+    },
+    {
+      "Sid": "InspectReleaseAndImagesBuckets",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetAccelerateConfiguration",
+        "s3:GetBucketAcl",
+        "s3:GetBucketCORS",
+        "s3:GetBucketLocation",
+        "s3:GetBucketLogging",
+        "s3:GetBucketObjectLockConfiguration",
+        "s3:GetBucketOwnershipControls",
+        "s3:GetBucketPolicy",
+        "s3:GetBucketPublicAccessBlock",
+        "s3:GetBucketRequestPayment",
+        "s3:GetBucketTagging",
+        "s3:GetBucketVersioning",
+        "s3:GetBucketWebsite",
+        "s3:GetEncryptionConfiguration",
+        "s3:GetLifecycleConfiguration",
+        "s3:GetReplicationConfiguration",
+        "s3:ListBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::getddo-deploy-942466928325-ap-northeast-2",
+        "arn:aws:s3:::getddo-images-942466928325-ap-northeast-2"
+      ]
+    },
+    {
+      "Sid": "CreateSeoulReleaseAndImagesBuckets",
+      "Effect": "Allow",
+      "Action": [
+        "s3:CreateBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::getddo-deploy-942466928325-ap-northeast-2",
+        "arn:aws:s3:::getddo-images-942466928325-ap-northeast-2"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "s3:LocationConstraint": "ap-northeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "ConfigureReleaseAndImagesBuckets",
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutBucketOwnershipControls",
+        "s3:PutBucketPolicy",
+        "s3:PutBucketPublicAccessBlock",
+        "s3:PutBucketTagging",
+        "s3:PutEncryptionConfiguration",
+        "s3:PutLifecycleConfiguration"
+      ],
+      "Resource": [
+        "arn:aws:s3:::getddo-deploy-942466928325-ap-northeast-2",
+        "arn:aws:s3:::getddo-images-942466928325-ap-northeast-2"
+      ]
+    },
+    {
+      "Sid": "InspectAndTransferReleaseFiles",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject"
+      ],
+      "Resource": "arn:aws:s3:::getddo-deploy-942466928325-ap-northeast-2/releases/*"
+    }
+  ]
+}

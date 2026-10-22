@@ -1,0 +1,9 @@
+{
+  "region": "ap-northeast-2",
+  "instance_id": "i-0c67aa33f1d5c5fd9",
+  "alb_suffix": "app/getddo-dev-api-alb/9e65e06e10492070",
+  "target_group_suffix": "targetgroup/getddo-dev-api-tg/5821861b8038bff0",
+  "db_identifier": "getddo-dev-mysql",
+  "redis_cluster_id": "getddo-dev-redis-001",
+  "instance_c_id": "REPLACE_WITH_API_C_INSTANCE_ID"
+}

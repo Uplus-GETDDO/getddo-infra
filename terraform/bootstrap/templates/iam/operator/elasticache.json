@@ -1,0 +1,101 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ReadSeoulCacheConfiguration",
+      "Effect": "Allow",
+      "Action": [
+        "elasticache:DescribeCacheEngineVersions",
+        "elasticache:DescribeCacheClusters",
+        "elasticache:DescribeReplicationGroups",
+        "elasticache:DescribeCacheSubnetGroups",
+        "elasticache:DescribeCacheParameterGroups",
+        "elasticache:DescribeCacheParameters",
+        "elasticache:DescribeEngineDefaultParameters",
+        "elasticache:DescribeUsers",
+        "elasticache:DescribeUserGroups",
+        "elasticache:DescribeEvents",
+        "elasticache:ListAllowedNodeTypeModifications"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "CreateAndUpdateNamedReplicationGroups",
+      "Effect": "Allow",
+      "Action": [
+        "elasticache:CreateReplicationGroup",
+        "elasticache:ModifyReplicationGroup"
+      ],
+      "Resource": [
+        "arn:aws:elasticache:ap-northeast-2:942466928325:replicationgroup:getddo-dev-*",
+        "arn:aws:elasticache:ap-northeast-2:942466928325:cluster:getddo-dev-*",
+        "arn:aws:elasticache:ap-northeast-2:942466928325:subnetgroup:getddo-dev-*",
+        "arn:aws:elasticache:ap-northeast-2:942466928325:parametergroup:getddo-dev-*",
+        "arn:aws:elasticache:ap-northeast-2:942466928325:parametergroup:default.redis*",
+        "arn:aws:elasticache:ap-northeast-2:942466928325:parametergroup:default.valkey*",
+        "arn:aws:elasticache:ap-northeast-2:942466928325:usergroup:getddo-dev-*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "CreateAndUpdateNamedCacheConfiguration",
+      "Effect": "Allow",
+      "Action": [
+        "elasticache:CreateCacheSubnetGroup",
+        "elasticache:ModifyCacheSubnetGroup",
+        "elasticache:CreateCacheParameterGroup",
+        "elasticache:ModifyCacheParameterGroup",
+        "elasticache:CreateUser",
+        "elasticache:ModifyUser",
+        "elasticache:CreateUserGroup",
+        "elasticache:ModifyUserGroup",
+        "elasticache:AddTagsToResource",
+        "elasticache:RemoveTagsFromResource",
+        "elasticache:ListTagsForResource"
+      ],
+      "Resource": [
+        "arn:aws:elasticache:ap-northeast-2:942466928325:replicationgroup:getddo-dev-*",
+        "arn:aws:elasticache:ap-northeast-2:942466928325:cluster:getddo-dev-*",
+        "arn:aws:elasticache:ap-northeast-2:942466928325:subnetgroup:getddo-dev-*",
+        "arn:aws:elasticache:ap-northeast-2:942466928325:parametergroup:getddo-dev-*",
+        "arn:aws:elasticache:ap-northeast-2:942466928325:user:getddo-dev-*",
+        "arn:aws:elasticache:ap-northeast-2:942466928325:usergroup:getddo-dev-*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "CreateElastiCacheServiceLinkedRole",
+      "Effect": "Allow",
+      "Action": [
+        "iam:CreateServiceLinkedRole"
+      ],
+      "Resource": "arn:aws:iam::942466928325:role/aws-service-role/elasticache.amazonaws.com/AWSServiceRoleForElastiCache",
+      "Condition": {
+        "StringEquals": {
+          "iam:AWSServiceName": "elasticache.amazonaws.com"
+        }
+      }
+    },
+    {
+      "Sid": "ReadElastiCacheServiceLinkedRole",
+      "Effect": "Allow",
+      "Action": [
+        "iam:GetRole"
+      ],
+      "Resource": "arn:aws:iam::942466928325:role/aws-service-role/elasticache.amazonaws.com/AWSServiceRoleForElastiCache"
+    }
+  ]
+}

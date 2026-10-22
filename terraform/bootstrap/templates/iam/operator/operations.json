@@ -1,0 +1,129 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "TunnelToCurrentApiSsh",
+      "Effect": "Allow",
+      "Action": [
+        "ec2-instance-connect:OpenTunnel"
+      ],
+      "Resource": "arn:aws:ec2:ap-northeast-2:942466928325:instance-connect-endpoint/eice-0faadf70e78c2a080",
+      "Condition": {
+        "NumericEquals": {
+          "ec2-instance-connect:remotePort": "22"
+        },
+        "IpAddress": {
+          "ec2-instance-connect:privateIpAddress": "10.20.0.253/32"
+        },
+        "NumericLessThanEquals": {
+          "ec2-instance-connect:maxTunnelDuration": "3600"
+        }
+      }
+    },
+    {
+      "Sid": "ReadOfficialAmazonLinuxAmi",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:GetParameter"
+      ],
+      "Resource": "arn:aws:ssm:ap-northeast-2::parameter/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64"
+    },
+    {
+      "Sid": "InspectSeoulManagedNodesAndCommands",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:DescribeInstanceInformation",
+        "ssm:DescribeSessions",
+        "ssm:GetCommandInvocation",
+        "ssm:GetConnectionStatus",
+        "ssm:ListCommandInvocations",
+        "ssm:ListCommands",
+        "ssm:ListDocuments",
+        "ssm:DescribeInstanceProperties"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "OperateOnlyGetddoApi",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:SendCommand",
+        "ssm:StartSession"
+      ],
+      "Resource": "arn:aws:ec2:ap-northeast-2:942466928325:instance/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2",
+          "ssm:resourceTag/Name": "getddo-dev-api"
+        }
+      }
+    },
+    {
+      "Sid": "UseApprovedManagementDocuments",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:GetDocument",
+        "ssm:SendCommand",
+        "ssm:StartSession",
+        "ssm:DescribeDocument"
+      ],
+      "Resource": [
+        "arn:aws:ssm:ap-northeast-2:942466928325:document/SSM-SessionManagerRunShell",
+        "arn:aws:ssm:ap-northeast-2::document/AWS-StartSSHSession",
+        "arn:aws:ssm:ap-northeast-2::document/AWS-RunShellScript",
+        "arn:aws:ssm:ap-northeast-2::document/AWS-ConfigureAWSPackage",
+        "arn:aws:ssm:ap-northeast-2::document/AmazonCloudWatch-ManageAgent"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "ManageOwnSessions",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:ResumeSession",
+        "ssm:TerminateSession",
+        "ssmmessages:OpenDataChannel"
+      ],
+      "Resource": [
+        "arn:aws:ssm:ap-northeast-2:942466928325:session/${aws:userid}-*",
+        "arn:aws:ssm:ap-northeast-2:942466928325:session/${aws:username}-*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "ListRegionMetadataForConsole",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DescribeRegions"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "ReadSeoulAwsDocumentMetadataForConsole",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:DescribeDocumentParameters",
+        "ssm:ListDocumentVersions"
+      ],
+      "Resource": "arn:aws:ssm:ap-northeast-2::document/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
+    }
+  ]
+}

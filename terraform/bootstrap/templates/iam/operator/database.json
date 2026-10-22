@@ -1,0 +1,264 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ReadSeoulDatabaseCapabilities",
+      "Effect": "Allow",
+      "Action": [
+        "rds:DescribeDBEngineVersions",
+        "rds:DescribeOrderableDBInstanceOptions"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "ReadDatabaseByNameOrResourceId",
+      "Effect": "Allow",
+      "Action": [
+        "rds:DescribeDBInstances"
+      ],
+      "Resource": "arn:aws:rds:ap-northeast-2:942466928325:db:*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "ManageNamedDbSubnetGroup",
+      "Effect": "Allow",
+      "Action": [
+        "rds:CreateDBSubnetGroup",
+        "rds:DescribeDBSubnetGroups",
+        "rds:ModifyDBSubnetGroup"
+      ],
+      "Resource": "arn:aws:rds:ap-northeast-2:942466928325:subgrp:getddo-dev-db",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "CreatePrivateDatabase",
+      "Effect": "Allow",
+      "Action": [
+        "rds:CreateDBInstance"
+      ],
+      "Resource": [
+        "arn:aws:rds:ap-northeast-2:942466928325:db:getddo-dev-mysql",
+        "arn:aws:rds:ap-northeast-2:942466928325:subgrp:getddo-dev-db",
+        "arn:aws:rds:ap-northeast-2:942466928325:pg:default.mysql8.4",
+        "arn:aws:rds:ap-northeast-2:942466928325:og:default:mysql-8-4"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        },
+        "Bool": {
+          "rds:PubliclyAccessible": "false"
+        }
+      }
+    },
+    {
+      "Sid": "UpdateNamedPrivateDatabase",
+      "Effect": "Allow",
+      "Action": [
+        "rds:ModifyDBInstance"
+      ],
+      "Resource": "arn:aws:rds:ap-northeast-2:942466928325:db:getddo-dev-mysql",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        },
+        "BoolIfExists": {
+          "rds:PubliclyAccessible": "false"
+        }
+      }
+    },
+    {
+      "Sid": "ReadAndManageDatabaseTags",
+      "Effect": "Allow",
+      "Action": [
+        "rds:AddTagsToResource",
+        "rds:ListTagsForResource",
+        "rds:RemoveTagsFromResource"
+      ],
+      "Resource": [
+        "arn:aws:rds:ap-northeast-2:942466928325:db:getddo-dev-mysql",
+        "arn:aws:rds:ap-northeast-2:942466928325:subgrp:getddo-dev-db"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "ReadSeoulBackupAndRestoreOptions",
+      "Effect": "Allow",
+      "Action": [
+        "rds:DescribeDBSnapshots",
+        "rds:DescribeDBInstanceAutomatedBackups",
+        "rds:DescribeDBParameterGroups",
+        "rds:DescribeDBParameters",
+        "rds:DescribeOptionGroups",
+        "rds:DescribeValidDBInstanceModifications",
+        "rds:DescribeCertificates",
+        "rds:DescribeAccountAttributes",
+        "rds:DescribeEvents",
+        "rds:DescribePendingMaintenanceActions"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "RestorePrivateGetddoTestDatabase",
+      "Effect": "Allow",
+      "Action": [
+        "rds:RestoreDBInstanceToPointInTime",
+        "rds:RestoreDBInstanceFromDBSnapshot"
+      ],
+      "Resource": [
+        "arn:aws:rds:ap-northeast-2:942466928325:db:getddo-dev-mysql",
+        "arn:aws:rds:ap-northeast-2:942466928325:db:getddo-dev-mysql-restore-test-*",
+        "arn:aws:rds:ap-northeast-2:942466928325:snapshot:rds:getddo-dev-mysql-*",
+        "arn:aws:rds:ap-northeast-2:942466928325:snapshot:getddo-dev-mysql-*",
+        "arn:aws:rds:ap-northeast-2:942466928325:auto-backup:ab-74i2ncldhlgnazuiq7axkr3fyhxlol7klh3bz7sdmtaq5s5wibvljsquvxrkxqnb",
+        "arn:aws:rds:ap-northeast-2:942466928325:subgrp:getddo-dev-db",
+        "arn:aws:rds:ap-northeast-2:942466928325:pg:default.mysql8.4",
+        "arn:aws:rds:ap-northeast-2:942466928325:og:default:mysql-8-4"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        },
+        "Bool": {
+          "rds:PubliclyAccessible": "false"
+        }
+      }
+    },
+    {
+      "Sid": "ManageOnlyRestoredTestDatabase",
+      "Effect": "Allow",
+      "Action": [
+        "rds:ModifyDBInstance",
+        "rds:DeleteDBInstance"
+      ],
+      "Resource": "arn:aws:rds:ap-northeast-2:942466928325:db:getddo-dev-mysql-restore-test-*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        },
+        "BoolIfExists": {
+          "rds:PubliclyAccessible": "false"
+        }
+      }
+    },
+    {
+      "Sid": "TagRestoreTestResources",
+      "Effect": "Allow",
+      "Action": [
+        "rds:AddTagsToResource",
+        "rds:RemoveTagsFromResource",
+        "rds:ListTagsForResource"
+      ],
+      "Resource": [
+        "arn:aws:rds:ap-northeast-2:942466928325:db:getddo-dev-mysql-restore-test-*",
+        "arn:aws:rds:ap-northeast-2:942466928325:snapshot:getddo-dev-mysql-restore-test-*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "CreateRestoreTestFinalSnapshot",
+      "Effect": "Allow",
+      "Action": [
+        "rds:CreateDBSnapshot"
+      ],
+      "Resource": [
+        "arn:aws:rds:ap-northeast-2:942466928325:db:getddo-dev-mysql-restore-test-*",
+        "arn:aws:rds:ap-northeast-2:942466928325:snapshot:getddo-dev-mysql-restore-test-*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "DescribeDatabaseEncryptionKey",
+      "Effect": "Allow",
+      "Action": [
+        "kms:DescribeKey"
+      ],
+      "Resource": "arn:aws:kms:ap-northeast-2:942466928325:key/8e0fba22-8d11-44ce-9351-9fe71d1941fb",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "UseDatabaseKeyThroughSeoulRds",
+      "Effect": "Allow",
+      "Action": [
+        "kms:Decrypt",
+        "kms:Encrypt",
+        "kms:ReEncryptFrom",
+        "kms:ReEncryptTo",
+        "kms:GenerateDataKey",
+        "kms:GenerateDataKeyWithoutPlaintext"
+      ],
+      "Resource": "arn:aws:kms:ap-northeast-2:942466928325:key/8e0fba22-8d11-44ce-9351-9fe71d1941fb",
+      "Condition": {
+        "StringEquals": {
+          "kms:ViaService": "rds.ap-northeast-2.amazonaws.com",
+          "kms:CallerAccount": "942466928325"
+        }
+      }
+    },
+    {
+      "Sid": "GrantDatabaseKeyToAwsResource",
+      "Effect": "Allow",
+      "Action": [
+        "kms:CreateGrant"
+      ],
+      "Resource": "arn:aws:kms:ap-northeast-2:942466928325:key/8e0fba22-8d11-44ce-9351-9fe71d1941fb",
+      "Condition": {
+        "StringEquals": {
+          "kms:ViaService": "rds.ap-northeast-2.amazonaws.com",
+          "kms:CallerAccount": "942466928325"
+        },
+        "Bool": {
+          "kms:GrantIsForAWSResource": "true"
+        }
+      }
+    },
+    {
+      "Sid": "ReadSeoulEncryptionKeyMetadata",
+      "Effect": "Allow",
+      "Action": [
+        "kms:ListKeys",
+        "kms:ListAliases"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
+    }
+  ]
+}

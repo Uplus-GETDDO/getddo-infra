@@ -1,0 +1,761 @@
+{
+  "start": "-PT3H",
+  "periodOverride": "inherit",
+  "widgets": [
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 0,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "title": "EC2 CPU (%)",
+        "region": "ap-northeast-2",
+        "view": "timeSeries",
+        "stacked": false,
+        "period": 300,
+        "stat": "Average",
+        "metrics": [
+          [
+            "AWS/EC2",
+            "CPUUtilization",
+            "InstanceId",
+            "i-0c67aa33f1d5c5fd9",
+            {
+              "label": "A"
+            }
+          ],
+          [
+            "AWS/EC2",
+            "CPUUtilization",
+            "InstanceId",
+            "REPLACE_WITH_API_C_INSTANCE_ID",
+            {
+              "label": "C"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "type": "metric",
+      "x": 12,
+      "y": 0,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "title": "EC2 memory (%)",
+        "region": "ap-northeast-2",
+        "view": "timeSeries",
+        "stacked": false,
+        "period": 60,
+        "stat": "Average",
+        "metrics": [
+          [
+            "CWAgent",
+            "mem_used_percent",
+            "InstanceId",
+            "i-0c67aa33f1d5c5fd9",
+            {
+              "label": "A"
+            }
+          ],
+          [
+            "CWAgent",
+            "mem_used_percent",
+            "InstanceId",
+            "REPLACE_WITH_API_C_INSTANCE_ID",
+            {
+              "label": "C"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 6,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "title": "EC2 root disk (%)",
+        "region": "ap-northeast-2",
+        "view": "timeSeries",
+        "stacked": false,
+        "period": 60,
+        "stat": "Average",
+        "metrics": [
+          [
+            {
+              "expression": "SEARCH('{CWAgent,InstanceId,fstype,path} MetricName=\"disk_used_percent\" InstanceId=\"i-0c67aa33f1d5c5fd9\" path=\"/\"', 'Average', 60)",
+              "id": "disk_a",
+              "label": "A root disk used (%)"
+            }
+          ],
+          [
+            {
+              "expression": "SEARCH('{CWAgent,InstanceId,fstype,path} MetricName=\"disk_used_percent\" InstanceId=\"REPLACE_WITH_API_C_INSTANCE_ID\" path=\"/\"', 'Average', 60)",
+              "id": "disk_c",
+              "label": "C root disk used (%)"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "type": "metric",
+      "x": 12,
+      "y": 6,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "title": "EC2 CPU credit balance",
+        "region": "ap-northeast-2",
+        "view": "timeSeries",
+        "stacked": false,
+        "period": 300,
+        "stat": "Minimum",
+        "metrics": [
+          [
+            "AWS/EC2",
+            "CPUCreditBalance",
+            "InstanceId",
+            "i-0c67aa33f1d5c5fd9",
+            {
+              "label": "A"
+            }
+          ],
+          [
+            "AWS/EC2",
+            "CPUCreditBalance",
+            "InstanceId",
+            "REPLACE_WITH_API_C_INSTANCE_ID",
+            {
+              "label": "C"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 12,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "title": "EC2 status check failed (0 = healthy)",
+        "region": "ap-northeast-2",
+        "view": "timeSeries",
+        "stacked": false,
+        "period": 300,
+        "stat": "Maximum",
+        "metrics": [
+          [
+            "AWS/EC2",
+            "StatusCheckFailed",
+            "InstanceId",
+            "i-0c67aa33f1d5c5fd9",
+            {
+              "label": "A"
+            }
+          ],
+          [
+            "AWS/EC2",
+            "StatusCheckFailed",
+            "InstanceId",
+            "REPLACE_WITH_API_C_INSTANCE_ID",
+            {
+              "label": "C"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "type": "metric",
+      "x": 12,
+      "y": 12,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "title": "ALB requests / 5 min",
+        "region": "ap-northeast-2",
+        "view": "timeSeries",
+        "stacked": false,
+        "period": 300,
+        "stat": "Sum",
+        "metrics": [
+          [
+            "AWS/ApplicationELB",
+            "RequestCount",
+            "LoadBalancer",
+            "app/getddo-dev-api-alb/9e65e06e10492070"
+          ]
+        ]
+      }
+    },
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 18,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "title": "ALB 5xx / 5 min",
+        "region": "ap-northeast-2",
+        "view": "timeSeries",
+        "stacked": false,
+        "period": 300,
+        "stat": "Sum",
+        "metrics": [
+          [
+            "AWS/ApplicationELB",
+            "HTTPCode_ELB_5XX_Count",
+            "LoadBalancer",
+            "app/getddo-dev-api-alb/9e65e06e10492070"
+          ],
+          [
+            "AWS/ApplicationELB",
+            "HTTPCode_Target_5XX_Count",
+            "LoadBalancer",
+            "app/getddo-dev-api-alb/9e65e06e10492070"
+          ]
+        ]
+      }
+    },
+    {
+      "type": "metric",
+      "x": 12,
+      "y": 18,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "title": "ALB response time p95 (seconds)",
+        "region": "ap-northeast-2",
+        "view": "timeSeries",
+        "stacked": false,
+        "period": 300,
+        "stat": "p95",
+        "metrics": [
+          [
+            "AWS/ApplicationELB",
+            "TargetResponseTime",
+            "LoadBalancer",
+            "app/getddo-dev-api-alb/9e65e06e10492070"
+          ]
+        ]
+      }
+    },
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 24,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "title": "ALB healthy / unhealthy targets (minimum healthy, maximum unhealthy)",
+        "region": "ap-northeast-2",
+        "view": "timeSeries",
+        "stacked": false,
+        "period": 300,
+        "stat": "Average",
+        "metrics": [
+          [
+            "AWS/ApplicationELB",
+            "HealthyHostCount",
+            "LoadBalancer",
+            "app/getddo-dev-api-alb/9e65e06e10492070",
+            "TargetGroup",
+            "targetgroup/getddo-dev-api-tg/5821861b8038bff0",
+            {
+              "stat": "Minimum"
+            }
+          ],
+          [
+            "AWS/ApplicationELB",
+            "UnHealthyHostCount",
+            "LoadBalancer",
+            "app/getddo-dev-api-alb/9e65e06e10492070",
+            "TargetGroup",
+            "targetgroup/getddo-dev-api-tg/5821861b8038bff0",
+            {
+              "stat": "Maximum"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "type": "metric",
+      "x": 12,
+      "y": 24,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "title": "RDS CPU (%)",
+        "region": "ap-northeast-2",
+        "view": "timeSeries",
+        "stacked": false,
+        "period": 300,
+        "stat": "Average",
+        "metrics": [
+          [
+            "AWS/RDS",
+            "CPUUtilization",
+            "DBInstanceIdentifier",
+            "getddo-dev-mysql"
+          ]
+        ]
+      }
+    },
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 30,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "title": "RDS free memory (bytes)",
+        "region": "ap-northeast-2",
+        "view": "timeSeries",
+        "stacked": false,
+        "period": 300,
+        "stat": "Minimum",
+        "metrics": [
+          [
+            "AWS/RDS",
+            "FreeableMemory",
+            "DBInstanceIdentifier",
+            "getddo-dev-mysql"
+          ]
+        ]
+      }
+    },
+    {
+      "type": "metric",
+      "x": 12,
+      "y": 30,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "title": "RDS free storage (bytes)",
+        "region": "ap-northeast-2",
+        "view": "timeSeries",
+        "stacked": false,
+        "period": 300,
+        "stat": "Minimum",
+        "metrics": [
+          [
+            "AWS/RDS",
+            "FreeStorageSpace",
+            "DBInstanceIdentifier",
+            "getddo-dev-mysql"
+          ]
+        ]
+      }
+    },
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 36,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "title": "RDS connections",
+        "region": "ap-northeast-2",
+        "view": "timeSeries",
+        "stacked": false,
+        "period": 300,
+        "stat": "Maximum",
+        "metrics": [
+          [
+            "AWS/RDS",
+            "DatabaseConnections",
+            "DBInstanceIdentifier",
+            "getddo-dev-mysql"
+          ]
+        ]
+      }
+    },
+    {
+      "type": "metric",
+      "x": 12,
+      "y": 36,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "title": "Redis engine CPU / host CPU (%)",
+        "region": "ap-northeast-2",
+        "view": "timeSeries",
+        "stacked": false,
+        "period": 300,
+        "stat": "Average",
+        "metrics": [
+          [
+            "AWS/ElastiCache",
+            "EngineCPUUtilization",
+            "CacheClusterId",
+            "getddo-dev-redis-001",
+            "CacheNodeId",
+            "0001"
+          ],
+          [
+            "AWS/ElastiCache",
+            "CPUUtilization",
+            "CacheClusterId",
+            "getddo-dev-redis-001",
+            "CacheNodeId",
+            "0001"
+          ]
+        ]
+      }
+    },
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 42,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "title": "Redis database memory usage (%)",
+        "region": "ap-northeast-2",
+        "view": "timeSeries",
+        "stacked": false,
+        "period": 300,
+        "stat": "Average",
+        "metrics": [
+          [
+            "AWS/ElastiCache",
+            "DatabaseMemoryUsagePercentage",
+            "CacheClusterId",
+            "getddo-dev-redis-001",
+            "CacheNodeId",
+            "0001"
+          ]
+        ]
+      }
+    },
+    {
+      "type": "metric",
+      "x": 12,
+      "y": 42,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "title": "Redis evictions / 5 min",
+        "region": "ap-northeast-2",
+        "view": "timeSeries",
+        "stacked": false,
+        "period": 300,
+        "stat": "Sum",
+        "metrics": [
+          [
+            "AWS/ElastiCache",
+            "Evictions",
+            "CacheClusterId",
+            "getddo-dev-redis-001",
+            "CacheNodeId",
+            "0001"
+          ]
+        ]
+      }
+    },
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 48,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "title": "Redis connections",
+        "region": "ap-northeast-2",
+        "view": "timeSeries",
+        "stacked": false,
+        "period": 300,
+        "stat": "Maximum",
+        "metrics": [
+          [
+            "AWS/ElastiCache",
+            "CurrConnections",
+            "CacheClusterId",
+            "getddo-dev-redis-001",
+            "CacheNodeId",
+            "0001"
+          ]
+        ]
+      }
+    },
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 54,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "title": "Hikari connections",
+        "region": "ap-northeast-2",
+        "view": "timeSeries",
+        "stacked": false,
+        "period": 60,
+        "stat": "Average",
+        "metrics": [
+          [
+            {
+              "expression": "SEARCH('Namespace=\"GETDDO/API\" MetricName=\"hikaricp.connections.active.value\" environment=\"dev\" server=\"a\"', 'Average', 60)",
+              "id": "m0a",
+              "label": "A hikaricp.connections.active.value"
+            }
+          ],
+          [
+            {
+              "expression": "SEARCH('Namespace=\"GETDDO/API\" MetricName=\"hikaricp.connections.active.value\" environment=\"dev\" server=\"c\"', 'Average', 60)",
+              "id": "m0c",
+              "label": "C hikaricp.connections.active.value"
+            }
+          ],
+          [
+            {
+              "expression": "SEARCH('Namespace=\"GETDDO/API\" MetricName=\"hikaricp.connections.idle.value\" environment=\"dev\" server=\"a\"', 'Average', 60)",
+              "id": "m1a",
+              "label": "A hikaricp.connections.idle.value"
+            }
+          ],
+          [
+            {
+              "expression": "SEARCH('Namespace=\"GETDDO/API\" MetricName=\"hikaricp.connections.idle.value\" environment=\"dev\" server=\"c\"', 'Average', 60)",
+              "id": "m1c",
+              "label": "C hikaricp.connections.idle.value"
+            }
+          ],
+          [
+            {
+              "expression": "SEARCH('Namespace=\"GETDDO/API\" MetricName=\"hikaricp.connections.max.value\" environment=\"dev\" server=\"a\"', 'Average', 60)",
+              "id": "m2a",
+              "label": "A hikaricp.connections.max.value"
+            }
+          ],
+          [
+            {
+              "expression": "SEARCH('Namespace=\"GETDDO/API\" MetricName=\"hikaricp.connections.max.value\" environment=\"dev\" server=\"c\"', 'Average', 60)",
+              "id": "m2c",
+              "label": "C hikaricp.connections.max.value"
+            }
+          ],
+          [
+            {
+              "expression": "SEARCH('Namespace=\"GETDDO/API\" MetricName=\"hikaricp.connections.pending.value\" environment=\"dev\" server=\"a\"', 'Average', 60)",
+              "id": "m3a",
+              "label": "A hikaricp.connections.pending.value"
+            }
+          ],
+          [
+            {
+              "expression": "SEARCH('Namespace=\"GETDDO/API\" MetricName=\"hikaricp.connections.pending.value\" environment=\"dev\" server=\"c\"', 'Average', 60)",
+              "id": "m3c",
+              "label": "C hikaricp.connections.pending.value"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "type": "metric",
+      "x": 12,
+      "y": 54,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "title": "Hikari acquisition max (milliseconds)",
+        "region": "ap-northeast-2",
+        "view": "timeSeries",
+        "stacked": false,
+        "period": 60,
+        "stat": "Average",
+        "metrics": [
+          [
+            {
+              "expression": "SEARCH('Namespace=\"GETDDO/API\" MetricName=\"hikaricp.connections.acquire.max\" environment=\"dev\" server=\"a\"', 'Maximum', 60)",
+              "id": "m0a",
+              "label": "A hikaricp.connections.acquire.max"
+            }
+          ],
+          [
+            {
+              "expression": "SEARCH('Namespace=\"GETDDO/API\" MetricName=\"hikaricp.connections.acquire.max\" environment=\"dev\" server=\"c\"', 'Maximum', 60)",
+              "id": "m0c",
+              "label": "C hikaricp.connections.acquire.max"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 60,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "title": "Hikari timeouts / minute",
+        "region": "ap-northeast-2",
+        "view": "timeSeries",
+        "stacked": false,
+        "period": 60,
+        "stat": "Average",
+        "metrics": [
+          [
+            {
+              "expression": "SEARCH('Namespace=\"GETDDO/API\" MetricName=\"hikaricp.connections.timeout.count\" environment=\"dev\" server=\"a\"', 'Sum', 60)",
+              "id": "m0a",
+              "label": "A hikaricp.connections.timeout.count"
+            }
+          ],
+          [
+            {
+              "expression": "SEARCH('Namespace=\"GETDDO/API\" MetricName=\"hikaricp.connections.timeout.count\" environment=\"dev\" server=\"c\"', 'Sum', 60)",
+              "id": "m0c",
+              "label": "C hikaricp.connections.timeout.count"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "type": "metric",
+      "x": 12,
+      "y": 60,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "title": "Tomcat threads",
+        "region": "ap-northeast-2",
+        "view": "timeSeries",
+        "stacked": false,
+        "period": 60,
+        "stat": "Average",
+        "metrics": [
+          [
+            {
+              "expression": "SEARCH('Namespace=\"GETDDO/API\" MetricName=\"tomcat.threads.busy.value\" environment=\"dev\" server=\"a\"', 'Average', 60)",
+              "id": "m0a",
+              "label": "A tomcat.threads.busy.value"
+            }
+          ],
+          [
+            {
+              "expression": "SEARCH('Namespace=\"GETDDO/API\" MetricName=\"tomcat.threads.busy.value\" environment=\"dev\" server=\"c\"', 'Average', 60)",
+              "id": "m0c",
+              "label": "C tomcat.threads.busy.value"
+            }
+          ],
+          [
+            {
+              "expression": "SEARCH('Namespace=\"GETDDO/API\" MetricName=\"tomcat.threads.current.value\" environment=\"dev\" server=\"a\"', 'Average', 60)",
+              "id": "m1a",
+              "label": "A tomcat.threads.current.value"
+            }
+          ],
+          [
+            {
+              "expression": "SEARCH('Namespace=\"GETDDO/API\" MetricName=\"tomcat.threads.current.value\" environment=\"dev\" server=\"c\"', 'Average', 60)",
+              "id": "m1c",
+              "label": "C tomcat.threads.current.value"
+            }
+          ],
+          [
+            {
+              "expression": "SEARCH('Namespace=\"GETDDO/API\" MetricName=\"tomcat.threads.config.max.value\" environment=\"dev\" server=\"a\"', 'Average', 60)",
+              "id": "m2a",
+              "label": "A tomcat.threads.config.max.value"
+            }
+          ],
+          [
+            {
+              "expression": "SEARCH('Namespace=\"GETDDO/API\" MetricName=\"tomcat.threads.config.max.value\" environment=\"dev\" server=\"c\"', 'Average', 60)",
+              "id": "m2c",
+              "label": "C tomcat.threads.config.max.value"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 66,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "title": "JVM heap memory (bytes)",
+        "region": "ap-northeast-2",
+        "view": "timeSeries",
+        "stacked": false,
+        "period": 60,
+        "stat": "Average",
+        "metrics": [
+          [
+            {
+              "expression": "SEARCH('Namespace=\"GETDDO/API\" MetricName=\"jvm.memory.used.value\" environment=\"dev\" server=\"a\" area=\"heap\"', 'Average', 60)",
+              "id": "m0a",
+              "label": "A jvm.memory.used.value"
+            }
+          ],
+          [
+            {
+              "expression": "SEARCH('Namespace=\"GETDDO/API\" MetricName=\"jvm.memory.used.value\" environment=\"dev\" server=\"c\" area=\"heap\"', 'Average', 60)",
+              "id": "m0c",
+              "label": "C jvm.memory.used.value"
+            }
+          ],
+          [
+            {
+              "expression": "SEARCH('Namespace=\"GETDDO/API\" MetricName=\"jvm.memory.max.value\" environment=\"dev\" server=\"a\" area=\"heap\"', 'Average', 60)",
+              "id": "m1a",
+              "label": "A jvm.memory.max.value"
+            }
+          ],
+          [
+            {
+              "expression": "SEARCH('Namespace=\"GETDDO/API\" MetricName=\"jvm.memory.max.value\" environment=\"dev\" server=\"c\" area=\"heap\"', 'Average', 60)",
+              "id": "m1c",
+              "label": "C jvm.memory.max.value"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "type": "metric",
+      "x": 12,
+      "y": 66,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "title": "JVM GC pause max (milliseconds)",
+        "region": "ap-northeast-2",
+        "view": "timeSeries",
+        "stacked": false,
+        "period": 60,
+        "stat": "Average",
+        "metrics": [
+          [
+            {
+              "expression": "SEARCH('Namespace=\"GETDDO/API\" MetricName=\"jvm.gc.pause.max\" environment=\"dev\" server=\"a\"', 'Maximum', 60)",
+              "id": "m0a",
+              "label": "A jvm.gc.pause.max"
+            }
+          ],
+          [
+            {
+              "expression": "SEARCH('Namespace=\"GETDDO/API\" MetricName=\"jvm.gc.pause.max\" environment=\"dev\" server=\"c\"', 'Maximum', 60)",
+              "id": "m0c",
+              "label": "C jvm.gc.pause.max"
+            }
+          ]
+        ]
+      }
+    }
+  ]
+}

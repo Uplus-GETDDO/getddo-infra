@@ -1,0 +1,66 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "PublishSeoulHostAndAppMetrics",
+      "Effect": "Allow",
+      "Action": [
+        "cloudwatch:PutMetricData"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2",
+          "cloudwatch:namespace": [
+            "CWAgent",
+            "GETDDO/API"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "ReadSeoulAgentMetadata",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DescribeVolumes",
+        "ec2:DescribeTags",
+        "logs:DescribeLogGroups"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "PrepareGetddoDevLogGroups",
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:PutRetentionPolicy",
+        "logs:DescribeLogStreams"
+      ],
+      "Resource": "arn:aws:logs:ap-northeast-2:942466928325:log-group:/getddo/dev/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "WriteGetddoDevLogStreams",
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ],
+      "Resource": "arn:aws:logs:ap-northeast-2:942466928325:log-group:/getddo/dev/*:log-stream:*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
+    }
+  ]
+}

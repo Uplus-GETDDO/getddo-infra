@@ -1,0 +1,78 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ManageApplicationParameters",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:PutParameter",
+        "ssm:GetParameter",
+        "ssm:GetParameters",
+        "ssm:GetParametersByPath",
+        "ssm:AddTagsToResource",
+        "ssm:RemoveTagsFromResource",
+        "ssm:ListTagsForResource"
+      ],
+      "Resource": [
+        "arn:aws:ssm:ap-northeast-2:942466928325:parameter/getddo/dev/app",
+        "arn:aws:ssm:ap-northeast-2:942466928325:parameter/getddo/dev/app/*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "ListSeoulParameterMetadata",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:DescribeParameters"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "EncryptAndDecryptApplicationParameters",
+      "Effect": "Allow",
+      "Action": [
+        "kms:Encrypt",
+        "kms:Decrypt"
+      ],
+      "Resource": "arn:aws:kms:ap-northeast-2:942466928325:key/2b7cc9dc-603d-439a-92c1-8a270a183d76",
+      "Condition": {
+        "StringEquals": {
+          "kms:ViaService": "ssm.ap-northeast-2.amazonaws.com"
+        },
+        "StringLike": {
+          "kms:EncryptionContext:PARAMETER_ARN": "arn:aws:ssm:ap-northeast-2:942466928325:parameter/getddo/dev/app/*"
+        }
+      }
+    },
+    {
+      "Sid": "ReadParameterEncryptionKey",
+      "Effect": "Allow",
+      "Action": [
+        "kms:DescribeKey"
+      ],
+      "Resource": "arn:aws:kms:ap-northeast-2:942466928325:key/2b7cc9dc-603d-439a-92c1-8a270a183d76"
+    },
+    {
+      "Sid": "ListSeoulEncryptionKeyAliases",
+      "Effect": "Allow",
+      "Action": [
+        "kms:ListAliases"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
+    }
+  ]
+}

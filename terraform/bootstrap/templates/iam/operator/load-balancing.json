@@ -1,0 +1,104 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ReadSeoulLoadBalancers",
+      "Effect": "Allow",
+      "Action": [
+        "elasticloadbalancing:DescribeLoadBalancers",
+        "elasticloadbalancing:DescribeLoadBalancerAttributes",
+        "elasticloadbalancing:DescribeListeners",
+        "elasticloadbalancing:DescribeListenerAttributes",
+        "elasticloadbalancing:DescribeRules",
+        "elasticloadbalancing:DescribeTargetGroups",
+        "elasticloadbalancing:DescribeTargetGroupAttributes",
+        "elasticloadbalancing:DescribeTargetHealth",
+        "elasticloadbalancing:DescribeTags",
+        "elasticloadbalancing:DescribeSSLPolicies"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "ManageNamedGetddoApplicationLoadBalancers",
+      "Effect": "Allow",
+      "Action": [
+        "elasticloadbalancing:CreateLoadBalancer",
+        "elasticloadbalancing:DeleteLoadBalancer",
+        "elasticloadbalancing:ModifyLoadBalancerAttributes",
+        "elasticloadbalancing:SetSecurityGroups",
+        "elasticloadbalancing:SetSubnets",
+        "elasticloadbalancing:SetIpAddressType",
+        "elasticloadbalancing:CreateTargetGroup",
+        "elasticloadbalancing:DeleteTargetGroup",
+        "elasticloadbalancing:ModifyTargetGroup",
+        "elasticloadbalancing:ModifyTargetGroupAttributes",
+        "elasticloadbalancing:RegisterTargets",
+        "elasticloadbalancing:DeregisterTargets",
+        "elasticloadbalancing:CreateListener",
+        "elasticloadbalancing:DeleteListener",
+        "elasticloadbalancing:ModifyListener",
+        "elasticloadbalancing:ModifyListenerAttributes",
+        "elasticloadbalancing:CreateRule",
+        "elasticloadbalancing:DeleteRule",
+        "elasticloadbalancing:ModifyRule",
+        "elasticloadbalancing:SetRulePriorities",
+        "elasticloadbalancing:AddTags",
+        "elasticloadbalancing:RemoveTags"
+      ],
+      "Resource": [
+        "arn:aws:elasticloadbalancing:ap-northeast-2:942466928325:loadbalancer/app/getddo-dev-*/*",
+        "arn:aws:elasticloadbalancing:ap-northeast-2:942466928325:targetgroup/getddo-dev-*/*",
+        "arn:aws:elasticloadbalancing:ap-northeast-2:942466928325:listener/app/getddo-dev-*/*/*",
+        "arn:aws:elasticloadbalancing:ap-northeast-2:942466928325:listener-rule/app/getddo-dev-*/*/*/*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "ReadSeoulPrefixLists",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DescribeManagedPrefixLists",
+        "ec2:GetManagedPrefixListEntries",
+        "ec2:DescribePrefixLists",
+        "ec2:DescribeAvailabilityZones",
+        "ec2:DescribeAddresses"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "CreateElbServiceLinkedRole",
+      "Effect": "Allow",
+      "Action": [
+        "iam:CreateServiceLinkedRole"
+      ],
+      "Resource": "arn:aws:iam::942466928325:role/aws-service-role/elasticloadbalancing.amazonaws.com/AWSServiceRoleForElasticLoadBalancing",
+      "Condition": {
+        "StringEquals": {
+          "iam:AWSServiceName": "elasticloadbalancing.amazonaws.com"
+        }
+      }
+    },
+    {
+      "Sid": "ReadElbServiceLinkedRole",
+      "Effect": "Allow",
+      "Action": [
+        "iam:GetRole"
+      ],
+      "Resource": "arn:aws:iam::942466928325:role/aws-service-role/elasticloadbalancing.amazonaws.com/AWSServiceRoleForElasticLoadBalancing"
+    }
+  ]
+}

@@ -1,0 +1,110 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ListAndReadCloudFrontPolicies",
+      "Effect": "Allow",
+      "Action": [
+        "cloudfront:ListDistributions",
+        "cloudfront:ListVpcOrigins",
+        "cloudfront:ListCachePolicies",
+        "cloudfront:GetCachePolicy",
+        "cloudfront:GetCachePolicyConfig",
+        "cloudfront:ListOriginRequestPolicies",
+        "cloudfront:GetOriginRequestPolicy",
+        "cloudfront:GetOriginRequestPolicyConfig",
+        "cloudfront:ListResponseHeadersPolicies",
+        "cloudfront:GetResponseHeadersPolicy",
+        "cloudfront:GetResponseHeadersPolicyConfig"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "CreateDistributionsAndVpcOrigins",
+      "Effect": "Allow",
+      "Action": [
+        "cloudfront:CreateDistribution",
+        "cloudfront:CreateVpcOrigin"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "CreateAndListOriginAccessControls",
+      "Effect": "Allow",
+      "Action": [
+        "cloudfront:CreateOriginAccessControl",
+        "cloudfront:ListOriginAccessControls"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "ManageAccountOriginAccessControls",
+      "Effect": "Allow",
+      "Action": [
+        "cloudfront:GetOriginAccessControl",
+        "cloudfront:GetOriginAccessControlConfig",
+        "cloudfront:UpdateOriginAccessControl",
+        "cloudfront:DeleteOriginAccessControl"
+      ],
+      "Resource": "arn:aws:cloudfront::942466928325:origin-access-control/*"
+    },
+    {
+      "Sid": "ManageAccountDistributions",
+      "Effect": "Allow",
+      "Action": [
+        "cloudfront:GetDistribution",
+        "cloudfront:GetDistributionConfig",
+        "cloudfront:UpdateDistribution",
+        "cloudfront:DeleteDistribution",
+        "cloudfront:CreateInvalidation",
+        "cloudfront:GetInvalidation",
+        "cloudfront:ListInvalidations"
+      ],
+      "Resource": "arn:aws:cloudfront::942466928325:distribution/*"
+    },
+    {
+      "Sid": "ManageAccountVpcOrigins",
+      "Effect": "Allow",
+      "Action": [
+        "cloudfront:GetVpcOrigin",
+        "cloudfront:UpdateVpcOrigin",
+        "cloudfront:DeleteVpcOrigin"
+      ],
+      "Resource": "arn:aws:cloudfront::942466928325:vpcorigin/*"
+    },
+    {
+      "Sid": "TagDistributionsAndVpcOrigins",
+      "Effect": "Allow",
+      "Action": [
+        "cloudfront:ListTagsForResource",
+        "cloudfront:TagResource",
+        "cloudfront:UntagResource"
+      ],
+      "Resource": [
+        "arn:aws:cloudfront::942466928325:distribution/*",
+        "arn:aws:cloudfront::942466928325:vpcorigin/*"
+      ]
+    },
+    {
+      "Sid": "CreateVpcOriginServiceLinkedRole",
+      "Effect": "Allow",
+      "Action": [
+        "iam:CreateServiceLinkedRole"
+      ],
+      "Resource": "arn:aws:iam::942466928325:role/aws-service-role/vpcorigin.cloudfront.amazonaws.com/AWSServiceRoleForCloudFrontVPCOrigin",
+      "Condition": {
+        "StringEquals": {
+          "iam:AWSServiceName": "vpcorigin.cloudfront.amazonaws.com"
+        }
+      }
+    },
+    {
+      "Sid": "ReadVpcOriginServiceLinkedRole",
+      "Effect": "Allow",
+      "Action": [
+        "iam:GetRole"
+      ],
+      "Resource": "arn:aws:iam::942466928325:role/aws-service-role/vpcorigin.cloudfront.amazonaws.com/AWSServiceRoleForCloudFrontVPCOrigin"
+    }
+  ]
+}
