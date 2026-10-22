@@ -38,7 +38,7 @@ AWS_PROFILE=getddo-dev python3 scripts/staging.py status --run-id RUN_ID
 
 위 세 파라미터는 최초 생성한 영구 설정이다. up·destroy·rollback·TTL에서 회전하거나 삭제하지 않는다. EC2가 역할로 값을 읽고 비밀번호는 해시, 세션 비밀은 root 전용 `/run` 파일로만 전달한다. worker에는 로그인 비밀을 마운트하지 않는다.
 
-웹 UI와 `loadtest/control.py`는 같은 master의 인증·CSRF 보호 HTTP API를 사용한다. 컨트롤러 인자의 사용자/비밀번호는 값이 아닌 root 소유 0600 파일 경로다. 임시 파일은 `/run`에서 만들고 사용 후 제거한다.
+웹 UI와 `loadtest/control.py`는 같은 master의 인증·CSRF 보호 HTTP API를 사용한다. 컨트롤러 인자의 사용자/비밀번호는 값이 아닌 실행 사용자 소유 0600 파일 경로다. 외부 CLI는 본인만 읽는 임시 경로를 사용하고, EC2 내부 수집은 비밀번호를 stdin으로만 전달한다. 사용 후 인증 정보는 보관하지 않는다.
 
 ```sh
 python3 loadtest/control.py --origin https://dzc8oneey9mmx.cloudfront.net \
@@ -75,6 +75,10 @@ AWS_PROFILE=getddo-dev python3 scripts/staging.py status --run-id RUN_ID
 수집은 부하를 멈춘 후 Locust CSV·전체 이력·실패/예외 수·HTML·메타데이터와 Grafana Stage 쿼리·시계열을 S3에 보관한다. 결과 색인은 Infra SHA·백엔드 SHA·이미지 ID·archive digest와 두 보고서의 객체 키·SHA256을 포함한다. 모든 결과를 다시 읽어 해시가 일치해야 성공이다. 로그인 비밀번호·쿠키·세션 비밀·앱 비밀은 결과에 넣지 않는다. 보관 기간은 아직 정하지 않았으며 자동 만료를 설정하지 않는다.
 
 정상 destroy에서 결과 보관이 실패하면 삭제를 멈추고 실패를 보고한다. 최대 수명·생성 실패 정리에서는 수집을 최대 6분 시도한 뒤 임시 자원 삭제를 우선한다. monitor 대상 해제 후 Terraform destroy를 실행하고 AWS 서비스별 잔여 자원을 확인한다. 자원이 남거나 소유권이 맞지 않으면 성공으로 표시하거나 singleton 잠금을 해제하지 않는다.
+
+중단된 생성은 CodeBuild의 `buildComplete`까지 확인한 뒤 최신 실행 기록을 다시 읽는다. Terraform 실행 전에 기록한 build ID·사용자/호스트·State 경로·작업 종류·시간이 잠금과 일치하고 해당 실행이 종료된 경우에만 기존 잠금 객체를 ETag 조건으로 제거한다. 살아 있거나 소유권을 입증하지 못한 잠금은 제거하지 않는다.
+
+Terraform에 기록되지 않은 부분 생성 자원은 실제 `Environment=staging`과 해당 `RunId` 태그를 모두 확인한 후 제한 시간 내 서비스별로 삭제한다. Terraform 실패 후 이 경로를 사용한 경우 State를 다시 정상 destroy로 정리해야 하며, 다른 실행·공유 자원·지속 설정의 소유권이 불명확하면 중단한다.
 
 | 삭제 | 유지 |
 | --- | --- |
