@@ -1,6 +1,18 @@
 mock_provider "aws" {}
+override_resource {
+  override_during = plan
+  target          = aws_iam_role.staging_control["scheduler"]
+  values          = { arn = "arn:aws:iam::942466928325:role/getddo-staging-scheduler" }
+}
 run "control_trust_and_privilege_scope" {
   command = plan
+  assert {
+    condition = (
+      length([for statement in jsondecode(aws_iam_group_policy.staging_control_operator.policy).Statement : statement if contains(try(tolist(statement.Action), [statement.Action]), "ssm:DescribeParameters")]) == 1 &&
+      !strcontains(aws_iam_group_policy.staging_control_operator.policy, "staging-control/terraform.tfstate")
+    )
+    error_message = "Submissions need SSM metadata reads, while persistent control State is administrator-owned."
+  }
   assert {
     condition = alltrue([for key, role in aws_iam_role.staging_control :
       jsondecode(role.assume_role_policy).Statement[0].Condition.StringEquals["aws:SourceAccount"] == "942466928325" &&

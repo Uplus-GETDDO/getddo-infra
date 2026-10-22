@@ -32,7 +32,7 @@ class LockTests(unittest.TestCase):
                       "startTime": self.now - dt.timedelta(minutes=2), "endTime": self.now + dt.timedelta(minutes=1),
                       "environment": {"environmentVariables": [{"name": "RUN_ID", "value": self.value["run_id"]}]}}
         self.value["terraform_executions"] = [{"build_id": self.identity, "run_id": self.value["run_id"],
-            "who": "root@unique-host", "state_path": STATE_BUCKET + "/" + STATE_KEY, "action": "apply",
+            "who": "root@unique-host", "state_path": STATE_BUCKET + "/" + STATE_KEY, "action": "apply", "lock_operation": "OperationTypeApply",
             "started_at": (self.now - dt.timedelta(minutes=1)).isoformat()}]
         self.lock = {"ID": "lock-id", "Who": "root@unique-host", "Path": STATE_BUCKET + "/" + STATE_KEY,
                      "Created": self.now.isoformat(), "Operation": "OperationTypeApply"}
@@ -56,9 +56,17 @@ class LockTests(unittest.TestCase):
         self.effects.clients["s3"].delete_object.assert_called_once_with(
             Bucket=STATE_BUCKET, Key=STATE_KEY + ".tflock", IfMatch='"old-lock"')
 
+    def test_init_lock_requires_separately_recorded_init_execution(self):
+        self.lock["Operation"] = "init"
+        with self.assertRaisesRegex(RuntimeError, "unproven"):
+            self.effects.recover_terraform_lock(self.value)
+        self.value["terraform_executions"][0]["lock_operation"] = "init"
+        self.effects.recover_terraform_lock(self.value)
+        self.effects.clients["s3"].delete_object.assert_called_once()
+
     def test_live_foreign_and_unproven_locks_never_unlock(self):
         for field, value in (("Who", "root@other-host"), ("Path", STATE_BUCKET + "/prod/terraform.tfstate"),
-                             ("Created", (self.now - dt.timedelta(days=1)).isoformat()), ("ID", "")):
+                             ("Created", (self.now - dt.timedelta(days=1)).isoformat()), ("ID", ""), ("Operation", "OperationTypePlan")):
             original = self.lock[field]
             self.lock[field] = value
             with self.subTest(field=field), self.assertRaises(RuntimeError):
@@ -103,7 +111,9 @@ class LockTests(unittest.TestCase):
         execution = self.value["terraform_executions"][-1]
         self.assertEqual(execution["build_id"], self.identity)
         self.assertIn("@", execution["who"])
-        self.effects.record.assert_called_once()
+        self.assertEqual(self.effects.record.call_count, 2)
+        self.assertEqual(self.value["terraform_executions"][-2]["lock_operation"], "init")
+        self.assertEqual(execution["lock_operation"], "OperationTypeApply")
         # A failed manifest write prevents every Terraform subprocess.
         self.effects.command.reset_mock()
         self.effects.record.side_effect = RuntimeError("manifest failed")
@@ -293,6 +303,17 @@ class DestroyTests(unittest.TestCase):
         with patch("staging_cleanup.Orphans") as cleaner, self.assertRaises(RuntimeError):
             effects.destroy(manifest())
         cleaner.return_value.sweep.assert_not_called()
+
+    def test_timeout_or_validation_failure_never_authorizes_fallback(self):
+        import subprocess
+        for failure in (subprocess.TimeoutExpired(["terraform"], 1800), RuntimeError("ownership changed")):
+            effects = self.effects()
+            effects.terraform.side_effect = failure
+            with self.subTest(failure=type(failure).__name__), patch("staging_cleanup.Orphans") as cleaner:
+                cleaner.return_value.inventory.return_value = []
+                with self.assertRaises(type(failure)):
+                    effects.destroy(manifest())
+                cleaner.return_value.sweep.assert_not_called()
 
     def test_remote_deposed_resources_and_remaining_lock_prevent_success(self):
         effects = self.effects()

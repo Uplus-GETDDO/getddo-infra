@@ -43,8 +43,7 @@ resource "aws_iam_group_policy" "staging_control_operator" {
   name  = "staging-execution-control"
   group = aws_iam_group.staging.name
   policy = jsonencode({ Version = "2012-10-17", Statement = [
-    { Effect = "Allow", Action = ["s3:GetObject", "s3:PutObject"], Resource = ["arn:aws:s3:::getddo-tfstate-942466928325-ap-northeast-2/staging-control/terraform.tfstate", "arn:aws:s3:::getddo-tfstate-942466928325-ap-northeast-2/staging-control/terraform.tfstate.tflock"] },
-    { Effect = "Allow", Action = "s3:DeleteObject", Resource = "arn:aws:s3:::getddo-tfstate-942466928325-ap-northeast-2/staging-control/terraform.tfstate.tflock" },
+    { Effect = "Allow", Action = "ssm:DescribeParameters", Resource = "*", Condition = { StringEquals = { "aws:RequestedRegion" = "ap-northeast-2" } } },
     { Effect = "Allow", Action = ["codebuild:StartBuild", "codebuild:BatchGetBuilds", "codebuild:ListBuildsForProject"], Resource = ["arn:aws:codebuild:ap-northeast-2:942466928325:project/getddo-staging-up", "arn:aws:codebuild:ap-northeast-2:942466928325:project/getddo-staging-cleanup"] },
     { Effect = "Allow", Action = ["scheduler:CreateSchedule", "scheduler:GetSchedule", "scheduler:DeleteSchedule"], Resource = "arn:aws:scheduler:ap-northeast-2:942466928325:schedule/getddo-staging/expiry-*" },
     { Effect = "Allow", Action = "iam:PassRole", Resource = aws_iam_role.staging_control["scheduler"].arn, Condition = { StringEquals = { "iam:PassedToService" = "scheduler.amazonaws.com" } } }

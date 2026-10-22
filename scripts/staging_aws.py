@@ -175,11 +175,12 @@ class Effects(AWS):
                     Name=f"/getddo/staging/app/{parameter}", WithDecryption=True)["Parameter"]["Value"]
         else:
             variables.update(db_master_password="UnusedDestroyPassword123456789", redis_auth_token="UnusedDestroyToken123456789")
-        self.record_execution(manifest, action)
+        self.record_execution(manifest, action, operation="init")
         self.command(["terraform", "-chdir=terraform/staging", "init", "-input=false", "-lockfile=readonly"], timeout=180)
         from staging_lifecycle import check_state_owner
         state = json.loads(self.command(["terraform", "-chdir=terraform/staging", "show", "-json"], timeout=60))
         check_state_owner(state, manifest["run_id"])
+        self.record_execution(manifest, action)
         self.command(["terraform", "-chdir=terraform/staging", action, "-input=false", "-auto-approve",
                       "-var-file=/dev/stdin"], timeout=5400 if action == "apply" else 1800, data=terraform_stdin(variables))
 
@@ -293,14 +294,14 @@ class Effects(AWS):
             raise RuntimeError("Terraform build belongs to another run or project")
         return build
 
-    def record_execution(self, manifest, action):
+    def record_execution(self, manifest, action, operation="OperationTypeApply"):
         identity = os.environ.get("CODEBUILD_BUILD_ID", "")
         build = self.build(identity, manifest)
         if build.get("buildComplete") is not False or build["buildStatus"] != "IN_PROGRESS":
             raise RuntimeError("Terraform requires a verified running CodeBuild execution")
         check_owner(self.owner(), manifest)
         execution = {"build_id": identity, "run_id": manifest["run_id"], "action": action,
-                     "who": pwd.getpwuid(os.getuid()).pw_name + "@" + socket.gethostname(),
+                     "lock_operation": operation, "who": pwd.getpwuid(os.getuid()).pw_name + "@" + socket.gethostname(),
                      "started_at": dt.datetime.now(dt.timezone.utc).isoformat(),
                      "state_path": STATE_BUCKET + "/" + STATE_KEY}
         manifest.setdefault("terraform_executions", []).append(execution)
@@ -339,6 +340,8 @@ class Effects(AWS):
                    if e.get("run_id") == manifest["run_id"] and e.get("who") == lock.get("Who") and
                    e.get("state_path") == lock.get("Path") == STATE_BUCKET + "/" + STATE_KEY and
                    e.get("action") in ("apply", "destroy") and
+                   e.get("lock_operation") == lock.get("Operation") and
+                   lock.get("Operation") in ("init", "OperationTypeApply") and
                    dt.datetime.fromisoformat(e["started_at"]) <= created]
         if not lock.get("ID") or not matches:
             raise RuntimeError("Terraform lock ownership is foreign or unproven")
@@ -394,7 +397,7 @@ class Effects(AWS):
         # Ownership failures and lock recovery failures are outside the fallback catch.
         check_owner(self.owner(), manifest)
         self.recover_terraform_lock(manifest)
-        self.record_execution(manifest, "destroy")
+        self.record_execution(manifest, "destroy", operation="init")
         self.command(["terraform", "-chdir=terraform/staging", "init", "-input=false", "-lockfile=readonly"], timeout=180)
         state = json.loads(self.command(["terraform", "-chdir=terraform/staging", "show", "-json"], timeout=60))
         check_state_owner(state, manifest["run_id"])

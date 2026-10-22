@@ -274,6 +274,12 @@
           ]
         }
       }
+    },
+    {
+      "Effect": "Allow",
+      "Action": "codebuild:BatchGetBuilds",
+      "Resource": "arn:aws:codebuild:ap-northeast-2:942466928325:project/getddo-staging-cleanup",
+      "Sid": "ReadCleanupExecution"
     }
   ]
 }
