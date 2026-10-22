@@ -41,7 +41,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "**트래픽 → 지연 → 오류 → 포화도** 순서로 확인하세요. 지연은 성공(2xx/3xx) p95, 오류는 5xx/전체 요청입니다. 포화도 카드는 가장 바쁜 DB 풀을 보여주며 CPU·메모리·스레드·디스크도 아래에서 확인합니다.\n\n상태 검사·Swagger 요청은 HTTP 그래프에서 제외합니다. **—는 0/정상이 아닙니다**: 요청 없음·수집 실패·지표 부재를 수집 상태와 함께 확인하세요. [Google SRE](https://sre.google/sre-book/monitoring-distributed-systems/) · [CloudWatch 앱 로그에서 ERROR/Exception 검색](https://ap-northeast-2.console.aws.amazon.com/cloudwatch/home?region=ap-northeast-2#logsV2:log-groups/log-group/$252Fgetddo$252Fdev$252Fapi)"
+        "content": "**트래픽 → 지연 → 오류 → 포화도** 순서로 확인하세요. 지연은 성공(2xx/3xx) p95, 오류는 5xx/전체 요청입니다. 포화도 카드는 가장 바쁜 DB 풀을 보여주며 CPU·메모리·스레드·디스크도 아래에서 확인합니다.\n\n상태 검사·Swagger 요청은 HTTP 그래프에서 제외합니다. **—는 0/정상이 아닙니다**: 요청 없음·수집 실패·지표 부재를 수집 상태와 함께 확인하세요."
       }
     },
     {
