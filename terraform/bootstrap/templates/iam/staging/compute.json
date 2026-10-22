@@ -136,6 +136,29 @@
           "ec2:ResourceTag/Environment": "staging"
         }
       }
+    },
+    {
+      "Sid": "ProtectExistingResourceIdentityTags",
+      "Effect": "Deny",
+      "Action": [
+        "ec2:CreateTags",
+        "ec2:DeleteTags"
+      ],
+      "Resource": "arn:aws:ec2:ap-northeast-2:942466928325:*/*",
+      "Condition": {
+        "Null": {
+          "ec2:CreateAction": "true"
+        },
+        "StringNotEqualsIfExists": {
+          "ec2:ResourceTag/Environment": "staging"
+        },
+        "ForAnyValue:StringEquals": {
+          "aws:TagKeys": [
+            "Environment",
+            "Name"
+          ]
+        }
+      }
     }
   ]
 }

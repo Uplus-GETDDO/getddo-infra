@@ -101,11 +101,23 @@ run "staging_operator_boundary" {
     error_message = "Keep staging policies on the same user's separate group without exceeding the existing group's attachment quota."
   }
   assert {
-    condition     = jsondecode(aws_iam_policy.staging["identity"].policy).Statement[0].Condition.StringEquals["iam:PermissionsBoundary"] == "arn:aws:iam::942466928325:policy/GetddoStagingRuntimeBoundary" && alltrue([for s in jsondecode(aws_iam_policy.staging["identity"].policy).Statement : !contains(s.Action, "iam:DeleteRolePermissionsBoundary") && !contains(s.Action, "iam:CreatePolicyVersion")])
+    condition = jsondecode(aws_iam_policy.staging["identity"].policy).Statement[0].Condition.StringEquals["iam:PermissionsBoundary"] == "arn:aws:iam::942466928325:policy/GetddoStagingRuntimeBoundary" && alltrue(flatten([for policy in concat(values(aws_iam_policy.staging), values(aws_iam_policy.operator)) : [
+      for statement in jsondecode(policy.policy).Statement : [
+        for action in statement.Action : !anytrue([for forbidden in ["iam:DeleteRolePermissionsBoundary", "iam:PutRolePermissionsBoundary", "iam:CreatePolicyVersion", "iam:SetDefaultPolicyVersion", "iam:DeletePolicy", "iam:DeletePolicyVersion"] : can(regex("(?i)^${replace(replace(action, "*", ".*"), "?", ".")}$", forbidden))])
+      ] if statement.Effect == "Allow"
+    ]]))
     error_message = "Runtime role creation must require a fixed boundary that the operator cannot remove or edit."
   }
   assert {
     condition     = alltrue([for s in jsondecode(aws_iam_policy.staging["operations"].policy).Statement : !contains(s.Action, "s3:DeleteObject") || length(regexall("terraform.tfstate$", join(",", try(tolist(s.Resource), [tostring(s.Resource)])))) == 0])
     error_message = "Staging cleanup may release locks and artifacts but must not delete State."
+  }
+}
+
+run "protect_resource_identity_tags" {
+  command = plan
+  assert {
+    condition     = length([for s in jsondecode(aws_iam_policy.staging["compute"].policy).Statement : s if s.Effect == "Deny" && contains(s.Action, "ec2:CreateTags") && contains(s.Action, "ec2:DeleteTags") && s.Condition.Null["ec2:CreateAction"] == "true" && s.Condition.StringNotEqualsIfExists["ec2:ResourceTag/Environment"] == "staging"]) == 1
+    error_message = "Existing production resources must not be relabeled to acquire new staging lifecycle permissions."
   }
 }
