@@ -1,5 +1,6 @@
 """Exercise target rendering and fail-closed host startup without touching a host."""
 import importlib.util
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -94,6 +95,19 @@ tar() { echo OFFLINE_ARCHIVE; touch "$archive"; }
                 self.assertEqual('OFFLINE_ARCHIVE' in result.stdout, running == 'no')
                 self.assertEqual(result.returncode == 0, running == 'no')
         self.assertIn('! systemctl is-active --quiet docker', source)
+
+
+
+    def test_restore_checksum_follows_archive_after_transfer(self):
+        source = (ROOT / 'scripts/monitoring-backup.sh').read_text()
+        prefix = source.split('  restore)\n', 1)[1].split('    [[ -z ', 1)[0]
+        with tempfile.TemporaryDirectory() as name:
+            archive = Path(name) / 'moved-backup.tar.gz'
+            archive.write_bytes(b'private-backup-fixture')
+            for checksum, valid in [(hashlib.sha256(archive.read_bytes()).hexdigest(), True), ('0'*64, False)]:
+                Path(str(archive) + '.sha256').write_text(checksum + '\n')
+                result = subprocess.run(['bash', '-c', 'set -euo pipefail; systemctl() { return 1; };\n' + prefix + '\necho VERIFIED_ARCHIVE'], env=dict(os.environ, archive=str(archive)), text=True, capture_output=True)
+                self.assertEqual('VERIFIED_ARCHIVE' in result.stdout, valid)
 
 
 if __name__ == '__main__':

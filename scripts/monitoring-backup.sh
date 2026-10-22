@@ -18,13 +18,15 @@ case ${1:-} in
     trap 'systemctl start getddo-monitoring' EXIT
     # compose stop waits for graceful database shutdown; archive WAL and SQLite together.
     tar -C /srv/monitoring -czf "$archive" prometheus grafana
-    sha256sum "$archive" > "$archive.sha256"
+    sha256sum "$archive" | cut -d ' ' -f 1 > "$archive.sha256"
     chmod 0600 "$archive" "$archive.sha256"
     ;;
   restore)
     ! systemctl is-active --quiet getddo-monitoring
     ! systemctl is-active --quiet docker
-    sha256sum -c "$archive.sha256"
+    checksum=$(cat "$archive.sha256")
+    [[ $checksum =~ ^[0-9a-f]{64}$ ]]
+    printf '%s  %s\n' "$checksum" "$archive" | sha256sum -c -
     [[ -z $(ls -A /srv/monitoring/prometheus) && -z $(ls -A /srv/monitoring/grafana) ]]
     python3 - "$archive" <<'PY'
 import sys, tarfile
