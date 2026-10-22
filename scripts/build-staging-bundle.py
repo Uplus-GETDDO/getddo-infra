@@ -54,6 +54,7 @@ def package(infra, infra_sha, backend, backend_sha, artifact, output):
             raise ValueError('Reviewed source does not contain complete Stage runtime')
         code=source/'backend/source';code.parent.mkdir()
         command(['git','clone','--no-local','--no-checkout',str(backend),str(code)])
+        command(['git','-C',str(code),'config','core.autocrlf','false'])
         command(['git','-C',str(code),'checkout','--detach',backend_sha])
         command(['git','-C',str(code),'remote','set-url','origin','https://github.com/Uplus-GETDDO/getddo-be.git'])
         image=source/'backend/image';image.mkdir()

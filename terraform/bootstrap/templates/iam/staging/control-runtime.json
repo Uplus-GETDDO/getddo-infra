@@ -222,14 +222,6 @@
       "Resource": "arn:aws:codebuild:ap-northeast-2:942466928325:project/getddo-staging-up"
     },
     {
-      "Sid": "ReadBuildFailures",
-      "Effect": "Allow",
-      "Action": [
-        "codebuild:BatchGetBuilds"
-      ],
-      "Resource": "arn:aws:codebuild:ap-northeast-2:942466928325:build/getddo-staging-up:*"
-    },
-    {
       "Sid": "WriteControlBuildLogs",
       "Effect": "Allow",
       "Action": [
@@ -247,9 +239,15 @@
         "ssm:PutParameter",
         "ssm:GetParameter",
         "ssm:GetParameters",
-        "ssm:GetParametersByPath"
+        "ssm:GetParametersByPath",
+        "ssm:AddTagsToResource",
+        "ssm:RemoveTagsFromResource"
       ],
-      "Resource": "arn:aws:ssm:ap-northeast-2:942466928325:parameter/getddo/staging/locust/*"
+      "Resource": [
+        "arn:aws:ssm:ap-northeast-2:942466928325:parameter/getddo/staging",
+        "arn:aws:ssm:ap-northeast-2:942466928325:parameter/getddo/staging/locust",
+        "arn:aws:ssm:ap-northeast-2:942466928325:parameter/getddo/staging/locust/*"
+      ]
     },
     {
       "Sid": "StateBucketLocation",
@@ -262,6 +260,20 @@
       "Effect": "Allow",
       "Action": "ssm:ListTagsForResource",
       "Resource": "arn:aws:ssm:ap-northeast-2:942466928325:parameter/getddo/staging/locust/*"
+    },
+    {
+      "Sid": "BoundedControlMetadata",
+      "Effect": "Allow",
+      "Action": "s3:ListBucket",
+      "Resource": "arn:aws:s3:::getddo-deploy-942466928325-ap-northeast-2",
+      "Condition": {
+        "StringEquals": {
+          "s3:prefix": [
+            "staging/locks/app.json",
+            "staging/monitoring/status.json"
+          ]
+        }
+      }
     }
   ]
 }

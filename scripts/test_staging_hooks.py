@@ -27,8 +27,10 @@ def manifest():
 
 
 def aws_for(data):
-    return types.SimpleNamespace(owner=lambda:{'run_id':data['run_id'],'bundle_sha256':data['bundle_sha256']},
+    result = types.SimpleNamespace(owner=lambda:{'run_id':data['run_id'],'bundle_sha256':data['bundle_sha256']},
                                  clients={'ec2':Mock(),'ssm':Mock(),'s3':Mock()})
+    result.clients['s3'].list_objects_v2.return_value = {'Contents':[{'Key':'staging/monitoring/status.json'}]}
+    return result
 
 
 class HookTests(unittest.TestCase):
@@ -74,6 +76,38 @@ class HookTests(unittest.TestCase):
         self.assertIn('sha256sum -c -',script)
         self.assertIn('--expected-bucket-owner 942466928325',script)
         self.assertNotIn('admin-password',script)
+
+    def test_host_collection_keeps_credentials_out_of_args_and_reports(self):
+        import contextlib
+        import io
+        import tempfile
+        from unittest.mock import patch
+        spec=importlib.util.spec_from_file_location('staging_host',ROOT/'scripts/staging_hooks/host.py')
+        host=importlib.util.module_from_spec(spec);spec.loader.exec_module(host)
+        secret='NEVER_PUT_CREDENTIALS_IN_ARGS_OR_REPORTS'
+        calls=[]
+        original_temporary_directory = tempfile.TemporaryDirectory
+        with tempfile.TemporaryDirectory() as name:
+            reports=Path(name);(reports/'automation-fixed').mkdir()
+            (reports/'automation-fixed/run_stats.csv').write_text('test-report')
+            def command(args, **kwargs):
+                calls.append((args,kwargs))
+                self.assertNotIn(secret,str(args))
+                if args[0]=='docker':
+                    self.assertEqual(json.loads(kwargs['data'])['password'],secret)
+                    self.assertNotIn(secret,str(kwargs['env']))
+                elif args[0]=='aws':
+                    self.assertNotIn(secret.encode(),Path(args[args.index('--body')+1]).read_bytes())
+                return b''
+            with patch.object(host,'REPORTS',reports), patch.object(host,'parameters',return_value={'admin-user':'locust-admin','admin-password':secret}), \
+                 patch.object(host.uuid,'uuid4',return_value=types.SimpleNamespace(hex='fixed')), \
+                 patch.object(host,'command',side_effect=command), \
+                 patch.object(host.tempfile,'TemporaryDirectory',side_effect=lambda **kwargs: original_temporary_directory(prefix='fixture-',dir=reports)), \
+                 contextlib.redirect_stdout(io.StringIO()) as output:
+                host.collect(manifest())
+            self.assertEqual(calls[0][0][0],'docker')
+            self.assertEqual(calls[1][0][0],'aws')
+            self.assertIn('/results/locust-',json.loads(output.getvalue())['key'])
 
 
 if __name__=='__main__':unittest.main()

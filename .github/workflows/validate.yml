@@ -31,3 +31,10 @@ jobs:
         env:
           PROMTOOL_BIN: ${{ runner.temp }}/monitoring-tools/promtool
           COMPOSE_BIN: ${{ runner.temp }}/monitoring-tools/docker-compose
+      - run: python3 -m pip install -r loadtest/requirements-test.txt
+      - run: python3 -m playwright install --with-deps chromium
+      - run: python3 -m pytest -q loadtest/tests
+      - run: docker build -f loadtest/Dockerfile -t getddo-stage-locust:ci .
+      - run: docker compose -f loadtest/compose.yaml config --quiet
+        env:
+          LOCUST_BIND_IP: 10.20.0.20

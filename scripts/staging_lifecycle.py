@@ -58,6 +58,28 @@ def check_owner(lock, manifest):
         raise RuntimeError("Staging singleton lock belongs to another run")
 
 
+def check_state_owner(state, run):
+    """A stale singleton must never authorize changing another run's Terraform State."""
+    values = state.get('values', {})
+    recorded = values.get('outputs', {}).get('run_id', {}).get('value')
+    if recorded is not None and recorded != run:
+        raise RuntimeError('Terraform State belongs to another staging run')
+    def resources(module):
+        yield from module.get('resources', [])
+        for child in module.get('child_modules', []):
+            yield from resources(child)
+    managed = [resource for resource in resources(values.get('root_module', {})) if resource.get('mode') == 'managed']
+    owned = recorded == run
+    for resource in managed:
+        attributes = resource.get('values', {})
+        tags = attributes.get('tags_all') or attributes.get('tags') or {}
+        if tags.get('Environment') not in (None, 'staging') or tags.get('RunId') not in (None, run):
+            raise RuntimeError('Terraform State contains foreign resources')
+        owned = owned or tags.get('RunId') == run
+    if managed and not owned:
+        raise RuntimeError('Terraform State resource ownership is unproven')
+
+
 def cleanup_parameter_names(names):
     """Only temporary app settings belong to this workload; persistent UI auth survives."""
     return [n for n in names if n.startswith("/getddo/staging/app/") and n not in PERSISTENT_PARAMETERS]

@@ -144,5 +144,22 @@ class LifecycleTests(unittest.TestCase):
             verify_bundle(b"changed", "0" * 64)
 
 
+class StateOwnershipTests(unittest.TestCase):
+    def test_empty_owned_partial_and_foreign_state(self):
+        from staging_lifecycle import check_state_owner
+        check_state_owner({}, 'this-run')
+        tagged = lambda tags: {'mode':'managed','values':{'tags_all':tags}}
+        state = lambda resources: {'values':{'root_module':{'resources':resources}}}
+        check_state_owner(state([tagged({'Environment':'staging','RunId':'this-run'})]), 'this-run')
+        for tags in ({'Environment':'prod','RunId':'this-run'}, {'Environment':'staging','RunId':'other-run'}, {}):
+            with self.subTest(tags=tags), self.assertRaises(RuntimeError):
+                check_state_owner(state([tagged(tags)]), 'this-run')
+        partial = state([{'mode':'managed','values':{}}])
+        partial['values']['outputs']={'run_id':{'value':'this-run'}}
+        check_state_owner(partial, 'this-run')
+        # Read-only existing VPC/subnet data is not owned by the disposable environment.
+        check_state_owner(state([{'mode':'data','values':{'tags':{'Environment':'prod'}}}]), 'this-run')
+
+
 if __name__ == "__main__":
     unittest.main()

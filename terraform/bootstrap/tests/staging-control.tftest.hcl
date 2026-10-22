@@ -27,6 +27,14 @@ run "control_trust_and_privilege_scope" {
     error_message = "Runtime policy must fit IAM size limits, preserve login credentials, and not grant control IAM editing."
   }
   assert {
+    condition = alltrue([for path in [
+      "arn:aws:ssm:ap-northeast-2:942466928325:parameter/getddo/staging",
+      "arn:aws:ssm:ap-northeast-2:942466928325:parameter/getddo/staging/locust",
+      "arn:aws:ssm:ap-northeast-2:942466928325:parameter/getddo/staging/locust/*"
+    ] : contains(one([for s in jsondecode(aws_iam_policy.staging_control_runtime.policy).Statement : s.Resource if s.Sid == "PreservePersistentLoginConfiguration"]), path)])
+    error_message = "Parent hierarchy reads must not bypass persistent Locust credential preservation."
+  }
+  assert {
     condition = (
       [for s in jsondecode(aws_iam_policy.staging_control_ui.policy).Statement : s if s.Sid == "CreateStageUiRule"][0].Resource == "arn:aws:elasticloadbalancing:ap-northeast-2:942466928325:listener/app/getddo-dev-api-alb/9e65e06e10492070/96403935397fdc93" &&
       [for s in jsondecode(aws_iam_policy.staging_control_ui.policy).Statement : s if s.Sid == "RevokeSharedSgEgress"][0].Resource == "arn:aws:ec2:ap-northeast-2:942466928325:security-group/sg-09e12310ecd082ffb" &&

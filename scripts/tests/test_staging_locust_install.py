@@ -16,7 +16,7 @@ class LocustInstallTests(unittest.TestCase):
         value = manifest()
         value["deployment"] = {"api_url": "http://internal-stage.ap-northeast-2.elb.amazonaws.com",
                                "locust_instance": {"private_ip": "10.20.0.42"}}
-        actor = {"user_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", "role": "USER"}
+        actor = {"user_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", "role": "USER", "membership": "excellent"}
         fetch = Mock(return_value={"admin-user": "locust-admin", "admin-password": "test-password",
                                    "session-secret": "s" * 48})
         with tempfile.TemporaryDirectory() as temporary:
@@ -30,6 +30,8 @@ class LocustInstallTests(unittest.TestCase):
             config = json.loads((root / "etc/getddo-loadtest/manifest.json").read_text())
             self.assertEqual(config["scenario"], "smoke_events")
             self.assertEqual(config["expected_workers"], 2)
+            saved = json.loads((root / "run/getddo-staging/locust-scenario/actor.json").read_text())
+            self.assertEqual(saved["membership"], "excellent")
         fetch.assert_called_once()
 
     def test_non_synthetic_actor_is_rejected_before_reading_credentials(self):

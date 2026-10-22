@@ -124,6 +124,25 @@ run "dedicated_small_workload" {
     error_message = "Expose non-secret integration outputs and leave hosts idle until preparation."
   }
 }
+run "runtime_cannot_modify_control_source_or_locks" {
+  command = plan
+  assert {
+    condition = toset(one([for statement in jsondecode(aws_iam_role_policy.stage["api"].policy).Statement : statement.Resource if try(statement.Sid, "") == "StageReadArtifacts"])) == toset([
+      "arn:aws:s3:::getddo-deploy-942466928325-ap-northeast-2/staging/${var.run_id}/releases/*",
+      "arn:aws:s3:::getddo-deploy-942466928325-ap-northeast-2/staging/runs/${var.run_id}/runtime/*"
+    ])
+    error_message = "API role reads only its immutable release and host runtime."
+  }
+  assert {
+    condition     = length([for statement in jsondecode(aws_iam_role_policy.stage["api"].policy).Statement : statement if contains(statement.Action, "s3:PutObject")]) == 0
+    error_message = "Read-only platform smoke does not require API artifact/control writes."
+  }
+  assert {
+    condition     = one([for statement in jsondecode(aws_iam_role_policy.stage["locust"].policy).Statement : statement.Resource if contains(statement.Action, "s3:PutObject")]) == "arn:aws:s3:::getddo-deploy-942466928325-ap-northeast-2/staging/runs/${var.run_id}/results/locust-*"
+    error_message = "Locust can write only its own report objects, never control manifests or bundles."
+  }
+}
+
 run "reject_invalid_run_owner" {
   command = plan
   variables { run_id = "prod" }

@@ -36,6 +36,13 @@ CONFIG = {'environment': 'staging', 'target': TARGET, 'public_origin': ORIGIN,
 PASSWORD = 'synthetic-test-password'
 
 
+def test_slash_redirect_stays_relative_behind_http_origin(runtime):
+    environment, client, reports = runtime
+    response = client.get('/locust', base_url='http://fixture.cloudfront.net')
+    assert response.status_code == 302
+    assert response.headers['Location'] == '/locust/'
+
+
 @pytest.fixture(scope='module')
 def auth():
     return ('fixture-admin', generate_password_hash(PASSWORD), 'synthetic-session-secret-' * 3)

@@ -16,6 +16,8 @@ def main():
     action = os.environ["ACTION"]
     if manifest.get("phase") == "destroyed":
         return 0
+    if action == "up" and manifest.get("phase") in ("ready", "collected"):
+        return 0
     if action == "up":
         provision(effects, manifest)
     elif action in ("destroy", "ttl", "rollback"):

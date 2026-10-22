@@ -16,3 +16,5 @@ output "deployment" {
     locust_target_group_arn = aws_lb_target_group.locust.arn
   }
 }
+
+output "run_id" { value = var.run_id }

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Run as root on the Stage Locust host after the synthetic actor is seeded.
 
-Stdin: {"manifest": <lifecycle manifest>, "actor": {"user_id": UUID, "role": "USER"}}.
+Stdin: {"manifest": <lifecycle manifest>, "actor": {"user_id": UUID, "role": "USER", "membership": "excellent"}}.
 Existing persistent SSM credentials are read in memory, never rotated or printed.
 """
 import json
@@ -27,7 +27,9 @@ def private_file(path, value):
 
 def install(manifest, actor, source, root=Path("/"), fetch=None, start=True):
     validate_manifest(manifest)
-    if actor.get("role") != "USER" or str(uuid.UUID(actor.get("user_id", ""))) != actor["user_id"]:
+    if (set(actor) != {"user_id", "role", "membership"} or actor.get("role") != "USER" or
+            actor.get("membership") not in ("excellent", "vip", "vvip") or
+            str(uuid.UUID(actor.get("user_id", ""))) != actor["user_id"]):
         raise ValueError("A seeded synthetic Stage USER is required")
     deployment = manifest["deployment"]
     target = deployment["api_url"]

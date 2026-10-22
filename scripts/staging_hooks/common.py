@@ -93,6 +93,11 @@ class Hooks:
                                       Body=payload,ServerSideEncryption='AES256')
         deadline=time.monotonic()+timeout
         while time.monotonic()<deadline:
+            listed = self.clients['s3'].list_objects_v2(Bucket=m['deploy_bucket'],
+                Prefix='staging/monitoring/status.json', MaxKeys=1)
+            if not any(item['Key'] == 'staging/monitoring/status.json' for item in listed.get('Contents', [])):
+                time.sleep(3)
+                continue
             try:
                 status,_=self.aws.get('staging/monitoring/status.json')
             except self.clients['s3'].exceptions.NoSuchKey:
@@ -161,7 +166,7 @@ printf %s {shlex.quote(payload)} | base64 -d | /opt/getddo-staging-venv/bin/pyth
                      '--source-sha',metadata['source_sha'],'--image-id',metadata['image_id'],
                      '--archive-sha256',metadata['archive_sha256'],'--artifact-dir',str(artifact)],cwd=source)
         import uuid
-        actor={'user_id':str(uuid.uuid5(uuid.NAMESPACE_URL,'getddo-stage-smoke:'+m['run_id'])),'role':'USER'}
+        actor={'user_id':str(uuid.uuid5(uuid.NAMESPACE_URL,'getddo-stage-smoke:'+m['run_id'])),'role':'USER','membership':'excellent'}
         key,digest=self.runtime()
         self.remote(d['api_instances']['a']['id'],self.host_script(key,digest,'seed',actor))
         self.remote(d['locust_instance']['id'],self.host_script(key,digest,'install',actor),timeout=1200)

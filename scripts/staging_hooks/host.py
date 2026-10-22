@@ -13,12 +13,14 @@ import urllib.request
 from urllib.parse import urlsplit
 import uuid
 
+REPORTS = Path("/var/lib/getddo-loadtest/reports")
+
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/'scripts'))
 
 
-def command(args, *, timeout=120):
-    result=subprocess.run(args,capture_output=True,timeout=timeout)
+def command(args, *, timeout=120, data=None, cwd=None, env=None):
+    result=subprocess.run(args,input=data,cwd=cwd,env=env,capture_output=True,timeout=timeout)
     if result.returncode: raise RuntimeError('Stage host action failed: '+Path(args[0]).name)
     return result.stdout
 
@@ -35,7 +37,7 @@ def parameters(names):
 def seed(manifest,actor):
     import pymysql
     d=manifest['deployment']
-    if (d['db_identifier'] != 'getddo-staging-mysql' or not re.fullmatch(r'getddo-staging-mysql\.[a-z0-9]+\.ap-northeast-2\.rds\.amazonaws\.com', d['db_endpoint']) or actor.get('role') != 'USER'):
+    if (d['db_identifier'] != 'getddo-staging-mysql' or not re.fullmatch(r'getddo-staging-mysql\.[a-z0-9]+\.ap-northeast-2\.rds\.amazonaws\.com', d['db_endpoint']) or actor.get('role') != 'USER' or actor.get('membership') != 'excellent'):
         raise ValueError('Seed must use the dedicated Stage database and USER actor')
     settings=parameters(['app/SPRING_DATASOURCE_URL','app/SPRING_DATASOURCE_USERNAME','app/SPRING_DATASOURCE_PASSWORD'])
     address=urlsplit(settings['SPRING_DATASOURCE_URL'].removeprefix('jdbc:'))
@@ -55,7 +57,7 @@ def seed(manifest,actor):
                 raise ValueError('Synthetic actor conflicts with existing data')
         connection.commit()
     request=urllib.request.Request('http://127.0.0.1:8080/api/v1/events?page=1&size=1',
-                                   headers={'X-User-ID':actor['user_id'],'X-User-Role':'USER'})
+                                   headers={'X-User-ID':actor['user_id'],'X-User-Role':'USER','X-User-Membership':'excellent'})
     with urllib.request.urlopen(request,timeout=15) as response:
         body=json.load(response)
     if body.get('success') is not True or body.get('code')!='SUCCESS' or not isinstance(body.get('data',{}).get('items'),list):
@@ -66,15 +68,24 @@ def seed(manifest,actor):
 def collect(manifest):
     """Use the authenticated public API to stop/collect the same master as the UI."""
     credentials=parameters(['locust/admin-user','locust/admin-password'])
+    # Run the already pinned client in the master image. The host venv only needs
+    # seed/auth helpers; raw login values travel on stdin, never Docker args/env.
+    output_name = 'automation-' + uuid.uuid4().hex
+    script = """import json,sys
+from pathlib import Path
+from loadtest.control import Control
+payload=json.load(sys.stdin)
+client=Control(payload['origin'],payload['username'],payload['password'])
+client.stop()
+client.collect(Path('/reports')/payload['output'])
+"""
+    payload=json.dumps({'origin':manifest['public_origin'],'username':credentials['admin-user'],
+                        'password':credentials['admin-password'],'output':output_name}).encode()
+    command(['docker','compose','-f',str(ROOT/'loadtest/compose.yaml'),'exec','-T','master','python3','-c',script],
+            data=payload,cwd=ROOT,env=dict(os.environ,LOCUST_BIND_IP=manifest['deployment']['locust_instance']['private_ip']))
+    reports=REPORTS/output_name
     with tempfile.TemporaryDirectory(prefix='collect-',dir='/run') as name:
-        directory=Path(name);directory.chmod(0o700)
-        for key in ('admin-user','admin-password'):
-            path=directory/key;path.write_text(credentials[key]);path.chmod(0o600)
-        control=[sys.executable,str(ROOT/'loadtest/control.py'),'--origin',manifest['public_origin'],
-                 '--username-file',str(directory/'admin-user'),'--password-file',str(directory/'admin-password')]
-        command(control+['stop'])
-        reports=directory/'reports'
-        command(control+['collect','--output',str(reports)])
+        directory=Path(name)
         archive=directory/'locust.tar.gz'
         with tarfile.open(archive,'w:gz') as bundle:
             for path in sorted(reports.iterdir()):

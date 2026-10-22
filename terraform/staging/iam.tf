@@ -17,14 +17,23 @@ resource "aws_iam_role_policy" "stage" {
   role     = each.value.name
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [
+    Statement = concat([
       { Effect = "Allow", Action = ["ssm:UpdateInstanceInformation", "ssmmessages:CreateControlChannel", "ssmmessages:CreateDataChannel", "ssmmessages:OpenControlChannel", "ssmmessages:OpenDataChannel"], Resource = "*" },
-      { Effect = "Allow", Action = ["ssm:GetParameter", "ssm:GetParameters", "ssm:GetParametersByPath"], Resource = "arn:aws:ssm:ap-northeast-2:942466928325:parameter/getddo/staging/${each.key == "api" ? "app" : "locust"}/*" },
-      { Effect = "Allow", Action = ["s3:GetObject", "s3:PutObject"], Resource = "arn:aws:s3:::getddo-deploy-942466928325-ap-northeast-2/staging/*" },
+      { Effect = "Allow", Action = ["ssm:GetParameter", "ssm:GetParameters"], Resource = "arn:aws:ssm:ap-northeast-2:942466928325:parameter/getddo/staging/${each.key == "api" ? "app" : "locust"}/*" },
+      {
+        Sid = "StageReadArtifacts", Effect = "Allow", Action = ["s3:GetObject"]
+        Resource = each.key == "api" ? [
+          "arn:aws:s3:::getddo-deploy-942466928325-ap-northeast-2/staging/${var.run_id}/releases/*",
+          "arn:aws:s3:::getddo-deploy-942466928325-ap-northeast-2/staging/runs/${var.run_id}/runtime/*"
+        ] : ["arn:aws:s3:::getddo-deploy-942466928325-ap-northeast-2/staging/runs/${var.run_id}/runtime/*"]
+      },
       { Effect = "Allow", Action = ["logs:CreateLogStream", "logs:PutLogEvents", "logs:DescribeLogStreams"], Resource = "arn:aws:logs:ap-northeast-2:942466928325:log-group:/getddo/staging/*:*" },
       { Effect = "Allow", Action = ["cloudwatch:PutMetricData"], Resource = "*", Condition = { StringEquals = {
         "cloudwatch:namespace" = each.key == "api" ? ["GETDDO/API", "CWAgent"] : ["CWAgent"], "aws:RequestedRegion" = "ap-northeast-2"
       } } }
-    ]
+      ], each.key == "locust" ? [{
+        Sid      = "LocustWriteReports", Effect = "Allow", Action = ["s3:PutObject"]
+        Resource = "arn:aws:s3:::getddo-deploy-942466928325-ap-northeast-2/staging/runs/${var.run_id}/results/locust-*"
+    }] : [])
   })
 }

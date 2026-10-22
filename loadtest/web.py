@@ -57,6 +57,8 @@ def install_web(environment, config, auth, reports=Path('/reports')):
 
     @app.before_request
     def guard():
+        if request.path == '/locust':
+            return redirect('/locust/')
         if request.path in ('/metrics', '/locust/metrics'):
             abort(404)
         if request.path == '/locust/health':

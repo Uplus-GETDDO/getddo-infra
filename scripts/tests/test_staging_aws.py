@@ -29,6 +29,8 @@ class AdapterTests(unittest.TestCase):
         calls = []
         def command(argv, **kwargs):
             calls.append(argv)
+            if "show" in argv:
+                return b'{}'
             if "apply" in argv:
                 self.assertIn(b'db_master_password = "secret-test-value"', kwargs["data"])
                 self.assertNotIn("secret-test-value", str(argv))
@@ -58,9 +60,21 @@ class AdapterTests(unittest.TestCase):
         self.assertLessEqual(len(token), 128)
         self.assertNotEqual(password, token)
 
+    def test_foreign_state_prevents_apply_and_destroy(self):
+        for action in ('apply', 'destroy'):
+            with self.subTest(action=action):
+                effects = self.effects()
+                effects.clients['ssm'].get_parameter.return_value = {'Parameter':{'Value':'test-secret'}}
+                foreign = {'values':{'outputs':{'run_id':{'value':'another-run'}}}}
+                effects.command = Mock(side_effect=[b'', json.dumps(foreign).encode()])
+                with self.assertRaisesRegex(RuntimeError, 'another staging run'):
+                    effects.terraform(manifest(), action)
+                self.assertEqual(len(effects.command.call_args_list), 2)
+                self.assertFalse(any(action in call.args[0] for call in effects.command.call_args_list))
+
     def test_destroy_never_reads_passwords(self):
         effects = self.effects()
-        effects.command = Mock()
+        effects.command = Mock(return_value=b'{}')
         effects.terraform(manifest(), "destroy")
         effects.clients["ssm"].get_parameter.assert_not_called()
 
@@ -206,10 +220,18 @@ class AdapterTests(unittest.TestCase):
         effects.delete_app_parameters(value)
         ssm.delete_parameter.assert_called_once_with(Name=app)
 
+    def test_missing_deployment_lock_does_not_require_whole_bucket_metadata(self):
+        effects = self.effects()
+        effects.clients['s3'].list_objects_v2.return_value = {'Contents': []}
+        effects.delete_deployment_lock(manifest())
+        effects.clients['s3'].head_object.assert_not_called()
+        effects.clients['s3'].delete_object.assert_not_called()
+
     def test_deployment_lock_cleanup_is_run_owned_and_conditional(self):
         effects = self.effects()
         s3 = effects.clients["s3"]
         value = manifest()
+        s3.list_objects_v2.return_value = {"Contents": [{"Key":"staging/locks/app.json"}]}
         s3.head_object.return_value = {"Metadata": {"run-id": value["run_id"]}, "ETag": '"lock-etag"'}
         effects.delete_deployment_lock(value)
         s3.delete_object.assert_called_once_with(Bucket=BUCKET, Key="staging/locks/app.json", IfMatch='"lock-etag"')

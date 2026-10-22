@@ -170,6 +170,9 @@ class Effects(AWS):
         else:
             variables.update(db_master_password="UnusedDestroyPassword123456789", redis_auth_token="UnusedDestroyToken123456789")
         self.command(["terraform", "-chdir=terraform/staging", "init", "-input=false", "-lockfile=readonly"])
+        from staging_lifecycle import check_state_owner
+        state = json.loads(self.command(["terraform", "-chdir=terraform/staging", "show", "-json"]))
+        check_state_owner(state, manifest["run_id"])
         self.command(["terraform", "-chdir=terraform/staging", action, "-input=false", "-auto-approve",
                       "-var-file=/dev/stdin"], timeout=5400, data=terraform_stdin(variables))
 
@@ -310,6 +313,9 @@ class Effects(AWS):
         # HeadObject uses a generic 404 rather than a typed NoSuchKey exception.
         s3 = self.clients["s3"]
         key = "staging/locks/app.json"
+        listed = s3.list_objects_v2(Bucket=BUCKET, Prefix=key, MaxKeys=1)
+        if not any(item['Key'] == key for item in listed.get('Contents', [])):
+            return
         try:
             lock = s3.head_object(Bucket=BUCKET, Key=key)
         except ClientError as error:
