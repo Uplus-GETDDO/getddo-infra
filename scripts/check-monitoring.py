@@ -41,7 +41,7 @@ def main():
         rules = []
         for dashboard in (OBS / 'grafana/dashboards').glob('*.json'):
             for panel in json.loads(dashboard.read_text())['panels']:
-                for target in panel['targets']:
+                for target in panel.get('targets', []):
                     if 'expr' in target:
                         rules.append({'record': f'validation:panel_{len(rules)}', 'expr': target['expr'].replace('$server', '.*')})
         path = Path(name) / 'rules.yml'
