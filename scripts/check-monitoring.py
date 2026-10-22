@@ -21,7 +21,12 @@ def main():
     services = yaml.safe_load((OBS / 'compose.yaml').read_text())['services']
     for service in services.values():
         tmpfs = service.get('tmpfs', [])
-        mounts = [tmpfs] if isinstance(tmpfs, str) else tmpfs
+        if isinstance(tmpfs, str):
+            mounts = [tmpfs]
+        elif isinstance(tmpfs, list):
+            mounts = tmpfs
+        else:
+            raise ValueError('tmpfs must be a string or a list of strings')
         for mount in mounts:
             if not isinstance(mount, str) or not mount.split(':', 1)[0].startswith('/'):
                 raise ValueError('Every tmpfs mount must have an absolute container path; quote comma-separated options')
