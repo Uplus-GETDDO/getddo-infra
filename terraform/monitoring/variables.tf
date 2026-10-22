@@ -10,3 +10,12 @@ variable "ami_id" {
 locals {
   grafana_password_path = "/getddo/monitoring/grafana/admin-password"
 }
+
+variable "cloudfront_distribution_id" {
+  description = "Existing production distribution ID; no new distribution or certificate is created."
+  type        = string
+  validation {
+    condition     = can(regex("^E[A-Z0-9]+$", var.cloudfront_distribution_id))
+    error_message = "Supply the existing production CloudFront distribution ID."
+  }
+}

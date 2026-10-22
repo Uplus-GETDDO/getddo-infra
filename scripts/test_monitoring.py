@@ -90,7 +90,10 @@ blkid() { echo expected-uuid; }
         compose = (ROOT / 'observability/compose.yaml').read_text()
         self.assertEqual(compose.count('create_host_path: false'), 3)
         self.assertNotIn('9090:9090', compose)
-        self.assertIn('127.0.0.1:3000:3000', compose)
+        self.assertIn('${GRAFANA_BIND_IP:?Set the monitoring private IPv4}:3000:3000', compose)
+        self.assertNotIn('0.0.0.0:3000', compose)
+        for setting in ['GF_SECURITY_COOKIE_SECURE: "true"', 'GF_SERVER_SERVE_FROM_SUB_PATH: "true"', 'GF_AUTH_ANONYMOUS_ENABLED: "false"', 'GF_AUTH_BASIC_ENABLED: "false"', 'GF_USERS_ALLOW_SIGN_UP: "false"']:
+            self.assertIn(setting, compose)
 
 
     def test_backup_restores_prior_state_after_each_failure(self):

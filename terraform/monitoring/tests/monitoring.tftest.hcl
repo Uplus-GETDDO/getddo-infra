@@ -1,4 +1,16 @@
+variables {
+  cloudfront_distribution_id = "ETESTONLY"
+}
 mock_provider "aws" {
+  mock_resource "aws_lb_target_group" {
+    defaults = { arn = "arn:aws:elasticloadbalancing:ap-northeast-2:942466928325:targetgroup/getddo-dev-grafana-tg/0123456789abcdef" }
+  }
+  mock_data "aws_lb" {
+    defaults = { arn = "arn:aws:elasticloadbalancing:ap-northeast-2:942466928325:loadbalancer/app/getddo-dev-api-alb/0123456789abcdef", internal = true, vpc_id = "vpc-mock" }
+  }
+  mock_data "aws_lb_listener" {
+    defaults = { arn = "arn:aws:elasticloadbalancing:ap-northeast-2:942466928325:listener/app/getddo-dev-api-alb/0123456789abcdef/0123456789abcdef" }
+  }
   mock_data "aws_vpc" {
     defaults = { id = "vpc-mock" }
   }
@@ -63,4 +75,16 @@ run "reject_missing_egress" {
     values = { routes = [] }
   }
   expect_failures = [aws_instance.monitoring]
+}
+
+run "grafana_private_alb_path" {
+  command = apply
+  assert {
+    condition     = aws_vpc_security_group_ingress_rule.grafana_from_alb.referenced_security_group_id == data.aws_security_group.alb.id && aws_vpc_security_group_ingress_rule.grafana_from_alb.cidr_ipv4 == null && aws_vpc_security_group_ingress_rule.grafana_from_alb.from_port == 3000 && aws_vpc_security_group_egress_rule.alb_to_grafana.referenced_security_group_id == aws_security_group.monitoring.id
+    error_message = "Grafana ingress must allow only the existing ALB security group, never a public CIDR."
+  }
+  assert {
+    condition     = toset(one(aws_lb_listener_rule.grafana.condition).path_pattern[0].values) == toset(["/grafana", "/grafana/*"]) && aws_lb_target_group_attachment.grafana.target_id == aws_instance.monitoring.id && aws_lb_target_group.grafana.health_check[0].path == "/grafana/api/health"
+    error_message = "Only the Grafana subpath may route to the monitoring instance."
+  }
 }

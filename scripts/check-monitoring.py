@@ -32,7 +32,8 @@ def main():
                 raise ValueError('Every tmpfs mount must have an absolute container path; quote comma-separated options')
     compose = os.environ.get('COMPOSE_BIN', 'docker')
     command = [compose] if 'COMPOSE_BIN' in os.environ else [compose, 'compose']
-    subprocess.run(command + ['-f', str(OBS / 'compose.yaml'), 'config', '--quiet'], check=True)
+    subprocess.run(command + ['-f', str(OBS / 'compose.yaml'), 'config', '--quiet'], check=True,
+                   env=dict(os.environ, GRAFANA_BIND_IP='10.0.0.10', GRAFANA_ROOT_URL='https://example.cloudfront.net/grafana/'))
     promtool = os.environ.get('PROMTOOL_BIN', 'promtool')
     subprocess.run([promtool, 'check', 'config', '--syntax-only', str(OBS / 'prometheus/prometheus.yml')], check=True)
     # Rule checking parses every provisioned PromQL expression, including template filters.
