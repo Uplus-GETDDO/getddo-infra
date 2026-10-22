@@ -68,6 +68,7 @@ def main():
     dashboard = aws('cloudwatch', 'get-dashboard', '--dashboard-name', 'getddo-dev-overview')
     args.cloudwatch_dashboard.parent.mkdir(parents=True, exist_ok=True)
     args.cloudwatch_dashboard.write_text(json.dumps(cloudwatch_dashboard(json.loads(dashboard['DashboardBody'])), indent=2) + '\n')
+    args.cloudwatch_dashboard.chmod(0o644)
     hosts = {}
     vpcs, groups = set(), []
     for server, name in [('A', 'getddo-dev-api'), ('C', 'getddo-dev-api-c'), ('monitoring', 'getddo-prod-monitoring')]:
