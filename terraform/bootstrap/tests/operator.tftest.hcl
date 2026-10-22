@@ -129,7 +129,7 @@ run "stage_database_modification_is_not_granted" {
   assert {
     condition = alltrue([for s in jsondecode(aws_iam_policy.staging["data"].policy).Statement :
       !anytrue([for action in s.Action : can(regex("(?i)^${replace(replace(action, "*", ".*"), "?", ".")}$", "rds:ModifyDBInstance"))]) if s.Effect == "Allow"
-    ]) && alltrue([for sid in ["CreatePrivateStageDatabase", "RestorePrivateStageDatabase"] :
+      ]) && alltrue([for sid in ["CreatePrivateStageDatabase", "RestorePrivateStageDatabase"] :
       length([for s in jsondecode(aws_iam_policy.staging["data"].policy).Statement : s if s.Sid == sid && s.Condition.Bool["rds:PubliclyAccessible"] == "false"]) == 1
     ])
     error_message = "Do not grant stage DB modification using an unsupported public-access condition; preserve private creation and restore."
