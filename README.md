@@ -1,40 +1,102 @@
-# GETDDO infrastructure
+# GETDDO 인프라
 
-Infrastructure source for the existing production service. No separate Dev server is planned. Staging/NCP/load-test and Prometheus/Grafana implementation are deferred; the load-test tool is undecided.
+GETDDO 운영 인프라를 관리하는 Terraform 저장소.
+서울 리전(`ap-northeast-2`)에서 CloudFront·ALB·EC2·RDS·Redis·S3를 사용합니다.
 
-## Execution roots
+## 운영 아키텍처
 
-| Root | Existing S3 State key | Scope |
+![GETDDO 운영 아키텍처](docs/architecture/production.svg)
+
+[크게 보기 · 이미지 내보내기](docs/architecture/production.html) · [편집 원본](docs/architecture/production.architecture.json)
+
+| 구성 | 역할 |
+| --- | --- |
+| CloudFront | 공개 HTTPS 진입점. API는 캐시 없이 내부 ALB로 전달하고, `/images/*`는 OAC로 비공개 S3에서 조회 |
+| 내부 ALB | 두 AZ의 사설 서브넷에 배치. HTTP 80 → API 서버 8080으로 요청 분산 |
+| API A / C | `ap-northeast-2a` / `ap-northeast-2c`의 `t3.small` EC2. Docker 앱 실행, 공인 IPv4·IGW로 외부 통신, 보안 그룹으로 인바운드 제한 |
+| RDS | 비공개 MySQL 8.4, `db.t4g.micro`, Single-AZ. API 보안 그룹에서만 3306 접속 허용 |
+| Redis | 비공개 Redis OSS 단일 노드. TLS·AUTH 연결, 공유 요청 제한 저장소 |
+| S3 | 이미지·배포 파일 저장소 분리. API 역할로 이미지 업로드, CloudFront OAC로 조회 |
+| Parameter Store | 앱 설정·비밀값 저장. 서버 역할로 조회 |
+| GitHub Actions · SSM | 백엔드 빌드·배포. OIDC 임시 권한, S3 파일 전달, SSM Run Command로 서버 배포 |
+| CloudWatch | API·ALB·RDS·Redis 지표, 앱 로그, 대시보드 |
+
+- 실선: 서비스 요청 / 점선: 설정·배포·모니터링
+- 외부 HTTPS는 CloudFront에서 종료. ALB·API 구간은 사설망 HTTP
+- DB 관리 접속은 EC2 Instance Connect Endpoint·SSH 터널로 API 서버 경유
+- RDS는 Single-AZ, Redis는 복제본·자동 장애 전환 없는 단일 노드
+
+## 레포 구조
+
+```text
+getddo-infra/
+├── .github/workflows/validate.yml   # Terraform / 스크립트·설정 CI 검증
+├── terraform/
+│   ├── bootstrap/                  # State S3 보호 설정·운영자 IAM
+│   │   ├── templates/iam/operator/ # 운영자 권한 정책
+│   │   └── tests/                  # bootstrap 모의 테스트
+│   └── prod/                       # 운영 서비스 인프라
+│       ├── network.tf              # VPC·서브넷·라우팅
+│       ├── security.tf, access.tf  # 보안 그룹·관리 접속 Endpoint
+│       ├── compute.tf              # API A/C EC2·초기 설치
+│       ├── alb.tf, cloudfront.tf   # 요청 분산·HTTPS·이미지 조회
+│       ├── database.tf, redis.tf   # RDS·Redis
+│       ├── storage.tf              # 이미지·배포 파일 S3
+│       ├── iam.tf, parameters.tf   # 서버·배포 역할·앱 설정 조회 권한
+│       ├── monitoring.tf           # CloudWatch 로그 그룹·대시보드
+│       ├── outputs.tf              # 배포·접속 출력값
+│       ├── prod.tfvars.example     # 입력 예시
+│       ├── templates/              # 초기 설치·IAM·모니터링 설정
+│       └── tests/                  # 운영 구성 모의 테스트
+├── scripts/                        # 로컬·CI 검증
+└── docs/
+    └── architecture/               # 운영 그림·편집 원본
+```
+
+| 저장소 | 관리 범위 |
+| --- | --- |
+| 인프라 | Terraform·IAM·서버 초기 설치·모니터링 설정 |
+| 백엔드 | Java·Docker/Compose·앱 설정 조회·배포 스크립트·앱 CD |
+
+## Terraform 실행 루트
+
+| 디렉터리 | S3 State 키 | 관리 범위 |
 | --- | --- | --- |
-| `terraform/bootstrap` | `bootstrap/terraform.tfstate` | State S3 protection and existing operator IAM |
-| `terraform/prod` | `dev/terraform.tfstate` | Existing production network, API A/C, ALB/CloudFront, RDS, Redis, S3, runtime/CD IAM and CloudWatch |
+| `terraform/bootstrap` | `bootstrap/terraform.tfstate` | State S3·운영자 IAM |
+| `terraform/prod` | `dev/terraform.tfstate` | 운영 네트워크·API·데이터 저장소·배포 IAM·CloudWatch |
 
-`terraform/prod` was renamed locally from the former dev directory. Keep the existing State key, Terraform resource addresses, AWS `getddo-dev-*` resource names, Parameter Store paths, metric labels and log groups. A directory rename does not require AWS resource replacement or another import. Existing IAM and CloudWatch objects have already been registered in State; do not repeat imports.
+기존 State 키와 AWS 자원 이름(`getddo-dev-*`), Parameter Store 경로, 로그 그룹 이름은 유지합니다. `dev` 표기는 기존 이름이며 별도 개발 환경은 없습니다.
 
-## Inputs and secrets
+## 로컬 검증
 
-`terraform/prod/prod.tfvars.example` is a public placeholder example. Real `*.tfvars*`, State/backup/plan files, provider caches, env files and credentials are excluded from Git. Provider `.terraform.lock.hcl` files are committed. DB/Redis secrets use ephemeral/write-only inputs; do not put real passwords in examples, command output or PR attachments.
+필수 도구: Terraform 1.16.x, Python 3, Bash. AWS Provider 버전은 `.terraform.lock.hcl`에 고정합니다.
+저장소 루트에서 실행합니다.
 
-Existing Git-ignored `dev.auto.tfvars.json`, local `dev-secrets.json`, SSH key and AWS CLI profile `getddo-dev` retain their names. They are not included here. The AWS profile name does not guarantee the calling identity: check the actual account and principal before live commands.
+```bash
+# 전체 검사: CI와 동일
+python3 scripts/validate.py
 
-Terraform owns infrastructure/IAM. The backend repository owns Java, Docker/Compose, application configuration and app CD. Its legacy `infra/scripts/dev.py` now resolves sibling `getddo-infra/terraform/prod` or `$GETDDO_INFRA_DIR/terraform/prod`; its legacy JAR deployment action is not the rolling CD entry point. Existing GitHub OIDC trust remains on the backend repository.
+# 개별 검사
+python3 scripts/validate.py terraform
+python3 scripts/validate.py scripts
 
-## Checks and changes
+# 문서 링크·회귀 테스트 (Node.js 필요)
+python3 scripts/validate.py documents
+```
 
-Run `python3 scripts/validate.py` for fmt, validate, mock Terraform tests and script/config syntax. The two CI jobs call `python3 scripts/validate.py terraform` and `python3 scripts/validate.py scripts`. These checks use temporary roots and mock AWS; they do not deploy. Optional `python3 scripts/validate.py documents` validates documentation and six regression tests.
+CI는 Terraform과 스크립트·설정 검사를 두 job으로 실행합니다. Terraform 검사는 backend를 제거한 임시 복사본과 mock AWS Provider를 사용하며, AWS·원격 State 접근 없이 실행됩니다.
 
-For real changes, authenticate with the intended operator role, initialize the existing backend, supply approved private inputs, and review a full plan with State locking. Never disable deletion protection or apply a replacement merely to fix a naming mismatch. Do not publish State, plan JSON or private inputs.
+## 운영 시 참고
 
-The 2026-10-22 directory move passed 22 Terraform mock tests, script checks and document checks. Live plans before and after returned exit code 0 with no resource/output changes; the State identity and managed addresses were preserved. No apply, commit or push was performed for that move.
+- [입력 예시](terraform/prod/prod.tfvars.example)를 참고하고 실제 tfvars·State·plan·env·자격 증명·개인 키는 Git에서 제외합니다.
+- DB·Redis 비밀값은 ephemeral/write-only 입력으로 전달합니다.
+- AWS 프로필 이름은 `getddo-dev`입니다. 작업 전 실제 계정과 역할을 확인합니다.
+- 변경 전 State 잠금을 유지한 전체 plan에서 생성·교체·삭제 범위를 검토합니다.
+- API의 시연용 사용자 선택 헤더는 사용자 인증 수단이 아닙니다.
 
-## Existing security limits
+## 관련 코드
 
-This source preserves the existing deployed setup; publishing it does not harden or redeploy AWS. CloudFront is an external API entry point, while the ALB, RDS and Redis are private. The application's demonstration user-selection headers are not login authentication. A private GitHub repository does not restrict access to that public API. Reassess authentication/access controls before treating it as a public production service.
-
-Operator IAM is privileged infrastructure-management access, not an application/user role. Runtime and backend deployment roles remain separate. Metadata names/ARNs in source are operational identifiers, not credentials.
-
-## Publication scope
-
-This initial source set contains only the active production/bootstrap configuration, its required templates and tests, validation scripts and CI. Historical documents, architecture images, archived IAM mutation tools, unapplied permission drafts and load-test design are deliberately deferred. Personal HTML and result files stay local. Do not use `git add .` against the full local working tree; publish only the reviewed file list.
-
-The source contains actual AWS account IDs, resource names, ARNs and deployment topology. These are not passwords or access tokens, but reveal operational metadata. A private repository is recommended for the initial publication; review and sanitize separately before making it public.
+- [운영자 IAM](terraform/bootstrap/iam.tf)
+- [서버 접속](terraform/prod/access.tf)
+- [이미지 저장소](terraform/prod/storage.tf) · [CloudFront](terraform/prod/cloudfront.tf)
+- [Redis](terraform/prod/redis.tf)

@@ -1,0 +1,332 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "GETDDO 운영 아키텍처",
+    "subtitle": "현재 배포 구성 · 2026-10-22 AWS 읽기 전용 확인",
+    "output": "production.html",
+    "viewBox": [
+      1340,
+      680
+    ]
+  },
+  "components": [
+    {
+      "id": "users",
+      "type": "external",
+      "label": "사용자 / 프론트엔드",
+      "sublabel": "브라우저 · HTTPS",
+      "pos": [
+        40,
+        250
+      ],
+      "size": [
+        160,
+        78
+      ]
+    },
+    {
+      "id": "cloudfront",
+      "type": "cloud",
+      "label": "CloudFront",
+      "sublabel": "공개 HTTPS 진입점",
+      "tag": "API 캐시 비활성화",
+      "pos": [
+        270,
+        250
+      ],
+      "size": [
+        170,
+        78
+      ]
+    },
+    {
+      "id": "alb",
+      "type": "cloud",
+      "label": "내부 ALB",
+      "sublabel": "VPC origin · HTTP :80",
+      "tag": "2a / 2c · 사설 서브넷",
+      "pos": [
+        530,
+        250
+      ],
+      "size": [
+        180,
+        78
+      ]
+    },
+    {
+      "id": "api",
+      "type": "backend",
+      "label": "API A / C",
+      "sublabel": "EC2 2대 · Docker :8080",
+      "tag": "2a / 2c · 두 대상 healthy",
+      "pos": [
+        790,
+        250
+      ],
+      "size": [
+        200,
+        78
+      ]
+    },
+    {
+      "id": "data",
+      "type": "database",
+      "label": "RDS + Redis",
+      "sublabel": "MySQL :3306 / Redis :6379",
+      "tag": "비공개 · DB 1대 / 캐시 1대",
+      "pos": [
+        1080,
+        250
+      ],
+      "size": [
+        220,
+        78
+      ]
+    },
+    {
+      "id": "images",
+      "type": "cloud",
+      "label": "S3 이미지 저장소",
+      "sublabel": "/images/* · OAC 읽기",
+      "tag": "공개 접근 차단",
+      "pos": [
+        270,
+        70
+      ],
+      "size": [
+        170,
+        78
+      ]
+    },
+    {
+      "id": "parameters",
+      "type": "security",
+      "label": "Parameter Store",
+      "sublabel": "앱 설정 · SecureString",
+      "tag": "서버 역할로 조회",
+      "pos": [
+        790,
+        70
+      ],
+      "size": [
+        200,
+        78
+      ]
+    },
+    {
+      "id": "github",
+      "type": "external",
+      "label": "GitHub Actions",
+      "sublabel": "백엔드 빌드 · 배포",
+      "tag": "OIDC 임시 자격 증명",
+      "pos": [
+        270,
+        500
+      ],
+      "size": [
+        170,
+        78
+      ]
+    },
+    {
+      "id": "releases",
+      "type": "cloud",
+      "label": "S3 배포 저장소",
+      "sublabel": "이미지 · 배포 파일 전달",
+      "pos": [
+        530,
+        500
+      ],
+      "size": [
+        180,
+        78
+      ]
+    },
+    {
+      "id": "ssm",
+      "type": "cloud",
+      "label": "SSM Run Command",
+      "sublabel": "서버 배포 명령 실행",
+      "pos": [
+        790,
+        500
+      ],
+      "size": [
+        200,
+        78
+      ]
+    },
+    {
+      "id": "cloudwatch",
+      "type": "cloud",
+      "label": "CloudWatch",
+      "sublabel": "지표 · 앱 로그 · 대시보드",
+      "pos": [
+        1080,
+        500
+      ],
+      "size": [
+        220,
+        78
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "운영 VPC · 서울 ap-northeast-2",
+      "wraps": [
+        "alb",
+        "api",
+        "data"
+      ],
+      "pad": 30
+    }
+  ],
+  "connections": [
+    {
+      "from": "users",
+      "to": "cloudfront",
+      "variant": "emphasis"
+    },
+    {
+      "from": "cloudfront",
+      "to": "alb",
+      "variant": "emphasis"
+    },
+    {
+      "from": "alb",
+      "to": "api",
+      "variant": "emphasis"
+    },
+    {
+      "from": "api",
+      "to": "data",
+      "variant": "emphasis"
+    },
+    {
+      "from": "cloudfront",
+      "to": "images",
+      "fromSide": "top",
+      "toSide": "bottom",
+      "label": "OAC",
+      "labelAt": [
+        355,
+        195
+      ]
+    },
+    {
+      "from": "api",
+      "to": "parameters",
+      "variant": "security",
+      "fromSide": "top",
+      "toSide": "bottom",
+      "label": "설정 조회",
+      "labelAt": [
+        890,
+        195
+      ]
+    },
+    {
+      "from": "github",
+      "to": "releases",
+      "variant": "dashed",
+      "label": "업로드",
+      "labelAt": [
+        485,
+        539
+      ]
+    },
+    {
+      "from": "ssm",
+      "to": "api",
+      "variant": "dashed",
+      "fromSide": "top",
+      "toSide": "bottom",
+      "label": "배포 실행",
+      "labelAt": [
+        890,
+        425
+      ]
+    },
+    {
+      "from": "api",
+      "to": "cloudwatch",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "left",
+      "via": [
+        [
+          890,
+          365
+        ],
+        [
+          1030,
+          365
+        ],
+        [
+          1030,
+          539
+        ]
+      ],
+      "label": "로그 / 지표",
+      "labelAt": [
+        1110,
+        425
+      ]
+    },
+    {
+      "from": "github",
+      "to": "ssm",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "bottom",
+      "via": [
+        [
+          355,
+          625
+        ],
+        [
+          890,
+          625
+        ]
+      ],
+      "label": "배포 명령",
+      "labelAt": [
+        620,
+        625
+      ]
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "요청 경로",
+      "items": [
+        "CloudFront → VPC origin → 내부 ALB → API A/C",
+        "A는 2a, C는 2c에 배치된 t3.small 서버",
+        "앱은 비공개 RDS와 TLS Redis를 공유"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "저장 · 배포 · 관측",
+      "items": [
+        "이미지 조회는 CloudFront OAC → S3",
+        "이미지 업로드는 API 역할 → S3",
+        "GitHub → SSM 명령 · 서버가 S3 배포 파일 조회"
+      ]
+    },
+    {
+      "dot": "slate",
+      "title": "표시 범위",
+      "items": [
+        "2026-10-22 두 EC2 running / ALB 두 대상 healthy 확인",
+        "실선: 서비스 요청 · 점선: 설정/배포/관측",
+        "S3·Parameter Store·CloudWatch는 VPC 내부 자원이 아님"
+      ]
+    }
+  ]
+}
