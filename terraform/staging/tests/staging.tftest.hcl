@@ -124,6 +124,14 @@ run "dedicated_small_workload" {
     error_message = "Expose non-secret integration outputs and leave hosts idle until preparation."
   }
 }
+run "api_health_matches_existing_production_timing" {
+  command = plan
+  assert {
+    condition     = aws_lb_target_group.stage.deregistration_delay == 30 && one(aws_lb_target_group.stage.health_check).healthy_threshold == 2 && one(aws_lb_target_group.stage.health_check).unhealthy_threshold == 2 && one(aws_lb_target_group.stage.health_check).interval == 30 && one(aws_lb_target_group.stage.health_check).timeout == 5
+    error_message = "Stage must preserve the production health/draining timing inside the deployment driver's wait bounds."
+  }
+}
+
 run "runtime_cannot_modify_control_source_or_locks" {
   command = plan
   assert {

@@ -7,14 +7,20 @@ resource "aws_lb" "stage" {
   tags               = { Name = "getddo-staging-api" }
 }
 resource "aws_lb_target_group" "stage" {
-  name     = "getddo-staging-api"
-  port     = 8080
-  protocol = "HTTP"
-  vpc_id   = data.aws_vpc.existing.id
+  name                 = "getddo-staging-api"
+  target_type          = "instance"
+  deregistration_delay = 30
+  port                 = 8080
+  protocol             = "HTTP"
+  vpc_id               = data.aws_vpc.existing.id
   health_check {
-    path    = "/v3/api-docs"
-    port    = "traffic-port"
-    matcher = "200"
+    path                = "/v3/api-docs"
+    port                = "traffic-port"
+    matcher             = "200"
+    interval            = 30
+    timeout             = 5
+    healthy_threshold   = 2
+    unhealthy_threshold = 2
   }
   tags = { Name = "getddo-staging-api" }
 }

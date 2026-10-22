@@ -5,6 +5,9 @@ on:
     branches: [main]
 permissions:
   contents: read
+concurrency:
+  group: validate-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   terraform:
     name: Terraform 검증
