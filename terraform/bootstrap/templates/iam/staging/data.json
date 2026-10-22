@@ -137,19 +137,6 @@
       }
     },
     {
-      "Sid": "ModifyPrivateStageDatabase",
-      "Effect": "Allow",
-      "Action": [
-        "rds:ModifyDBInstance"
-      ],
-      "Resource": "arn:aws:rds:ap-northeast-2:942466928325:db:getddo-staging-*",
-      "Condition": {
-        "BoolIfExists": {
-          "rds:PubliclyAccessible": "false"
-        }
-      }
-    },
-    {
       "Sid": "RestorePrivateStageDatabase",
       "Effect": "Allow",
       "Action": [

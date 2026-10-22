@@ -56,4 +56,4 @@ aws ssm start-session --profile getddo-dev --region ap-northeast-2 \
   --parameters '{"portNumber":["3000"],"localPortNumber":["3000"]}'
 ```
 
-터널을 유지하고 http://localhost:3000 접속. Grafana 사용자 admin. 초기 비밀번호는 AWS 콘솔 Parameter Store의 전용 SecureString에서 본인이 확인한다. 값은 채팅·이슈·화면 공유에 붙이지 않는다. 이번 검증용 임시 plugin/13000 터널은 영구 설치나 상시 프록시가 아니다.
+터널을 유지하고 http://localhost:3000 접속. Grafana 사용자 admin. 초기 비밀번호는 AWS 콘솔 Parameter Store의 전용 SecureString에서 본인이 확인한다. 값은 채팅·이슈·화면 공유에 붙이지 않는다. 실제 검증에서는 로컬 13000 포트를 사용했고 이미 종료했다. 위 명령은 새 로컬 3000 터널을 여는 예시이며, 임시 plugin과 터널은 영구 설치나 상시 프록시가 아니다.
