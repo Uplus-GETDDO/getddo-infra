@@ -109,7 +109,9 @@ run "staging_operator_boundary" {
     error_message = "Runtime role creation must require a fixed boundary that the operator cannot remove or edit."
   }
   assert {
-    condition     = alltrue([for s in jsondecode(aws_iam_policy.staging["operations"].policy).Statement : !contains(s.Action, "s3:DeleteObject") || length(regexall("terraform.tfstate$", join(",", try(tolist(s.Resource), [tostring(s.Resource)])))) == 0])
+    condition = alltrue([for s in jsondecode(aws_iam_policy.staging["operations"].policy).Statement :
+      !anytrue([for action in s.Action : can(regex("(?i)^${replace(replace(action, "*", ".*"), "?", ".")}$", "s3:DeleteObject"))]) || alltrue([for arn in try(tolist(s.Resource), [tostring(s.Resource)]) : contains(["arn:aws:s3:::getddo-tfstate-942466928325-ap-northeast-2/staging/terraform.tfstate.tflock", "arn:aws:s3:::getddo-deploy-942466928325-ap-northeast-2/staging/*"], arn)])
+    ])
     error_message = "Staging cleanup may release locks and artifacts but must not delete State."
   }
 }

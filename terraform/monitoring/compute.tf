@@ -17,13 +17,15 @@ resource "aws_instance" "monitoring" {
     volume_type           = "gp3"
     volume_size           = 20
     delete_on_termination = true
+    tags                  = { Name = "getddo-prod-monitoring-root" }
   }
   credit_specification {
     cpu_credits = "standard"
   }
-  tags        = { Name = "getddo-prod-monitoring" }
-  volume_tags = { Name = "getddo-prod-monitoring-root" }
+  tags = { Name = "getddo-prod-monitoring" }
   lifecycle {
+    # The provider aggregates tags from attached volumes; the data EBS owns its tags independently.
+    ignore_changes = [volume_tags]
     precondition {
       condition = anytrue([for r in data.aws_route_table.existing.routes :
         r.cidr_block == "0.0.0.0/0" && startswith(coalesce(r.gateway_id, "none"), "igw-")

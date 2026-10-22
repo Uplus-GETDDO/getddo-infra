@@ -170,6 +170,22 @@
           ]
         }
       }
+    },
+    {
+      "Sid": "ProtectExistingTagsFromBulkDeletion",
+      "Effect": "Deny",
+      "Action": [
+        "ec2:DeleteTags"
+      ],
+      "Resource": "arn:aws:ec2:ap-northeast-2:942466928325:*/*",
+      "Condition": {
+        "StringNotEqualsIfExists": {
+          "ec2:ResourceTag/Environment": "staging"
+        },
+        "Null": {
+          "aws:TagKeys": "true"
+        }
+      }
     }
   ]
 }

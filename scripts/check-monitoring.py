@@ -20,7 +20,9 @@ def main():
     # YAML flow-list commas can accidentally turn tmpfs options into extra mount paths.
     services = yaml.safe_load((OBS / 'compose.yaml').read_text())['services']
     for service in services.values():
-        for mount in service.get('tmpfs', []):
+        tmpfs = service.get('tmpfs', [])
+        mounts = [tmpfs] if isinstance(tmpfs, str) else tmpfs
+        for mount in mounts:
             if not isinstance(mount, str) or not mount.split(':', 1)[0].startswith('/'):
                 raise ValueError('Every tmpfs mount must have an absolute container path; quote comma-separated options')
     compose = os.environ.get('COMPOSE_BIN', 'docker')
