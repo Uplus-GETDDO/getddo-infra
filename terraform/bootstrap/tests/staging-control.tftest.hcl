@@ -29,7 +29,8 @@ run "control_trust_and_privilege_scope" {
   assert {
     condition = (
       [for s in jsondecode(aws_iam_policy.staging_control_ui.policy).Statement : s if s.Sid == "CreateStageUiRule"][0].Resource == "arn:aws:elasticloadbalancing:ap-northeast-2:942466928325:listener/app/getddo-dev-api-alb/9e65e06e10492070/96403935397fdc93" &&
-      [for s in jsondecode(aws_iam_policy.staging_control_ui.policy).Statement : s if s.Sid == "RevokeSharedSgEgress"][0].Resource == "arn:aws:ec2:ap-northeast-2:942466928325:security-group/sg-09e12310ecd082ffb"
+      [for s in jsondecode(aws_iam_policy.staging_control_ui.policy).Statement : s if s.Sid == "RevokeSharedSgEgress"][0].Resource == "arn:aws:ec2:ap-northeast-2:942466928325:security-group/sg-09e12310ecd082ffb" &&
+      [for s in jsondecode(aws_iam_policy.staging_control_ui.policy).Statement : s if s.Sid == "StageMonitorSgEgress"][0].Resource == "arn:aws:ec2:ap-northeast-2:942466928325:security-group/sg-04954d4932de5fa69"
     )
     error_message = "Shared UI mutations must be limited to the reviewed listener and SG."
   }

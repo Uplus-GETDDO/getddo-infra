@@ -8,6 +8,11 @@ reviewed administrator credentials; runners never receive those credentials.
 Existing VPC/subnets, shared ALB/listener, persistent monitor and CloudFront are
 read-only dependencies. The workload adds its own priority-30 `/locust` rule,
 Locust target group and one TCP 8089 egress rule on the existing ALB SG.
+It also owns exactly four monitor-SG egress rules: API 9091/9100 and Locust
+9100/9646, with matching Stage-SG ingress from the monitor. Runtime metric
+permissions are restricted to Seoul and GETDDO/API (API role) / CWAgent namespaces.
+The API target health check uses `/v3/api-docs` on traffic port 8080, matching the
+existing application startup check; management/actuator remains on 9091.
 
 The control design uses on-demand Linux CodeBuild outside the VPC and SSM for
 private host operations. No NAT, GitHub token, source connection, new domain or
@@ -135,7 +140,7 @@ terraform -chdir=terraform/bootstrap test
 Coordinator gates: validate rendered policies with Access Analyzer, simulate
 representative allows/denies, review full bootstrap/control plans and quotas,
 then apply. The shared-SG revoke permission is scoped to the exact existing ALB
-SG; EC2 does not support per-rule tag conditions for that action. Live acceptance
+SG and monitor SG; EC2 does not support per-rule tag conditions for that action. Live acceptance
 must cover partial-up failure, terminal disconnect, TTL expiry, collection
 failure, persistent credential metadata preservation and complete residual
 deletion. This code and mock validation alone provide no live acceptance proof.

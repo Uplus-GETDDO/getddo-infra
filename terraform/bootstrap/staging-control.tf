@@ -82,6 +82,10 @@ resource "aws_iam_policy" "staging_control_ui" {
     {
       Sid      = "RevokeSharedSgEgress", Effect = "Allow", Action = "ec2:RevokeSecurityGroupEgress",
       Resource = "arn:aws:ec2:ap-northeast-2:942466928325:security-group/sg-09e12310ecd082ffb"
+    },
+    {
+      Sid      = "StageMonitorSgEgress", Effect = "Allow", Action = ["ec2:AuthorizeSecurityGroupEgress", "ec2:RevokeSecurityGroupEgress"],
+      Resource = "arn:aws:ec2:ap-northeast-2:942466928325:security-group/sg-04954d4932de5fa69"
     }
   ] })
 }

@@ -50,8 +50,8 @@ resource "aws_vpc_security_group_ingress_rule" "app_metrics" {
   security_group_id            = aws_security_group.stage["api"].id
   referenced_security_group_id = var.monitoring_security_group_id
   ip_protocol                  = "tcp"
-  from_port                    = 8080
-  to_port                      = 8080
+  from_port                    = 9091
+  to_port                      = 9091
   tags                         = { Name = "getddo-staging-api-metrics" }
 }
 resource "aws_vpc_security_group_ingress_rule" "locust_metrics" {
@@ -69,4 +69,21 @@ resource "aws_vpc_security_group_ingress_rule" "locust_ui" {
   from_port                    = 8089
   to_port                      = 8089
   tags                         = { Name = "getddo-staging-locust-ui" }
+}
+locals {
+  monitor_egress = {
+    api_app     = { host = "api", port = 9091 }
+    api_node    = { host = "api", port = 9100 }
+    locust_node = { host = "locust", port = 9100 }
+    locust_app  = { host = "locust", port = 9646 }
+  }
+}
+resource "aws_vpc_security_group_egress_rule" "monitor_to_stage" {
+  for_each                     = local.monitor_egress
+  security_group_id            = var.monitoring_security_group_id
+  referenced_security_group_id = aws_security_group.stage[each.value.host].id
+  ip_protocol                  = "tcp"
+  from_port                    = each.value.port
+  to_port                      = each.value.port
+  tags                         = { Name = "getddo-staging-monitor-${each.key}" }
 }

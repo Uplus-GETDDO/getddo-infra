@@ -90,12 +90,30 @@ run "dedicated_small_workload" {
   assert {
     condition = (
       aws_lb.stage.internal && aws_lb_listener.stage.port == 80 && aws_lb_target_group.stage.port == 8080 &&
+      aws_lb_target_group.stage.health_check[0].path == "/v3/api-docs" && aws_lb_target_group.stage.health_check[0].port == "traffic-port" &&
+      aws_lb_target_group.stage.health_check[0].matcher == "200" &&
       aws_lb_listener_rule.locust.priority == 30 && aws_lb_target_group.locust.port == 8089 &&
       aws_vpc_security_group_egress_rule.shared_alb_to_locust.security_group_id == var.shared_alb_security_group_id &&
       aws_vpc_security_group_egress_rule.shared_alb_to_locust.to_port == 8089 &&
+      aws_vpc_security_group_ingress_rule.app_metrics.from_port == 9091 &&
+      length(aws_vpc_security_group_egress_rule.monitor_to_stage) == 4 &&
+      alltrue([for key, rule in aws_vpc_security_group_egress_rule.monitor_to_stage :
+        rule.security_group_id == var.monitoring_security_group_id &&
+        rule.referenced_security_group_id == aws_security_group.stage[local.monitor_egress[key].host].id &&
+        rule.from_port == local.monitor_egress[key].port && rule.to_port == local.monitor_egress[key].port &&
+        rule.cidr_ipv4 == null && rule.ip_protocol == "tcp"
+      ]) &&
       alltrue([for r in aws_vpc_security_group_ingress_rule.stage : r.cidr_ipv4 == null && r.referenced_security_group_id != null])
     )
     error_message = "Use private HTTP and SG references, with only the dedicated priority30 UI rule."
+  }
+  assert {
+    condition = alltrue([for role, policy in aws_iam_role_policy.stage :
+      jsondecode(policy.policy).Statement[4].Action == ["cloudwatch:PutMetricData"] &&
+      jsondecode(policy.policy).Statement[4].Condition.StringEquals["aws:RequestedRegion"] == "ap-northeast-2" &&
+      toset(jsondecode(policy.policy).Statement[4].Condition.StringEquals["cloudwatch:namespace"]) == toset(role == "api" ? ["GETDDO/API", "CWAgent"] : ["CWAgent"])
+    ])
+    error_message = "Runtime identities need only their bounded regional app/agent metric namespaces."
   }
   assert {
     condition = (

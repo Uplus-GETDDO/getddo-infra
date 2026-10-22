@@ -21,7 +21,10 @@ resource "aws_iam_role_policy" "stage" {
       { Effect = "Allow", Action = ["ssm:UpdateInstanceInformation", "ssmmessages:CreateControlChannel", "ssmmessages:CreateDataChannel", "ssmmessages:OpenControlChannel", "ssmmessages:OpenDataChannel"], Resource = "*" },
       { Effect = "Allow", Action = ["ssm:GetParameter", "ssm:GetParameters", "ssm:GetParametersByPath"], Resource = "arn:aws:ssm:ap-northeast-2:942466928325:parameter/getddo/staging/${each.key == "api" ? "app" : "locust"}/*" },
       { Effect = "Allow", Action = ["s3:GetObject", "s3:PutObject"], Resource = "arn:aws:s3:::getddo-deploy-942466928325-ap-northeast-2/staging/*" },
-      { Effect = "Allow", Action = ["logs:CreateLogStream", "logs:PutLogEvents", "logs:DescribeLogStreams"], Resource = "arn:aws:logs:ap-northeast-2:942466928325:log-group:/getddo/staging/*:*" }
+      { Effect = "Allow", Action = ["logs:CreateLogStream", "logs:PutLogEvents", "logs:DescribeLogStreams"], Resource = "arn:aws:logs:ap-northeast-2:942466928325:log-group:/getddo/staging/*:*" },
+      { Effect = "Allow", Action = ["cloudwatch:PutMetricData"], Resource = "*", Condition = { StringEquals = {
+        "cloudwatch:namespace" = each.key == "api" ? ["GETDDO/API", "CWAgent"] : ["CWAgent"], "aws:RequestedRegion" = "ap-northeast-2"
+      } } }
     ]
   })
 }

@@ -11,7 +11,11 @@ resource "aws_lb_target_group" "stage" {
   port     = 8080
   protocol = "HTTP"
   vpc_id   = data.aws_vpc.existing.id
-  health_check { path = "/actuator/health" }
+  health_check {
+    path    = "/v3/api-docs"
+    port    = "traffic-port"
+    matcher = "200"
+  }
   tags = { Name = "getddo-staging-api" }
 }
 resource "aws_lb_listener" "stage" {
