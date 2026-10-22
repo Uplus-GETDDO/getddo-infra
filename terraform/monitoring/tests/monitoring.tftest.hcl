@@ -24,8 +24,8 @@ run "private_and_persistent" {
     error_message = "Size and IMDSv2 must support trusted bridge containers."
   }
   assert {
-    condition     = aws_instance.monitoring.root_block_device[0].tags["Name"] == "getddo-prod-monitoring-root" && aws_ebs_volume.data.tags["Name"] == "getddo-prod-monitoring-data"
-    error_message = "Root-only tags must not overwrite the independently attached monitoring data volume. Runtime no-drift plans verify the provider behavior."
+    condition     = aws_instance.monitoring.volume_tags["Name"] == "getddo-prod-monitoring-root" && aws_ebs_volume.data.tags["Name"] == "getddo-prod-monitoring-data"
+    error_message = "Launch volume tags and independently managed data tags must stay distinct; runtime no-drift plans verify ignore_changes after attachment."
   }
   assert {
     condition     = aws_ebs_volume.data.encrypted && aws_ebs_volume.data.size == 30 && !aws_volume_attachment.data.force_detach
