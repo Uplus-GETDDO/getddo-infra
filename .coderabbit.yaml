@@ -1,0 +1,45 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: ko-KR
+
+reviews:
+  profile: chill
+  request_changes_workflow: false
+  high_level_summary: true
+  collapse_walkthrough: true
+  poem: false
+
+  auto_review:
+    enabled: true
+    drafts: false
+
+  path_instructions:
+    - path: "terraform/**"
+      instructions: |
+        README.md의 운영 아키텍처와 PR의 변경 목적을 먼저 확인하세요.
+        리소스 삭제·교체, backend 및 State 변경, 서비스 중단,
+        IAM 권한 확대, 공개 접근, 비밀값 노출을 우선 검토하세요.
+        기존 dev 표기는 운영 자원 이름이며 별도 개발 환경이 아닙니다.
+        Single-AZ RDS와 단일 Redis는 의도된 구성입니다.
+        이름 변경이나 고가용성 전환을 일률적으로 권하지 말고,
+        이번 변경으로 접근 범위, 장애 영향, 복구 가능성이 악화되면 지적하세요.
+        변경된 값이 IAM 정책, 서버 초기 설치 템플릿, 출력값, 테스트,
+        문서의 사용처와 일치하는지 관련 파일을 함께 확인하세요.
+        mock 테스트 통과를 실제 배포 가능성이나 무중단 보장의 근거로 삼지 마세요.
+        실제 plan이 필요한 삭제·교체 여부는 확인이 필요한 사항으로 구분하세요.
+        PR 템플릿의 실제 plan 결과, State 이전 필요 여부, 적용·복구 계획을 참고하세요.
+        비밀값이나 전체 State·plan JSON을 PR에 첨부하도록 요구하지 마세요.
+        실제 변경으로 발생하는 문제를 근거와 영향과 함께 설명하고,
+        요청과 무관한 리팩터링이나 스타일 제안은 최소화하세요.
+
+    - path: ".github/workflows/**"
+      instructions: |
+        GitHub 토큰 권한, OIDC 신뢰 범위, 비밀값 노출,
+        신뢰할 수 없는 PR 코드의 실행 경로를 검토하세요.
+        AWS와 원격 State에 접근하지 않는 기존 CI 검증 방식을 유지하는지 확인하세요.
+        변경된 검증 명령이 실제로 실행되며 실패가 job 실패로 전파되는지 확인하세요.
+
+    - path: "scripts/**"
+      instructions: |
+        명령 실행 실패의 전파, 임시 파일 정리, 경로 처리를 검토하세요.
+        기존 검증을 우회하거나 누락시키는 변경에 집중하세요.
+        구현을 그대로 반복하는 테스트보다 실제 실패 조건을 검증하는지 확인하세요.
