@@ -26,7 +26,9 @@ case ${1:-} in
     [[ ! -e $config ]] || { echo 'Configuration exists; use guard and the recovery runbook.' >&2; exit 1; }
     device=/dev/disk/by-id/nvme-Amazon_Elastic_Block_Store_${DATA_VOLUME_ID//-/}
     [[ -b $device ]]
-    ! findmnt -rn -S "$device" >/dev/null
+    if findmnt -rn -S "$device" >/dev/null; then
+      echo 'Device is already mounted.' >&2; exit 1
+    fi
     if ! blkid "$device" >/dev/null; then
       [[ ${3:-} == --format-empty ]] || { echo 'Fresh disk requires explicit --format-empty' >&2; exit 1; }
       [[ -z $(wipefs --noheadings --output TYPE "$device") ]]
@@ -36,8 +38,10 @@ case ${1:-} in
     mkdir -p /srv/monitoring
     [[ -z $(ls -A /srv/monitoring) ]]
     uuid=$(blkid -s UUID -o value "$device")
-    ! grep -qE '[[:space:]]/srv/monitoring[[:space:]]' /etc/fstab
-    printf 'UUID=%s /srv/monitoring ext4 defaults 0 2\n' "$uuid" >> /etc/fstab
+    if grep -qE '[[:space:]]/srv/monitoring[[:space:]]' /etc/fstab; then
+      echo '/srv/monitoring already has an fstab entry.' >&2; exit 1
+    fi
+    printf 'UUID=%s /srv/monitoring ext4 defaults,nofail 0 2\n' "$uuid" >> /etc/fstab
     mount /srv/monitoring
     if [[ -e /srv/monitoring/.volume-id ]]; then
       [[ $(cat /srv/monitoring/.volume-id) == "$DATA_VOLUME_ID" ]]

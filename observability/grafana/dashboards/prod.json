@@ -78,7 +78,7 @@
         {
           "refId": "A",
           "expr": "sum by (server,method,status) (rate(http_server_requests_seconds_count{environment=\"prod\",server=~\"$server\"}[2m]))",
-          "legendFormat": "{{server}} {{instance}} {{__name__}}"
+          "legendFormat": "{{server}} {{method}} {{status}}"
         }
       ],
       "fieldConfig": {

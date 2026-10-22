@@ -38,3 +38,11 @@ Sources: [EC2 pricing](https://aws.amazon.com/ec2/pricing/on-demand/), [EBS pric
 ## Unapplied approval boundary
 
 No cloud resource changes, IAM/SG mutations, password registration/read, SendCommand, live installation/restart, merge, auto-merge or deployment occurred. GD-298 must supply the compatible private management listener and histogram metrics. GD-299 must approve and apply reviewed operator policies/resources, securely register the dedicated secret, install the artifacts and verify SSM/IMDSv2/Grafana credentials, actual metrics, reboot/crash persistence and backup restoration. No runtime success is claimed before that work.
+
+## Follow-up review regressions — 2026-10-22
+
+Verified all five CodeRabbit inline findings against `ac5ce86`: panel 2 legend labels, pre-stop backup recovery registration, mounted-device/fstab guards, missing-disk boot recovery and active-service restore guards. Isolated Bash mocks reproduced 38 failing subcases before correction; no host systemctl, Docker, disk or mount commands ran.
+
+- `python3 scripts/validate.py scripts`: 13 tests passed, plus shell/Python syntax and JSON validation. Backup coverage includes 84 combinations of original unit/container state, stop/running-check/archive/checksum failures and recovery failure, preserving original errors and leaving previously stopped services stopped. Restore covers active Docker, active monitoring and neither active with valid/invalid transferred checksums. Preparation covers mounted-device rejection, existing-fstab rejection and the `nofail` entry; existing Docker mount/UUID/volume guards remain covered.
+- Existing checksum-pinned Compose 5.6.1 and promtool 3.15.1: daemon-free Compose validation, Prometheus syntax and all 14 dashboard PromQL expressions passed.
+- Terraform sources are unchanged from the recorded plans; no cloud plan/apply, installation or runtime restart was performed. Latest-head CI is linked in the PR follow-up replies and handoff.
