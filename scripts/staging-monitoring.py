@@ -158,7 +158,7 @@ def atomic(path, value):
         Path(name).unlink(missing_ok=True)
 
 
-def publish(request, directory, dashboards, client=aws):
+def publish(request, directory, dashboards, client=aws, expected_owner=None):
     if not isinstance(request, dict) or set(request) != ({'action','manifest','request_id'} if request.get('action') == 'collect' else {'action','manifest'}):
         raise ValueError('Unexpected monitoring request fields')
     action, manifest = request['action'], request['manifest']
@@ -182,6 +182,8 @@ def publish(request, directory, dashboards, client=aws):
         os.chmod(lock, 0o600)
         fcntl.flock(stream, fcntl.LOCK_EX)
         current = json.loads(owner.read_bytes()) if owner.exists() else None
+        if expected_owner is not None and current != expected_owner:
+            raise ValueError('Stage ownership changed before expiry removal')
         if current and current.get('run_id') != run:
             raise ValueError('Monitoring targets belong to another run')
         if action == 'collect':
@@ -268,8 +270,32 @@ def export_metrics(manifest, dashboards, state, client=aws, opener=None):
     return {'key':key,'sha256':digest}
 
 
+def expire_targets(directory, dashboards):
+    """Detach only an expired local Stage owner, even while S3 is unavailable."""
+    directory = Path(directory)
+    owner = directory/'.staging-owner.json'
+    if directory.is_symlink() or not directory.is_dir() or owner.is_symlink():
+        raise ValueError('Refuse unsafe Stage ownership path')
+    if not owner.exists():
+        return
+    current = json.loads(owner.read_bytes())
+    if not isinstance(current, dict) or set(current) != {'run_id', 'manifest'}:
+        raise ValueError('Invalid Stage ownership')
+    manifest = current['manifest']
+    if (not isinstance(manifest, dict) or run_id(manifest) != current['run_id'] or
+            (manifest.get('account_id'), manifest.get('region'), manifest.get('vpc_id')) != (ACCOUNT, REGION, VPC)):
+        raise ValueError('Foreign Stage ownership')
+    expiry = dt.datetime.fromisoformat(manifest['expires_at'].replace('Z', '+00:00'))
+    if expiry.tzinfo is None:
+        raise ValueError('Stage ownership expiry requires timezone')
+    if expiry <= dt.datetime.now(dt.timezone.utc):
+        publish({'action': 'remove', 'manifest': manifest}, directory, dashboards,
+                expected_owner=current)
+
+
 def watch_once(directory, dashboards, state, client=aws):
     """제한된 S3 설정만 받아 적용하며 임의 명령·코드를 실행하지 않는다."""
+    expire_targets(directory, dashboards)
     state = Path(state)
     if state.is_symlink():
         raise ValueError('Refuse symlink state directory')

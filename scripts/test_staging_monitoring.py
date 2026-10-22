@@ -140,6 +140,85 @@ class StagingMonitoringTests(unittest.TestCase):
             publish.assert_not_called()
             self.assertFalse((Path(name)/'state/status.json').exists())
 
+    def test_expiry_detaches_before_missing_duplicate_or_offline_request(self):
+        for transport in ('missing', 'duplicate', 'offline'):
+            with self.subTest(transport=transport), tempfile.TemporaryDirectory() as name:
+                root = Path(name); data = manifest(); state = root/'state'; state.mkdir()
+                prod = root/'api-targets.json'; prod.write_bytes(b'preserve prod\n')
+                monitor.publish({'action': 'publish', 'manifest': data}, root, root, client_for(data))
+                historical = (root/'staging-cloudwatch.json').read_bytes()
+                owner = json.loads((root/'.staging-owner.json').read_bytes())
+                owner['manifest']['expires_at'] = '2020-01-01T09:00:00+09:00'
+                (root/'.staging-owner.json').write_text(json.dumps(owner))
+                request = {'action': 'publish', 'manifest': data}
+                (state/'applied.json').write_text(json.dumps({
+                    'request_sha256': monitor.hashlib.sha256(monitor.canonical(request)).hexdigest()}))
+                def client(*args):
+                    for filename in monitor.FILES:
+                        self.assertEqual(json.loads((root/filename).read_bytes()), [])
+                    self.assertFalse((root/'.staging-owner.json').exists())
+                    if transport == 'offline':
+                        raise RuntimeError('S3 unavailable')
+                    if args[:2] == ('s3api', 'list-objects-v2'):
+                        return {'Contents': [] if transport == 'missing' else [{'Key': monitor.REQUEST}]}
+                    if args[:2] == ('s3api', 'get-object'):
+                        Path(args[-1]).write_text(json.dumps(request)); return {}
+                    self.fail('expiry must not query AWS instances or upload a receipt')
+                if transport == 'offline':
+                    with self.assertRaisesRegex(RuntimeError, 'S3 unavailable'):
+                        monitor.watch_once(root, root, state, client)
+                else:
+                    monitor.watch_once(root, root, state, client)
+                self.assertEqual(prod.read_bytes(), b'preserve prod\n')
+                self.assertEqual((root/'staging-cloudwatch.json').read_bytes(), historical)
+
+    def test_unexpired_owner_survives_offline_request(self):
+        with tempfile.TemporaryDirectory() as name:
+            root = Path(name); data = manifest()
+            monitor.publish({'action': 'publish', 'manifest': data}, root, root, client_for(data))
+            original = {p: p.read_bytes() for p in root.iterdir() if p.is_file()}
+            with self.assertRaises(RuntimeError):
+                monitor.watch_once(root, root, root/'state', lambda *args: (_ for _ in ()).throw(RuntimeError('offline')))
+            for path, content in original.items():
+                self.assertEqual(path.read_bytes(), content)
+
+    def test_expiry_refuses_foreign_malformed_or_symlink_owner(self):
+        data = manifest(); data['expires_at'] = '2020-01-01T00:00:00Z'
+        valid = {'run_id': data['run_id'], 'manifest': data}
+        cases = [[], {'run_id': data['run_id']}, dict(valid, run_id='another-run'),
+                 dict(valid, manifest=dict(data, account_id='000000000000')),
+                 dict(valid, manifest=dict(data, region='us-east-1')),
+                 dict(valid, manifest=dict(data, vpc_id='foreign-vpc')),
+                 dict(valid, manifest=dict(data, expires_at='2020-01-01T00:00:00')),
+                 dict(valid, manifest=dict(data, expires_at='invalid')), 'invalid-json', 'symlink']
+        for value in cases:
+            with self.subTest(value=value), tempfile.TemporaryDirectory() as name:
+                root = Path(name); owner = root/'.staging-owner.json'
+                for filename in monitor.FILES:
+                    (root/filename).write_bytes(b'["preserve existing"]\n')
+                if value == 'symlink':
+                    victim = root/'prod.json'; victim.write_text(json.dumps(valid)); owner.symlink_to(victim)
+                else:
+                    owner.write_text(value if value == 'invalid-json' else json.dumps(value))
+                before = {p: p.read_bytes() for p in root.iterdir()}
+                with self.assertRaises((ValueError, KeyError, TypeError)):
+                    monitor.watch_once(root, root, root/'state', lambda *args: self.fail('unsafe owner must fail before AWS'))
+                for path, content in before.items():
+                    self.assertEqual(path.read_bytes(), content)
+
+    def test_expiry_refuses_changed_owner_under_remove_lock(self):
+        with tempfile.TemporaryDirectory() as name:
+            root = Path(name); data = manifest()
+            monitor.publish({'action': 'publish', 'manifest': data}, root, root, client_for(data))
+            stale = json.loads((root/'.staging-owner.json').read_bytes())
+            stale['manifest']['expires_at'] = '2020-01-01T00:00:00Z'
+            before = {p: p.read_bytes() for p in root.iterdir()}
+            with self.assertRaisesRegex(ValueError, 'ownership changed'):
+                monitor.publish({'action': 'remove', 'manifest': stale['manifest']}, root, root,
+                                expected_owner=stale)
+            for path, content in before.items():
+                self.assertEqual(path.read_bytes(), content)
+
     def test_watch_success_once_and_ack_matches_input_digest(self):
         data = manifest(); request = {'action': 'publish', 'manifest': data}; uploaded = []
         def client(*args):
