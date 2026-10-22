@@ -18,6 +18,7 @@ class AdapterTests(unittest.TestCase):
     def effects(self):
         effects = object.__new__(Effects)
         effects.root = Path(tempfile.gettempdir())
+        effects.record_execution = Mock()
         effects.clients = {name: Mock() for name in ("s3", "ssm", "codebuild", "scheduler")}
         return effects
 
@@ -140,6 +141,13 @@ class AdapterTests(unittest.TestCase):
     def test_destroy_allows_retained_data_lookups_but_rejects_managed_state(self):
         effects = self.effects()
         effects.terraform = Mock()
+        effects.owner = Mock(return_value=manifest())
+        effects.recover_terraform_lock = Mock()
+        effects.check_remote_state = Mock(return_value=[])
+        cleanup_patch = patch("staging_cleanup.Orphans")
+        cleaner = cleanup_patch.start()
+        self.addCleanup(cleanup_patch.stop)
+        cleaner.return_value.inventory.return_value = []
         effects.command = Mock(return_value=b'{"values":{"root_module":{"resources":[{"mode":"data"}]}}}')
         effects.destroy(manifest())
         effects.command.return_value = b'{"values":{"root_module":{"resources":[{"mode":"managed"}]}}}'
@@ -216,7 +224,7 @@ class AdapterTests(unittest.TestCase):
         app = "/getddo/staging/app/SPRING_DATASOURCE_PASSWORD"
         ssm.get_paginator.return_value.paginate.return_value = [{"Parameters": [
             {"Name": app}, {"Name": "/getddo/staging/locust/admin-password"}]}]
-        ssm.list_tags_for_resource.return_value = {"TagList": [{"Key": "RunId", "Value": value["run_id"]}]}
+        ssm.list_tags_for_resource.return_value = {"TagList": [{"Key": "Environment", "Value": "staging"}, {"Key": "RunId", "Value": value["run_id"]}]}
         effects.delete_app_parameters(value)
         ssm.delete_parameter.assert_called_once_with(Name=app)
 

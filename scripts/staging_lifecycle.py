@@ -58,17 +58,21 @@ def check_owner(lock, manifest):
         raise RuntimeError("Staging singleton lock belongs to another run")
 
 
+def managed_resources(state):
+    def resources(module):
+        yield from module.get("resources", [])
+        for child in module.get("child_modules", []):
+            yield from resources(child)
+    return (r for r in resources(state.get("values", {}).get("root_module", {})) if r.get("mode") == "managed")
+
+
 def check_state_owner(state, run):
     """A stale singleton must never authorize changing another run's Terraform State."""
     values = state.get('values', {})
     recorded = values.get('outputs', {}).get('run_id', {}).get('value')
     if recorded is not None and recorded != run:
         raise RuntimeError('Terraform State belongs to another staging run')
-    def resources(module):
-        yield from module.get('resources', [])
-        for child in module.get('child_modules', []):
-            yield from resources(child)
-    managed = [resource for resource in resources(values.get('root_module', {})) if resource.get('mode') == 'managed']
+    managed = list(managed_resources(state))
     owned = recorded == run
     for resource in managed:
         attributes = resource.get('values', {})
