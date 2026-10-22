@@ -104,9 +104,9 @@ resource "aws_cloudfront_distribution" "api" {
     response_headers_policy_id = data.aws_cloudfront_response_headers_policy.api.id
   }
 
-  # Only these two paths use Grafana's login forwarding; API/image behavior stays intact.
+  # Login UIs preserve viewer Host, Origin and session cookies without caching.
   dynamic "ordered_cache_behavior" {
-    for_each = ["/grafana", "/grafana/*"]
+    for_each = ["/grafana", "/grafana/*", "/locust", "/locust/*"]
     content {
       path_pattern               = ordered_cache_behavior.value
       target_origin_id           = "getddo-dev-api-alb"

@@ -368,3 +368,11 @@ run "grafana_session_forwarding" {
     error_message = "Grafana requires both exact and child paths, no caching, HTTPS, and original viewer Host/cookies for login."
   }
 }
+
+run "locust_session_forwarding" {
+  command = plan
+  assert {
+    condition     = length([for behavior in aws_cloudfront_distribution.api.ordered_cache_behavior : behavior if contains(["/locust", "/locust/*"], behavior.path_pattern) && behavior.target_origin_id == "getddo-dev-api-alb" && behavior.cache_policy_id == "4135ea2d-6df8-44a3-9df3-4b5a84be39ad" && behavior.origin_request_policy_id == "216adef6-5c7f-47e4-b989-5492eafa07d3" && behavior.viewer_protocol_policy == "https-only" && contains(behavior.allowed_methods, "POST")]) == 2
+    error_message = "Locust must preserve login cookies and viewer Host on existing private origin without caching."
+  }
+}

@@ -190,7 +190,7 @@ class Effects(AWS):
     def apply(self, manifest):
         import secrets
         for name in ("SPRING_DATASOURCE_PASSWORD", "SPRING_DATA_REDIS_PASSWORD"):
-            self.app_parameter(manifest, name, secrets.token_hex(32), secret=True)
+            self.app_parameter(manifest, name, secrets.token_hex(16), secret=True)
         self.terraform(manifest, "apply")
         deployment = json.loads(self.command(["terraform", "-chdir=terraform/staging", "output", "-json", "deployment"]))
         if deployment["account_id"] != ACCOUNT or deployment["region"] != REGION:

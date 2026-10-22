@@ -43,3 +43,9 @@ loadtest/results/
 # Generated monitoring targets and AWS-dimension dashboards are operator-local.
 /observability/prometheus/*-targets.json
 /observability/grafana/dashboards/cloudwatch-generated.json
+
+# Stage has no targets until a validated run is published. Keep empty defaults.
+!/observability/prometheus/staging-api-targets.json
+!/observability/prometheus/staging-node-targets.json
+!/observability/prometheus/staging-locust-targets.json
+/observability/grafana/staging-dashboards/staging-cloudwatch.json

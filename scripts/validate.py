@@ -13,7 +13,7 @@ import sys
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
-ROOTS = [ROOT / 'terraform/bootstrap', ROOT / 'terraform/prod', ROOT / 'terraform/monitoring']
+ROOTS = [ROOT / 'terraform/bootstrap', ROOT / 'terraform/prod', ROOT / 'terraform/monitoring', ROOT / 'terraform/staging', ROOT / 'terraform/staging-control']
 
 
 def run(*args, cwd=None, env=None):
@@ -127,7 +127,7 @@ def terraform_checks():
 
 
 def script_checks():
-    for path in (ROOT / "scripts").glob("*.py"):
+    for path in (ROOT / "scripts").rglob("*.py"):
         compile(path.read_text(), str(path), "exec")
     for path in list((ROOT / 'terraform').rglob('*')) + list((ROOT / 'observability').rglob('*')) + list((ROOT / 'scripts').glob('*.sh')):
         if '.terraform' in path.parts:
@@ -138,6 +138,7 @@ def script_checks():
             # Current shell template placeholders are shell-safe insertions; rendering tested by HCL.
             run('bash', '-n', str(path))
     run(sys.executable, "-m", "unittest", "discover", "-s", str(ROOT / "scripts"), "-p", "test_*.py")
+    run(sys.executable, "-m", "unittest", "discover", "-s", str(ROOT / "scripts/tests"), "-p", "test_*.py")
     print("PASS: Python syntax, shell syntax, JSON configuration and unit tests", flush=True)
 
 

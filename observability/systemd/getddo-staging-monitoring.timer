@@ -1,0 +1,11 @@
+[Unit]
+Description=Check Stage monitoring requests every ten seconds
+
+[Timer]
+OnBootSec=20s
+OnUnitInactiveSec=10s
+AccuracySec=1s
+Unit=getddo-staging-monitoring.service
+
+[Install]
+WantedBy=timers.target

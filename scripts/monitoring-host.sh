@@ -83,7 +83,10 @@ case ${1:-} in
     systemctl daemon-reload
     systemctl enable --now docker
     install -m 0644 "$source_dir/observability/systemd/getddo-monitoring.service" /etc/systemd/system/getddo-monitoring.service
+    install -m 0644 "$source_dir/observability/systemd/getddo-staging-monitoring.service" /etc/systemd/system/getddo-staging-monitoring.service
+    install -m 0644 "$source_dir/observability/systemd/getddo-staging-monitoring.timer" /etc/systemd/system/getddo-staging-monitoring.timer
     systemctl daemon-reload
+    systemctl enable --now getddo-staging-monitoring.timer
     echo 'Render targets with the operator role, copy them to observability/prometheus, then enable getddo-monitoring.'
     ;;
   *) echo 'Usage: monitoring-host.sh prepare|guard|secret|install' >&2; exit 2 ;;

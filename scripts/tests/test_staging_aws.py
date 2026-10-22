@@ -37,6 +37,27 @@ class AdapterTests(unittest.TestCase):
         effects.terraform(value, "apply")
         self.assertIn("-lockfile=readonly", calls[0])
 
+    def test_generated_credentials_match_mysql_and_redis_service_constraints(self):
+        effects = self.effects()
+        deployment = {'account_id': '942466928325', 'region': 'ap-northeast-2',
+                      'db_endpoint': 'getddo-staging-mysql.example.ap-northeast-2.rds.amazonaws.com',
+                      'redis_endpoint': 'getddo-staging-redis.example.cache.amazonaws.com'}
+        effects.command = Mock(return_value=json.dumps(deployment).encode())
+        effects.terraform = Mock()
+        effects.record = Mock()
+        effects.app_parameter = Mock()
+        value = manifest()
+        effects.apply(value)
+        generated = {call.args[1]: call.args[2] for call in effects.app_parameter.call_args_list if call.kwargs.get('secret')}
+        password = generated['SPRING_DATASOURCE_PASSWORD']
+        self.assertGreaterEqual(len(password), 8)
+        self.assertLessEqual(len(password), 41)
+        self.assertRegex(password, r'^[A-Za-z0-9]+$')
+        token = generated['SPRING_DATA_REDIS_PASSWORD']
+        self.assertGreaterEqual(len(token), 16)
+        self.assertLessEqual(len(token), 128)
+        self.assertNotEqual(password, token)
+
     def test_destroy_never_reads_passwords(self):
         effects = self.effects()
         effects.command = Mock()

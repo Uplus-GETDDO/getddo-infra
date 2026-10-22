@@ -104,3 +104,7 @@ CI는 Terraform과 스크립트·설정 검사를 두 job으로 실행합니다.
 ## 운영 Grafana
 
 기존 HTTPS 주소의 `/grafana/`에서 기존 admin 계정으로 로그인한다. 비밀번호는 전용 SecureString에서 관리하고 Git에 넣지 않는다. [접속·적용·복구 절차](docs/grafana-https-access.md)를 참고한다.
+
+## 임시 스테이징 부하 테스트
+
+[실행·로그인·Grafana 지표·결과 수집·삭제](docs/staging-loadtest.md)와 [AWS lifecycle 계약](terraform/staging/README.md)을 참고합니다. 운영과 분리한 임시 환경이며, 부하는 준비 완료 뒤 UI/스크립트에서 시작합니다. 실제 AWS 인수 결과는 해당 PR에 기록합니다.

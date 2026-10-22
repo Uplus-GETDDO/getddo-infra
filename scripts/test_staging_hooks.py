@@ -1,0 +1,79 @@
+"""Integration target fencing and result acknowledgement; no live AWS or secrets."""
+import datetime as dt
+import hashlib
+import importlib.util
+import json
+from pathlib import Path
+import types
+import unittest
+from unittest.mock import Mock
+
+ROOT=Path(__file__).resolve().parents[1]
+spec=importlib.util.spec_from_file_location('staging_hooks_common',ROOT/'scripts/staging_hooks/common.py')
+hooks=importlib.util.module_from_spec(spec);spec.loader.exec_module(hooks)
+
+
+def manifest():
+    now=dt.datetime.now(dt.timezone.utc)
+    return {'account_id':'942466928325','region':'ap-northeast-2','deploy_bucket':'getddo-deploy-942466928325-ap-northeast-2',
+        'run_id':'a'*32,'bundle_sha256':'b'*64,'bundle_key':'staging/bundles/'+'b'*64+'.tar.gz','source_sha':'c'*40,
+        'created_at':now.isoformat(),'expires_at':(now+dt.timedelta(minutes=60)).isoformat(),'max_duration_minutes':60,
+        'phase':'ready','public_origin':'https://dzc8oneey9mmx.cloudfront.net',
+        'terraform':{'ami_id':'ami-'+'a'*17,'monitoring_security_group_id':'sg-monitor','shared_alb_security_group_id':'sg-shared'},
+        'hooks':{name:'scripts/staging_hooks/'+name+'.py' for name in ('prepare','collect','detach')},
+        'deployment':{'account_id':'942466928325','region':'ap-northeast-2','vpc_id':'vpc-'+'d'*17,
+            'api_instances':{'a':{'id':'i-'+'1'*17,'private_ip':'10.20.0.10'},'c':{'id':'i-'+'2'*17,'private_ip':'10.20.1.10'}},
+            'locust_instance':{'id':'i-'+'3'*17,'private_ip':'10.20.0.20'}}}
+
+
+def aws_for(data):
+    return types.SimpleNamespace(owner=lambda:{'run_id':data['run_id'],'bundle_sha256':data['bundle_sha256']},
+                                 clients={'ec2':Mock(),'ssm':Mock(),'s3':Mock()})
+
+
+class HookTests(unittest.TestCase):
+    def test_remote_refuses_unknown_production_or_other_run_before_command(self):
+        data=manifest()
+        for failure in ('unknown-id','prod','other-run','wrong-vpc'):
+            with self.subTest(failure=failure):
+                aws=aws_for(data);client=aws.clients['ec2']
+                client.describe_instances.return_value={'Reservations':[{'Instances':[{
+                    'VpcId':'vpc-wrong' if failure=='wrong-vpc' else data['deployment']['vpc_id'],
+                    'State':{'Name':'running'},'Tags':[{'Key':'Environment','Value':'prod' if failure=='prod' else 'staging'},
+                    {'Key':'RunId','Value':'wrong' if failure=='other-run' else data['run_id']}]}]}]}
+                hook=hooks.Hooks(data,aws)
+                target='i-'+'9'*17 if failure=='unknown-id' else data['deployment']['api_instances']['a']['id']
+                with self.assertRaises(ValueError):hook.remote(target,'must not execute')
+                aws.clients['ssm'].send_command.assert_not_called()
+
+    def test_matching_monitor_ack_and_unique_collection_requests(self):
+        data=manifest();aws=aws_for(data);requests=[]
+        def put(**kwargs):requests.append(json.loads(kwargs['Body']))
+        aws.clients['s3'].put_object.side_effect=put
+        def get(key):
+            request=requests[-1]
+            digest=hashlib.sha256(json.dumps(request,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+            return {'run_id':data['run_id'],'request_sha256':digest,'status':'applied'},'etag'
+        aws.get=get;hook=hooks.Hooks(data,aws)
+        hook.monitoring('collect');hook.monitoring('collect')
+        self.assertNotEqual(requests[0]['request_id'],requests[1]['request_id'])
+        self.assertEqual(requests[0]['manifest']['run_id'],data['run_id'])
+        self.assertNotIn('persistent_credentials',requests[0]['manifest'])
+
+    def test_monitor_rejection_is_not_ready(self):
+        data=manifest();aws=aws_for(data);requests=[]
+        aws.clients['s3'].put_object.side_effect=lambda **kw:requests.append(kw['Body'])
+        aws.get=lambda key:({'run_id':data['run_id'],'request_sha256':hashlib.sha256(requests[-1]).hexdigest(),'status':'failed'},'etag')
+        with self.assertRaisesRegex(RuntimeError,'rejected'):hooks.Hooks(data,aws).monitoring('publish')
+
+    def test_runtime_script_requires_immutable_run_prefix_and_digest(self):
+        data=manifest();hook=hooks.Hooks(data,aws_for(data));digest='d'*64
+        with self.assertRaises(ValueError):hook.host_script('staging/other/run.tar.gz',digest,'seed',{})
+        key=f"staging/runs/{data['run_id']}/runtime/{digest}.tar.gz"
+        script=hook.host_script(key,digest,'seed',{})
+        self.assertIn('sha256sum -c -',script)
+        self.assertIn('--expected-bucket-owner 942466928325',script)
+        self.assertNotIn('admin-password',script)
+
+
+if __name__=='__main__':unittest.main()
