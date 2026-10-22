@@ -124,6 +124,31 @@
           "aws:RequestedRegion": "ap-northeast-2"
         }
       }
+    },
+    {
+      "Sid": "ApprovedMonitoringHostOperations",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:StartSession",
+        "ssm:SendCommand"
+      ],
+      "Resource": "arn:aws:ec2:ap-northeast-2:942466928325:instance/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2",
+          "ssm:resourceTag/Name": "getddo-prod-monitoring"
+        }
+      }
+    },
+    {
+      "Sid": "UseMonitoringLocalPortForward",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:GetDocument",
+        "ssm:DescribeDocument",
+        "ssm:StartSession"
+      ],
+      "Resource": "arn:aws:ssm:ap-northeast-2::document/AWS-StartPortForwardingSession"
     }
   ]
 }

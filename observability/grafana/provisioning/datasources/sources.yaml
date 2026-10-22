@@ -1,0 +1,18 @@
+apiVersion: 1
+datasources:
+  - name: Prod Prometheus
+    uid: prod-prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+    jsonData: {timeInterval: 15s}
+  - name: Prod CloudWatch (legacy dimensions)
+    uid: prod-cloudwatch
+    type: cloudwatch
+    editable: false
+    jsonData:
+      authType: default
+      defaultRegion: ap-northeast-2
+      customMetricsNamespaces: GETDDO/API,CWAgent

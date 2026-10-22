@@ -1,0 +1,9 @@
+apiVersion: 1
+providers:
+  - name: Prod
+    orgId: 1
+    folder: Prod
+    type: file
+    disableDeletion: true
+    editable: false
+    options: {path: /etc/grafana/dashboards}

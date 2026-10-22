@@ -1,0 +1,23 @@
+[Unit]
+Description=Prometheus node exporter for GETDDO Prod
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=node_exporter
+Group=node_exporter
+EnvironmentFile=/etc/node_exporter.env
+ExecStart=/usr/local/bin/node_exporter --web.listen-address=${PRIVATE_IP}:9100 --collector.systemd --collector.filesystem.mount-points-exclude=^/(dev|proc|sys|var/lib/docker/.+)($|/)
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+CapabilityBoundingSet=
+
+[Install]
+WantedBy=multi-user.target

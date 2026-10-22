@@ -22,3 +22,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: python3 scripts/validate.py scripts
+      - run: python3 -m pip install PyYAML==6.0.3
+      - run: bash scripts/install-monitoring-check-tools.sh "$RUNNER_TEMP/monitoring-tools"
+      - run: python3 scripts/check-monitoring.py
+        env:
+          PROMTOOL_BIN: ${{ runner.temp }}/monitoring-tools/promtool
+          COMPOSE_BIN: ${{ runner.temp }}/monitoring-tools/docker-compose

@@ -73,6 +73,21 @@
           "aws:RequestedRegion": "ap-northeast-2"
         }
       }
+    },
+    {
+      "Sid": "RegisterDedicatedMonitoringPassword",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:PutParameter",
+        "ssm:AddTagsToResource",
+        "ssm:ListTagsForResource"
+      ],
+      "Resource": "arn:aws:ssm:ap-northeast-2:942466928325:parameter/getddo/monitoring/grafana/admin-password",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
     }
   ]
 }
