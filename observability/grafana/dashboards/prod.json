@@ -37,7 +37,7 @@
         "x": 0,
         "y": 0,
         "w": 24,
-        "h": 3
+        "h": 5
       },
       "options": {
         "mode": "markdown",
@@ -51,7 +51,7 @@
       "type": "stat",
       "gridPos": {
         "x": 0,
-        "y": 3,
+        "y": 5,
         "w": 6,
         "h": 5
       },
@@ -95,7 +95,7 @@
       "type": "stat",
       "gridPos": {
         "x": 6,
-        "y": 3,
+        "y": 5,
         "w": 6,
         "h": 5
       },
@@ -151,7 +151,7 @@
       "type": "stat",
       "gridPos": {
         "x": 12,
-        "y": 3,
+        "y": 5,
         "w": 6,
         "h": 5
       },
@@ -181,6 +181,9 @@
                 "value": null
               }
             ]
+          },
+          "color": {
+            "mode": "thresholds"
           }
         },
         "overrides": []
@@ -206,7 +209,7 @@
       "type": "stat",
       "gridPos": {
         "x": 18,
-        "y": 3,
+        "y": 5,
         "w": 6,
         "h": 5
       },
@@ -244,6 +247,9 @@
                 "value": 90
               }
             ]
+          },
+          "color": {
+            "mode": "thresholds"
           }
         },
         "overrides": []
@@ -269,7 +275,7 @@
       "type": "stat",
       "gridPos": {
         "x": 0,
-        "y": 8,
+        "y": 10,
         "w": 8,
         "h": 4
       },
@@ -328,7 +334,7 @@
       "type": "stat",
       "gridPos": {
         "x": 8,
-        "y": 8,
+        "y": 10,
         "w": 8,
         "h": 4
       },
@@ -366,6 +372,9 @@
                 "value": 90
               }
             ]
+          },
+          "color": {
+            "mode": "thresholds"
           }
         },
         "overrides": []
@@ -391,7 +400,7 @@
       "type": "stat",
       "gridPos": {
         "x": 16,
-        "y": 8,
+        "y": 10,
         "w": 8,
         "h": 4
       },
@@ -429,6 +438,9 @@
                 "value": 90
               }
             ]
+          },
+          "color": {
+            "mode": "thresholds"
           }
         },
         "overrides": []
@@ -454,7 +466,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 0,
-        "y": 12,
+        "y": 14,
         "w": 12,
         "h": 7
       },
@@ -491,6 +503,11 @@
                 "value": 90
               }
             ]
+          },
+          "custom": {
+            "thresholdsStyle": {
+              "mode": "line"
+            }
           }
         },
         "overrides": []
@@ -512,7 +529,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 12,
-        "y": 12,
+        "y": 14,
         "w": 12,
         "h": 7
       },
@@ -549,6 +566,11 @@
                 "value": 90
               }
             ]
+          },
+          "custom": {
+            "thresholdsStyle": {
+              "mode": "line"
+            }
           }
         },
         "overrides": []
@@ -570,7 +592,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 0,
-        "y": 19,
+        "y": 21,
         "w": 12,
         "h": 7
       },
@@ -607,6 +629,11 @@
                 "value": 90
               }
             ]
+          },
+          "custom": {
+            "thresholdsStyle": {
+              "mode": "line"
+            }
           }
         },
         "overrides": []
@@ -628,7 +655,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 12,
-        "y": 19,
+        "y": 21,
         "w": 12,
         "h": 7
       },
@@ -665,6 +692,11 @@
                 "value": 90
               }
             ]
+          },
+          "custom": {
+            "thresholdsStyle": {
+              "mode": "line"
+            }
           }
         },
         "overrides": []
@@ -685,7 +717,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 0,
-        "y": 26,
+        "y": 28,
         "w": 12,
         "h": 8
       },
@@ -718,7 +750,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 12,
-        "y": 26,
+        "y": 28,
         "w": 12,
         "h": 8
       },
@@ -752,7 +784,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 0,
-        "y": 34,
+        "y": 36,
         "w": 12,
         "h": 8
       },
@@ -792,7 +824,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 12,
-        "y": 34,
+        "y": 36,
         "w": 12,
         "h": 8
       },
@@ -827,7 +859,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 0,
-        "y": 42,
+        "y": 44,
         "w": 12,
         "h": 8
       },
@@ -861,7 +893,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 12,
-        "y": 42,
+        "y": 44,
         "w": 12,
         "h": 8
       },
@@ -895,7 +927,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 0,
-        "y": 50,
+        "y": 52,
         "w": 12,
         "h": 8
       },
@@ -928,7 +960,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 12,
-        "y": 50,
+        "y": 52,
         "w": 12,
         "h": 8
       },
@@ -961,7 +993,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 0,
-        "y": 58,
+        "y": 60,
         "w": 12,
         "h": 8
       },
@@ -995,7 +1027,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 12,
-        "y": 58,
+        "y": 60,
         "w": 12,
         "h": 8
       },
@@ -1029,7 +1061,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 0,
-        "y": 66,
+        "y": 68,
         "w": 12,
         "h": 8
       },
@@ -1063,7 +1095,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 12,
-        "y": 66,
+        "y": 68,
         "w": 12,
         "h": 8
       },
@@ -1097,7 +1129,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 0,
-        "y": 74,
+        "y": 76,
         "w": 12,
         "h": 8
       },
@@ -1130,7 +1162,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 12,
-        "y": 74,
+        "y": 76,
         "w": 12,
         "h": 8
       },
