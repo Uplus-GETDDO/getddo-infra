@@ -71,5 +71,30 @@ blkid() { echo expected-uuid; }
         self.assertIn('127.0.0.1:3000:3000', compose)
 
 
+    def test_backup_quiesces_containers_even_if_unit_is_inactive(self):
+        source = (ROOT / 'scripts/monitoring-backup.sh').read_text()
+        block = source.split('  backup)\n', 1)[1].split('    ;;', 1)[0]
+        with tempfile.TemporaryDirectory() as name:
+            work = Path(name)
+            (work / 'observability').mkdir()
+            stubs = """set -euo pipefail
+systemctl() { :; }
+docker() {
+  if [[ $2 == stop ]]; then echo DIRECT_DOCKER_STOP; return 0; fi
+  if [[ $2 == ps && $CONTAINER_RUNNING == yes ]]; then echo container; fi
+  return 0
+}
+tar() { echo OFFLINE_ARCHIVE; touch "$archive"; }
+"""
+            for running in ['yes', 'no']:
+                archive = work / ('backup-' + running)
+                env = dict(os.environ, source_dir=name, archive=str(archive), CONTAINER_RUNNING=running)
+                result = subprocess.run(['bash', '-c', stubs + block], env=env, text=True, capture_output=True)
+                self.assertIn('DIRECT_DOCKER_STOP', result.stdout)
+                self.assertEqual('OFFLINE_ARCHIVE' in result.stdout, running == 'no')
+                self.assertEqual(result.returncode == 0, running == 'no')
+        self.assertIn('! systemctl is-active --quiet docker', source)
+
+
 if __name__ == '__main__':
     unittest.main()

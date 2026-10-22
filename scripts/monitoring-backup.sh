@@ -11,6 +11,10 @@ case ${1:-} in
   backup)
     [[ ! -e $archive && ! -e $archive.sha256 ]]
     systemctl stop getddo-monitoring
+    # A failed/inactive unit can leave Docker-restarted containers alive. Stop and verify them directly.
+    cd "$source_dir/observability"
+    docker compose stop --timeout 60
+    [[ -z $(docker compose ps --quiet --status running) ]]
     trap 'systemctl start getddo-monitoring' EXIT
     # compose stop waits for graceful database shutdown; archive WAL and SQLite together.
     tar -C /srv/monitoring -czf "$archive" prometheus grafana
@@ -19,6 +23,7 @@ case ${1:-} in
     ;;
   restore)
     ! systemctl is-active --quiet getddo-monitoring
+    ! systemctl is-active --quiet docker
     sha256sum -c "$archive.sha256"
     [[ -z $(ls -A /srv/monitoring/prometheus) && -z $(ls -A /srv/monitoring/grafana) ]]
     python3 - "$archive" <<'PY'

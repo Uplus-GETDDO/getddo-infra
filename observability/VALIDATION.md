@@ -23,7 +23,7 @@ Each SHA256 hashes sorted relative filenames plus NUL-delimited contents for roo
 ## Executed verification
 
 - Terraform 1.16.5 / AWS provider 6.68.0: fmt and validate on all three roots; 26 mock runs passed (bootstrap 3, prod 20, monitoring 3).
-- Python/shell/JSON validation and 10 unit tests passed, including absent mount, wrong UUID/volume marker and Docker independent-start guard ordering.
+- Python/shell/JSON validation and 11 unit tests passed, including absent mount, wrong UUID/volume marker and Docker independent-start guard ordering and quiescing containers when their unit is inactive.
 - Checksum-pinned Compose 5.6.1 validates configuration without a daemon; Prometheus/promtool 3.15.1 validates scrape syntax and all 14 dashboard PromQL expressions.
 - Live read-only CloudWatch dashboard conversion produced 23 Grafana panels using current actual dimensions; generated output stays private.
 - AWS Access Analyzer validation of all four modified operator policies returned no findings. This is syntax/security-policy validation, not proof that every future request is authorized.
