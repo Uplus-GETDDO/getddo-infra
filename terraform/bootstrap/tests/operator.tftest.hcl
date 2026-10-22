@@ -117,7 +117,7 @@ run "staging_operator_boundary" {
 run "protect_resource_identity_tags" {
   command = plan
   assert {
-    condition     = length([for s in jsondecode(aws_iam_policy.staging["compute"].policy).Statement : s if s.Effect == "Deny" && contains(s.Action, "ec2:CreateTags") && contains(s.Action, "ec2:DeleteTags") && s.Condition.Null["ec2:CreateAction"] == "true" && s.Condition.StringNotEqualsIfExists["ec2:ResourceTag/Environment"] == "staging"]) == 1
+    condition     = length([for s in jsondecode(aws_iam_policy.staging["compute"].policy).Statement : s if s.Effect == "Deny" && contains(s.Action, "ec2:CreateTags") && contains(s.Action, "ec2:DeleteTags") && contains(s.Condition.StringNotEqualsIfExists["ec2:CreateAction"], "RunInstances") && !contains(s.Condition.StringNotEqualsIfExists["ec2:CreateAction"], "CreateTags") && s.Condition.StringNotEqualsIfExists["ec2:ResourceTag/Environment"] == "staging"]) == 1
     error_message = "Existing production resources must not be relabeled to acquire new staging lifecycle permissions."
   }
 }

@@ -146,11 +146,22 @@
       ],
       "Resource": "arn:aws:ec2:ap-northeast-2:942466928325:*/*",
       "Condition": {
-        "Null": {
-          "ec2:CreateAction": "true"
-        },
         "StringNotEqualsIfExists": {
-          "ec2:ResourceTag/Environment": "staging"
+          "ec2:ResourceTag/Environment": "staging",
+          "ec2:CreateAction": [
+            "RunInstances",
+            "CreateVolume",
+            "CreateSecurityGroup",
+            "CreateNetworkInterface",
+            "CreateSubnet",
+            "CreateVpc",
+            "CreateRouteTable",
+            "CreateInternetGateway",
+            "ImportKeyPair",
+            "CreateInstanceConnectEndpoint",
+            "AuthorizeSecurityGroupIngress",
+            "AuthorizeSecurityGroupEgress"
+          ]
         },
         "ForAnyValue:StringEquals": {
           "aws:TagKeys": [
