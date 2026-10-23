@@ -109,7 +109,7 @@ resource "aws_iam_group_policy" "staging_terminal" {
     { Effect   = "Allow", Action = "ec2-instance-connect:OpenTunnel",
       Resource = "arn:aws:ec2:ap-northeast-2:942466928325:instance-connect-endpoint/eice-0faadf70e78c2a080",
       Condition = { NumericEquals = { "ec2-instance-connect:remotePort" = "22" },
-    IpAddress = { "ec2-instance-connect:privateIpAddress" = ["10.20.0.0/24", "10.20.1.0/24"] } } },
+    IpAddress = { "ec2-instance-connect:privateIpAddress" = ["10.20.0.250/32"] } } },
     { Effect = "Allow", Action = ["ec2:DescribeInstanceConnectEndpoints", "ec2:DescribeKeyPairs"], Resource = "*" }
   ] })
 }

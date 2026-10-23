@@ -168,6 +168,7 @@ run "terminal_access_is_limited_to_endpoint_and_staging_database" {
   command = apply
   assert {
     condition = (
+      aws_instance.locust.private_ip == "10.20.0.250" &&
       aws_instance.locust.key_name == "getddo-dev-api" &&
       aws_vpc_security_group_ingress_rule.locust_ssh.referenced_security_group_id == data.aws_security_group.ssh_endpoint.id &&
       aws_vpc_security_group_ingress_rule.locust_ssh.security_group_id == aws_security_group.stage["locust"].id &&
@@ -184,6 +185,6 @@ run "terminal_access_is_limited_to_endpoint_and_staging_database" {
       aws_vpc_security_group_ingress_rule.stage["locust_db"].from_port == 3306 &&
       aws_vpc_security_group_ingress_rule.stage["locust_db"].to_port == 3306
     )
-    error_message = "Only the existing EICE can SSH to Locust, and terminal SQL reaches only the dedicated Stage DB."
+    error_message = "Only the fixed Stage Locust IP accepts endpoint SSH; terminal SQL reaches only the dedicated Stage DB."
   }
 }

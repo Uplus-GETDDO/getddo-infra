@@ -6,7 +6,6 @@ import fcntl
 import hashlib
 import ipaddress
 import json
-import math
 import os
 from pathlib import Path
 import re
@@ -172,9 +171,8 @@ def publish(request, directory, dashboards, client=aws, expected_owner=None):
     if any(p.is_symlink() or not p.is_dir() for p in (directory, dashboards)):
         raise ValueError('Existing regular monitoring directories required')
     owner = directory / '.staging-owner.json'
-    retired = directory / '.staging-last-owner.json'
     dashboard = dashboards / 'staging-cloudwatch.json'
-    paths = [directory/name for name in FILES]+[owner,retired,dashboard]
+    paths = [directory/name for name in FILES]+[owner,dashboard]
     if any(p.is_symlink() for p in paths):
         raise ValueError('Refuse symlink monitoring targets')
     lock = directory / '.staging-targets.lock'
@@ -189,9 +187,7 @@ def publish(request, directory, dashboards, client=aws, expected_owner=None):
         if current and current.get('run_id') != run:
             raise ValueError('Monitoring targets belong to another run')
         if action == 'collect':
-            registered = current if current is not None else (json.loads(retired.read_bytes()) if retired.exists() else None)
-            if (not isinstance(registered, dict) or set(registered) != {'run_id', 'manifest'}
-                    or registered.get('run_id') != run or registered.get('manifest') != manifest):
+            if not current or current.get('manifest') != manifest:
                 raise ValueError('Export requires the exact previously validated Stage manifest')
             receipt = export_metrics(manifest, dashboards, Path('/run/getddo-staging-monitoring'), client)
             return {'run_id':run, 'action':action, 'status':'applied', 'results':receipt}
@@ -201,12 +197,8 @@ def publish(request, directory, dashboards, client=aws, expected_owner=None):
         try:
             for name,value in values.items():atomic(directory/name,value)
             if rendered is not None:atomic(dashboard,rendered)
-            if action == 'publish':
-                atomic(owner,{'run_id':run,'manifest':manifest})
-                retired.unlink(missing_ok=True)
-            else:
-                if current is not None:atomic(retired,current)
-                owner.unlink(missing_ok=True)
+            if action == 'publish':atomic(owner,{'run_id':run,'manifest':manifest})
+            else:owner.unlink(missing_ok=True)
         except Exception:
             for path,content in backups.items():
                 if content is None:path.unlink(missing_ok=True)
@@ -227,7 +219,7 @@ def export_metrics(manifest, dashboards, state, client=aws, opener=None):
     created = dt.datetime.fromisoformat(manifest['created_at'].replace('Z', '+00:00'))
     expiry = dt.datetime.fromisoformat(manifest['expires_at'].replace('Z', '+00:00'))
     now = dt.datetime.now(dt.timezone.utc)
-    if created.tzinfo is None or expiry.tzinfo is None or not dt.timedelta(0) < expiry-created <= dt.timedelta(hours=96):
+    if created.tzinfo is None or expiry.tzinfo is None or not dt.timedelta(0) < expiry-created <= dt.timedelta(days=1):
         raise ValueError('Bounded Stage export time range required')
     end = min(now, expiry)
     if created >= end:
@@ -249,8 +241,6 @@ def export_metrics(manifest, dashboards, state, client=aws, opener=None):
     dashboards = Path(dashboards)
     sources = [json.loads((dashboards/'overview.json').read_bytes()), cloudwatch_dashboard(manifest)]
     results = []
-    # Include both endpoints within 3600 samples; long runs retain bounded exports.
-    interval_seconds = max(5, math.ceil((end-created).total_seconds() / 3599))
     for dashboard in sources:
         queries = []
         for panel in dashboard['panels']:
@@ -259,9 +249,9 @@ def export_metrics(manifest, dashboards, state, client=aws, opener=None):
             for target in panel['targets']:
                 query = dict(target, datasource=panel.get('datasource',target.get('datasource')),
                              refId=f'Q{len(queries)}', maxDataPoints=3600,
-                             intervalMs=interval_seconds*1000)
+                             intervalMs=max(5000, int((end-created).total_seconds()*1000/3600)))
                 if 'expr' in query:
-                    query.update(expr=query['expr'].replace('$server','.*'), range=True, instant=False, format='time_series', interval=f'{interval_seconds}s')
+                    query.update(expr=query['expr'].replace('$server','.*'), range=True, instant=False, format='time_series', interval='5s')
                 queries.append(query)
         result = post('api/ds/query', {'from':start_ms, 'to':end_ms, 'queries':queries})
         entries = result.get('results',{})

@@ -55,3 +55,17 @@ run "control_trust_and_privilege_scope" {
     error_message = "Shared UI mutations must be limited to the reviewed listener and SG."
   }
 }
+
+run "terminal_tunnel_targets_only_fixed_stage_locust" {
+  command = plan
+  assert {
+    condition = (
+      length([for statement in jsondecode(aws_iam_group_policy.staging_terminal.policy).Statement : statement if statement.Action == "ec2-instance-connect:OpenTunnel"]) == 1 &&
+      one([for statement in jsondecode(aws_iam_group_policy.staging_terminal.policy).Statement : statement if statement.Action == "ec2-instance-connect:OpenTunnel"]).Effect == "Allow" &&
+      one([for statement in jsondecode(aws_iam_group_policy.staging_terminal.policy).Statement : statement if statement.Action == "ec2-instance-connect:OpenTunnel"]).Resource == "arn:aws:ec2:ap-northeast-2:942466928325:instance-connect-endpoint/eice-0faadf70e78c2a080" &&
+      one([for statement in jsondecode(aws_iam_group_policy.staging_terminal.policy).Statement : statement if statement.Action == "ec2-instance-connect:OpenTunnel"]).Condition.NumericEquals["ec2-instance-connect:remotePort"] == "22" &&
+      toset(one([for statement in jsondecode(aws_iam_group_policy.staging_terminal.policy).Statement : statement if statement.Action == "ec2-instance-connect:OpenTunnel"]).Condition.IpAddress["ec2-instance-connect:privateIpAddress"]) == toset(["10.20.0.250/32"])
+    )
+    error_message = "The Stage terminal policy must grant only port 22 on the fixed Locust /32 through the existing endpoint, excluding production subnet ranges."
+  }
+}

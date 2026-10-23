@@ -1,5 +1,6 @@
 """Immutable-bundle staging integration. Never forwards secret-bearing diagnostics."""
 import base64
+import datetime as dt
 import hashlib
 import json
 from pathlib import Path
@@ -213,13 +214,7 @@ printf %s {shlex.quote(payload)} | base64 -d | /opt/getddo-staging-venv/bin/pyth
         receipt=json.loads(output.strip().splitlines()[-1])
         if set(receipt)!={'key','sha256'} or not receipt['key'].startswith(f"staging/runs/{m['run_id']}/results/") or not re.fullmatch(r'[a-f0-9]{64}',receipt['sha256']):
             raise ValueError('Stage report receipt mismatch')
-        monitoring=self.monitoring('collect', timeout=180)
-        # One receipt references both immutable report objects; AWS adapter readback verifies this index.
-        metadata=json.loads((ROOT/'scripts/staging_hooks/backend.json').read_text())
-        index={'run_id':m['run_id'],'infra_source_sha':m['source_sha'],
-               'backend':{key:metadata[key] for key in ('source_sha','image_id','archive_sha256')},
-               'locust':receipt,'monitoring':monitoring['results']}
-        for item in (index['locust'],index['monitoring']):
+        def verify_receipt(item):
             response=self.clients['s3'].get_object(Bucket=m['deploy_bucket'],Key=item['key'])
             digest=hashlib.sha256()
             stream=response['Body']
@@ -229,10 +224,33 @@ printf %s {shlex.quote(payload)} | base64 -d | /opt/getddo-staging-venv/bin/pyth
                 stream.close()
             if digest.hexdigest()!=item['sha256']:
                 raise ValueError('Collected result readback mismatch')
+
+        # Locust reports and personal Python/SQL are mandatory even when the
+        # unchanged shared monitoring exporter cannot archive this time range.
+        verify_receipt(receipt)
+        created=dt.datetime.fromisoformat(m['created_at'])
+        expiry=dt.datetime.fromisoformat(m['expires_at'])
+        reason=('lifetime_exceeds_monitoring_limit' if expiry-created>dt.timedelta(hours=24)
+                else 'expired_monitoring_registration' if expiry<=dt.datetime.now(dt.timezone.utc) else None)
+        metadata=json.loads((ROOT/'scripts/staging_hooks/backend.json').read_text())
+        index={'run_id':m['run_id'],'infra_source_sha':m['source_sha'],
+               'backend':{key:metadata[key] for key in ('source_sha','image_id','archive_sha256')},
+               'locust':receipt}
+        if reason:
+            index.update(collection_status='partial', monitoring={'status':'unavailable','reason':reason})
+        else:
+            # Supported exports remain strict: authentication, ownership and
+            # integrity failures still pause normal deletion.
+            monitoring=self.monitoring('collect', timeout=180)
+            index['monitoring']=monitoring['results']
+            verify_receipt(index['monitoring'])
         payload=json.dumps(index,sort_keys=True,separators=(',',':')).encode()
         digest=hashlib.sha256(payload).hexdigest();key=f"staging/runs/{m['run_id']}/results/index-{digest}.json"
         self.clients['s3'].put_object(Bucket=m['deploy_bucket'],Key=key,Body=payload,ServerSideEncryption='AES256')
-        return {'key':key,'sha256':digest}
+        result={'key':key,'sha256':digest}
+        if reason:
+            result.update(collection_status='partial',monitoring_status='unavailable',monitoring_reason=reason)
+        return result
 
 
 def main(action):
