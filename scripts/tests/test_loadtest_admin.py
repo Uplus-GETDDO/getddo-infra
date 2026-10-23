@@ -118,6 +118,41 @@ class OperatorTests(unittest.TestCase):
         self.assertFalse((self.root / '.archive-pending').exists())
         client.call.assert_called_with('POST', '/control/maintenance', json={'enabled': False})
 
+    def test_retry_archives_original_pending_sources_before_new_collection(self):
+        client = Mock()
+        with patch.object(admin, 'upload_archive', side_effect=RuntimeError('S3 unavailable')):
+            with self.assertRaises(RuntimeError):
+                admin.collect(self.config, client, self.root)
+        marker = self.root / '.archive-pending'
+        original = Path(json.loads(marker.read_text())['directory'])
+        self.file.write_text('value = 2\n')
+        archives = []
+        def archive(config, directory):
+            archives.append(directory)
+            if directory == original:
+                self.assertEqual((directory / 'sources/gyeongju/events.py').read_text(), 'value = 1\n')
+            else:
+                self.assertEqual((directory / 'sources/gyeongju/events.py').read_text(), 'value = 2\n')
+            return {'verified': True}
+        with patch.object(admin, 'upload_archive', side_effect=archive):
+            admin.collect(self.config, client, self.root)
+        self.assertEqual(archives[0], original)
+        self.assertFalse(marker.exists())
+
+    def test_failed_pending_retry_keeps_original_marker_and_does_not_recollect(self):
+        client = Mock()
+        with patch.object(admin, 'upload_archive', side_effect=RuntimeError('S3 unavailable')):
+            with self.assertRaises(RuntimeError):
+                admin.collect(self.config, client, self.root)
+        marker = self.root / '.archive-pending'
+        original_marker = marker.read_bytes()
+        client.reset_mock()
+        with patch.object(admin, 'upload_archive', side_effect=RuntimeError('still unavailable')):
+            with self.assertRaises(RuntimeError):
+                admin.collect(self.config, client, self.root)
+        self.assertEqual(marker.read_bytes(), original_marker)
+        client.collect.assert_not_called()
+
     def test_failed_new_workers_restore_previous_manifest_and_release(self):
         original = self.manifest.read_bytes()
         client = Mock()
@@ -179,6 +214,7 @@ class OperatorTests(unittest.TestCase):
         directory = self.root / 'proof'
         directory.mkdir()
         (directory / 'proof.txt').write_text('expected')
+        (directory / 'receipt.json').write_text('previous attempt receipt')
         objects = {}
         downloads = []
         def aws(config, args):
@@ -195,6 +231,7 @@ class OperatorTests(unittest.TestCase):
                              side_effect=lambda **kw: original(dir=self.root)):
             receipt = admin.upload_archive(self.config, directory)
         self.assertEqual(len(downloads), 2)
+        self.assertNotIn('receipt.json', receipt['sha256'])
         self.assertEqual(receipt['sha256']['proof.txt'], hashlib.sha256(b'expected').hexdigest())
         self.assertTrue(downloads[-1].endswith('/receipt.json'))
 

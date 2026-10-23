@@ -152,6 +152,8 @@ def upload_archive(config, directory):
         if not path.is_file() or path.is_symlink():
             continue
         relative = path.relative_to(directory).as_posix()
+        if relative == 'receipt.json':
+            continue  # A retried archive replaces its receipt, never hashes itself.
         key = prefix + relative
         content = path.read_bytes()
         digest = hashlib.sha256(content).hexdigest()
@@ -179,6 +181,20 @@ def upload_archive(config, directory):
 
 
 def collect(config, client, root=ROOT):
+    pending_path = root / '.archive-pending'
+    if pending_path.exists():
+        if pending_path.is_symlink():
+            raise ValueError('pending archive marker cannot be a symlink')
+        pending = json.loads(pending_path.read_text())
+        previous = Path(pending['directory'])
+        if (pending.get('run_id') != config['run_id'] or previous.is_symlink()
+                or previous.resolve(strict=True).parent != (root / 'reports').resolve()
+                or not previous.is_dir()):
+            raise ValueError('pending archive must belong to this run and report directory')
+        # Preserve the original files before collecting a newer snapshot. This
+        # also recovers partially downloaded snapshots without overwriting them.
+        upload_archive(config, previous)
+        pending_path.unlink()
     directory = root / 'reports' / (datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ-') + uuid.uuid4().hex[:8])
     directory.mkdir(parents=True, mode=0o700)
     # The web collection clears its uncollected flag before S3 is verified.
