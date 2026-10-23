@@ -122,6 +122,104 @@ RUN_ID='up이 반환한 run_id'
 
 환경은 팀 공용으로 동시에 1개만 사용합니다. 다른 팀원이 사용 중이면 기다리며 기존 잠금이나 다른 사람의 run을 임의로 삭제하지 않습니다. `AccessDenied`는 본인 권한 확인, 생성·삭제 실패는 status와 CodeBuild 로그 확인부터 시작합니다. 실패한 채 새 up을 반복하지 말고 아래 복구 절차를 따릅니다.
 
+## 부하 테스트 사용법과 시나리오 관리
+
+### 지금 할 일: 기본 동작 확인
+
+이미 환경을 생성했다면 up을 다시 실행하지 않습니다. `status`의 `ready`와 생성 CodeBuild 성공을 확인한 뒤 아래 순서로 한 번 시험합니다. 다음 값은 기능 확인용 예시이며 성능 합격 기준이 아닙니다.
+
+| 순서 | 할 일 | 확인할 것 |
+| --- | --- | --- |
+| 1 | Locust에 로그인하고 worker 연결 확인 | worker 2개가 준비돼 있어야 시작 가능 |
+| 2 | 아래 입력값으로 START | 사용자 2명·초당 생성 1명·30초 실행 |
+| 3 | Locust Statistics·Failures 확인 | 요청이 실제 발생하고 실패가 있는지 확인. 실패 시 오류 종류 확인 |
+| 4 | Grafana Staging 폴더에서 시험 시간 조회 | 최근 15분에서 시작해 실제 시험 시간으로 좁힘. 요청·실패 수, RPS·p95, worker, API a/c 처리 확인 |
+| 5 | collect 실행 후 완료 확인 | CodeBuild 성공, `phase: collected`, `results` 색인 갱신 |
+| 6 | 계속 시험하거나 destroy 실행 | 반복 전 수집 완료 필요. 최종 종료는 `phase: destroyed`까지 확인 |
+
+| Locust 입력 | 의미 | 첫 시험 입력 |
+| --- | --- | --- |
+| Number of users | 동시 가상 사용자 수. 초당 요청 수나 서로 다른 회원 수가 아님 | `2` |
+| Ramp up | 매초 추가할 가상 사용자 수 | `1` |
+| Host | 부하 대상 Stage 내부 ALB. 현재 값 유지 | 수정하지 않음 |
+| Run time | 부하를 실행할 시간. 서버 수명과 별개 | `30s` |
+| Profile | 현재 구성에서는 비어 있지 않은 값을 거부함. 시나리오 선택 기능이 아님 | 비워둠 |
+
+Locust는 `https://dzc8oneey9mmx.cloudfront.net/locust/`, Grafana는 `https://dzc8oneey9mmx.cloudfront.net/grafana/`입니다. Locust 아이디는 `locust-admin`, 비밀번호는 서울 Parameter Store `/getddo/staging/locust/admin-password`에서 본인 권한으로 확인합니다. Grafana는 기존 계정을 사용합니다.
+
+### 현재 실행되는 시나리오
+
+현재 허용된 시나리오는 **`smoke_events` 하나**입니다.
+
+```text
+합성 USER 헤더를 붙여 GET /api/v1/events?page=1&size=1
+→ HTTP 200, success=true, code=SUCCESS, 목록·페이지 응답 구조 확인
+→ 요청이 끝난 뒤 1~2초 대기
+→ 실행 시간 동안 반복
+```
+
+- 모든 가상 사용자가 준비된 같은 테스트 회원 정보를 사용합니다. 가상 사용자 수를 늘려도 고유 회원 수가 늘지는 않습니다.
+- 이벤트 목록이 비어 있어도 정상 페이지 구조면 성공입니다. 항목 개별 내용·쓰기 업무·DB 사후 정합성을 검증하는 시나리오는 아닙니다.
+- 429, 서버 오류, 기타 HTTP 오류, 응답 구조 오류, 전송 오류는 구분해 실패로 집계합니다. 요청 제한은 해제하지 않습니다.
+- 사용자 수와 대기 시간·응답 시간으로 실제 RPS가 결정됩니다. 사용자 100명이 곧 100 RPS라는 뜻은 아닙니다.
+- 이번 요청 수를 과거 시험의 41건·39건에 맞출 필요는 없습니다. 지연·스케줄링에 따라 달라집니다. 요청 0건을 성공으로 해석하지 않습니다.
+- 웹 UI에서는 인원·증가 속도·시간만 바꿉니다. 시나리오 파일 업로드·선택이나 Profile을 통한 변경은 현재 지원하지 않습니다.
+
+### 반복 시험과 종료
+
+처음 준비한 저장소 루트·Python 환경·본인 AWS 프로필을 사용합니다. `RUN_ID`는 지금 생성한 실행 ID입니다. 작업은 비동기이므로 각 CodeBuild 종료와 manifest 단계를 확인합니다.
+
+```bash
+export AWS_PROFILE=getddo-dev
+RUN_ID='지금 생성한 run_id'
+.venv/bin/python scripts/staging.py collect --run-id "$RUN_ID"
+.venv/bin/python scripts/staging.py status --run-id "$RUN_ID"
+# CodeBuild 성공 + collected + results 갱신 확인
+# 추가 시험: Locust에서 다시 START. 비교하려면 인원·증가 속도·시간 중 하나만 변경
+# 최종 종료: 다른 시험을 시작하지 않은 상태에서 아래 실행
+.venv/bin/python scripts/staging.py destroy --run-id "$RUN_ID"
+.venv/bin/python scripts/staging.py status --run-id "$RUN_ID"
+# CodeBuild 성공 + destroyed 확인까지 반복 조회
+```
+
+**지금 시험을 끝내고 정리할 때는 `destroy`를 바로 실행해도 됩니다.** destroy 자체가 부하 중지·최종 결과 보관과 검증을 수행하므로 별도 collect가 필수는 아닙니다. 추가 시험 전에 이전 결과만 보관하고 싶을 때 collect를 사용합니다.
+
+**Stop·30초 타이머·브라우저 종료는 서버 삭제가 아닙니다.** collect는 부하를 멈추고 Locust CSV/HTML·Grafana 쿼리/시계열을 S3에 보관합니다. destroy는 최종 보관을 다시 검증하고 Stage 자원을 삭제합니다. 결과 저장 실패로 정상 삭제가 중단되면 오류를 복구한 뒤 같은 run으로 재시도합니다. 운영 자원·기존 Grafana·보관 결과는 유지됩니다.
+
+### 다시 START할 때 Unknown error가 뜨면
+
+현재 UI는 시작 요청이 거부됐을 때 구체적인 사유 대신 `An unknown error occurred`로 표시할 수 있습니다. 입력값이 틀렸다고 단정하지 않습니다.
+
+- 이전 시험이 STOPPED인데 미수집 결과가 남으면 서버가 HTTP 409로 다음 시작을 거부합니다. collect를 실행하고 CodeBuild 성공·`collected`·결과 색인 갱신 후 다시 START합니다. 화면의 통계를 내려받는 것만으로 AWS 보관 완료를 대신하지 않습니다.
+- worker 누락·통계 지연, 아직 실행/중지 처리 중인 경우도 409가 됩니다. 수집으로 해결되지 않으면 상태·worker·CodeBuild를 확인합니다.
+- Profile 입력이나 Host 변경은 거부됩니다. Profile은 비우고 Host는 유지합니다. 세션 만료는 다시 로그인합니다.
+- `50명 / Ramp up 1 / 3m` 자체는 유효한 설정입니다. 목표 50명까지 약 50초가 걸리고 실행 시간 3분에는 이 증가 구간도 포함됩니다. 이 값의 성능 합격 여부는 별도 기준으로 판단합니다.
+
+### 업무 시나리오를 추가할 때
+
+먼저 다음 내용을 정합니다. 웹 화면을 조작하는 E2E가 아니라 API 요청 흐름을 Python으로 작성합니다.
+
+| 정할 내용 | 작성할 항목 |
+| --- | --- |
+| 목적·흐름 | 조회/출석/응모 등 시험할 업무와 API 호출 순서 |
+| 사용자·데이터 | 고유 회원 수·등급·권한, 필요한 이벤트/응모권 등 초기 데이터와 준비 방법 |
+| 부하 | 동시 사용자, 증가 속도, 사용자 대기 시간, 실행 시간, 업무별 비중 |
+| 판정 | 기대 업무 결과, 정상 거절과 오류의 구분, 쓰기 후 DB 확인 항목 |
+| 기준·종료 | 목표 RPS·지연·오류율, 시험 중단 조건, 재시험용 데이터 정리 방법 |
+
+Infra 저장소에서 코드와 테스트를 변경하고 리뷰·CI를 거쳐 새 bundle로 반영합니다. 새 bundle을 만들기만 해서는 실행 중 환경이 바뀌지 않습니다. 현재 결과를 수집·삭제 완료한 뒤 새 bundle/config로 환경을 생성합니다.
+
+| 코드 | 변경할 내용 |
+| --- | --- |
+| `loadtest/locustfile.py` | 사용자 동작·호출 순서·대기 시간·업무별 비중 |
+| `loadtest/scenario.py` | 상대 API 경로·응답 검증·명시적 정상 거절 판정 |
+| `loadtest/config.py` | 새 시나리오 허용과 입력 검증 |
+| `scripts/staging_locust_install.py` 및 prepare hook | 시나리오 설정·테스트 사용자/데이터 준비. 별도 회원 풀은 현재 자동 제공되지 않음 |
+| `loadtest/metrics.py`·관측 설정 | 현재 smoke_events에 고정된 업무 지표를 새 시나리오에 맞춰 수정·검증 |
+| `loadtest/tests/` | 호출·판정·로그인/UI/통계 동작 검증. 실제 AWS 시험과 구분 |
+
+시나리오별 정합성·성능 기준은 아직 공통으로 확정돼 있지 않습니다. 기본 조회 시험이 성공했다고 출석·응모·동시성이나 서비스 최대 처리량까지 검증됐다고 기록하지 않습니다. 응답 본문·회원 ID·비밀번호를 요청 이름·로그·Grafana 라벨에 넣지 않습니다.
+
 <a id="준비와-실행"></a>
 
 ## 실행 계약과 복구 참고

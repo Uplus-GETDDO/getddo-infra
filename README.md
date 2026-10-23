@@ -118,6 +118,7 @@ Terraform 검사는 backend를 제거한 임시 복사본과 mock AWS Provider�
 API a/c `t3.small`, 전용 RDS/Redis·내부 ALB, Locust `t3.medium` 한 대(master+worker 2개)를 시험할 때만 생성합니다. 기존 Prod와 상시 Grafana는 유지합니다. 환경 생성·결과 보관·삭제는 스크립트, 실제 부하 시작·중지는 Locust UI 또는 CLI가 맡습니다.
 
 - **처음 실행하는 팀원:** [최초 권한·도구 준비 → CI 이미지/bundle 생성 → 환경 생성·시험·삭제](docs/staging-loadtest.md#팀원이-처음-실행할-때)
+- **환경 생성 후 사용할 때:** [Locust 입력값·현재 시나리오·Grafana 확인·반복 시험·종료·업무 시나리오 추가](docs/staging-loadtest.md#부하-테스트-사용법과-시나리오-관리)
 - [State·실행 소유권·정리 계약과 config 예시](terraform/staging/README.md)
 - [Locust UI/CLI·통계와 검증](loadtest/README.md)
 - [백엔드 Stage 이미지·배포 경로](https://github.com/Uplus-GETDDO/getddo-be/blob/dev/docs/06-runbook/staging-deployment.md)
