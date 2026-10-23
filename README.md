@@ -155,4 +155,4 @@ UI Stop·CLI stop은 부하만 중지합니다. **서버·DB까지 삭제하려�
 - 생성 실패/TTL은 수집을 최대 360초 시도한 뒤 임시 자원 삭제를 우선합니다. 실제 잔여 자원이 없고 영구 로그인 설정이 보존돼야 소유 잠금을 해제합니다.
 - 삭제 대상은 Stage EC2/EBS·전용 DB/Redis·ALB/TG·임시 rule/SG/IAM·앱 설정입니다. Prod·공유 네트워크·monitor/대시보드·S3 결과·Locust 로그인 3개·지속 제어 기반·State/manifest는 보존합니다.
 - Prometheus는 14일/20GB 한도이며 S3 결과 보관 기간은 별도 미정입니다. 임의 S3 자동 만료를 추가하지 않았습니다.
-- 2026-10-23 기능 인수: UI 41건·CLI 39건 모두 실패 0, Grafana 대조·S3 재조회·정상 destroy·독립 잔여 0 확인. 생성 실패 rollback도 실제 검증했습니다. **만료 시각의 전체 workload 삭제 E2E는 미수행**이며 Scheduler 전달 계약·TTL 모의 검증과 구분합니다. 성능 한계/SLO 시험은 아닙니다. 상세 소스 SHA와 근거는 [Infra PR #5](https://github.com/Uplus-GETDDO/getddo-infra/pull/5)에 기록했습니다.
+- 2026-10-23 기능 인수: UI 41건·CLI 39건 모두 실패 0, Grafana 대조·S3 재조회·정상 destroy·독립 잔여 0 확인. 생성 실패 rollback도 실제 검증했습니다. **만료 시각의 전체 workload 삭제 E2E는 미수행**이며 Scheduler 전달 계약·TTL 모의 검증과 구분합니다. 성능 한계/SLO 시험은 아닙니다. 상세 소스 SHA와 근거는 [실환경 검증 상세 기록](https://github.com/Uplus-GETDDO/getddo-infra/pull/5)에 기록했습니다.
