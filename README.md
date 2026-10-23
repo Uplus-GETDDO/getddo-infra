@@ -117,7 +117,7 @@ Terraform 검사는 backend를 제거한 임시 복사본과 mock AWS Provider�
 
 API a/c `t3.small`, 전용 RDS/Redis·내부 ALB, Locust `t3.medium` 한 대(master+worker 2개)를 시험할 때만 생성합니다. 기존 Prod와 상시 Grafana는 유지합니다. 환경 생성·결과 보관·삭제는 스크립트, 실제 부하 시작·중지는 Locust UI 또는 CLI가 맡습니다.
 
-- [생성 준비·bundle/config·로그인·Grafana·결과 조회·복구 절차](docs/staging-loadtest.md)
+- **처음 실행하는 팀원:** [최초 권한·도구 준비 → CI 이미지/bundle 생성 → 환경 생성·시험·삭제](docs/staging-loadtest.md#팀원이-처음-실행할-때)
 - [State·실행 소유권·정리 계약과 config 예시](terraform/staging/README.md)
 - [Locust UI/CLI·통계와 검증](loadtest/README.md)
 - [백엔드 Stage 이미지·배포 경로](https://github.com/Uplus-GETDDO/getddo-be/blob/dev/docs/06-runbook/staging-deployment.md)
@@ -136,7 +136,7 @@ AWS_PROFILE=getddo-dev /tmp/getddo-infra-venv/bin/python scripts/staging.py dest
 AWS_PROFILE=getddo-dev /tmp/getddo-infra-venv/bin/python scripts/staging.py status --run-id RUN_ID
 ```
 
-최대 수명은 15~1440분에서 필수 입력하며, 120분은 예시입니다. 생성 요청부터 시간을 계산하고 만료 시 정리를 시작합니다. up의 `run_id/build_id/expires_at` 반환 후에는 터미널을 닫아도 AWS 실행이 계속됩니다. CodeBuild 성공과 manifest의 `ready`를 확인한 뒤 부하를 시작하며 up이 자동으로 부하를 주지는 않습니다. 고정 SDK와 AWS CLI 로그인 연결은 [credential_process 안내](docs/staging-loadtest.md#준비와-실행)를 따릅니다.
+최대 수명은 15~1440분에서 필수 입력하며, 120분은 예시입니다. 생성 요청부터 시간을 계산하고 만료 시 정리를 시작합니다. up의 `run_id/build_id/expires_at` 반환 후에는 터미널을 닫아도 AWS 실행이 계속됩니다. CodeBuild 성공과 manifest의 `ready`를 확인한 뒤 부하를 시작하며 up이 자동으로 부하를 주지는 않습니다. 고정 SDK와 AWS CLI 로그인 연결은 [본인 AWS 인증 설정](docs/staging-loadtest.md#1-최초-준비와-권한)를 따릅니다.
 
 ### 접속·관측
 
