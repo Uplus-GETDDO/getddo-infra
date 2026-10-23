@@ -7,10 +7,10 @@ locals {
     phases = {
       install = { "runtime-versions" = { python = "3.12" }, commands = [
         "set -eu",
-        "curl -fsSLo /tmp/terraform.zip https://releases.hashicorp.com/terraform/1.16.0/terraform_1.16.0_linux_amd64.zip",
+        "curl -fsSLo /tmp/terraform_1.16.0_linux_amd64.zip https://releases.hashicorp.com/terraform/1.16.0/terraform_1.16.0_linux_amd64.zip",
         "curl -fsSLo /tmp/terraform.sha https://releases.hashicorp.com/terraform/1.16.0/terraform_1.16.0_SHA256SUMS",
         "cd /tmp && grep ' terraform_1.16.0_linux_amd64.zip$' terraform.sha | sha256sum -c -",
-        "unzip -o /tmp/terraform.zip -d /usr/local/bin",
+        "unzip -o /tmp/terraform_1.16.0_linux_amd64.zip -d /usr/local/bin",
         "python3 -m pip install --quiet boto3==1.40.59",
       ] }
       build = { commands = ["printf '%s' '${base64encode(file("${path.module}/bootstrap.py"))}' | base64 -d > /tmp/staging-bootstrap.py", "python3 /tmp/staging-bootstrap.py"] }

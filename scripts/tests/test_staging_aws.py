@@ -154,6 +154,18 @@ class AdapterTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             effects.destroy(manifest())
 
+    def test_guard_uses_scheduler_universal_target_request_casing(self):
+        effects = self.effects()
+        effects.verify_guard = Mock()
+        value = manifest()
+        effects.guard(value)
+        target = effects.clients["scheduler"].create_schedule.call_args.kwargs["Target"]
+        self.assertEqual(json.loads(target["Input"]), {
+            "ProjectName": "getddo-staging-cleanup", "EnvironmentVariablesOverride": [
+                {"Name": "RUN_ID", "Value": value["run_id"], "Type": "PLAINTEXT"},
+                {"Name": "ACTION", "Value": "ttl", "Type": "PLAINTEXT"}]})
+        effects.verify_guard.assert_called_once_with(value)
+
     def test_guard_rejects_wrong_deadline_role_or_target(self):
         effects = self.effects()
         from staging_aws import CLEANUP_PROJECT, SCHEDULE_ROLE
@@ -163,8 +175,8 @@ class AdapterTests(unittest.TestCase):
         guard = {"State": "ENABLED", "ScheduleExpressionTimezone": "UTC", "FlexibleTimeWindow": {"Mode": "OFF"},
                  "ScheduleExpression": f"at({deadline.strftime('%Y-%m-%dT%H:%M:%S')})",
                  "Target": {"RoleArn": SCHEDULE_ROLE, "Arn": "arn:aws:scheduler:::aws-sdk:codebuild:startBuild",
-                    "Input": json.dumps({"projectName": CLEANUP_PROJECT, "environmentVariablesOverride": [
-                        {"name": "RUN_ID", "value": value["run_id"]}, {"name": "ACTION", "value": "ttl"}]})}}
+                    "Input": json.dumps({"ProjectName": CLEANUP_PROJECT, "EnvironmentVariablesOverride": [
+                        {"Name": "RUN_ID", "Value": value["run_id"]}, {"Name": "ACTION", "Value": "ttl"}]})}}
         effects.clients["scheduler"].get_schedule.return_value = guard
         effects.verify_guard(value)
         for key in ("State", "ScheduleExpression", "ScheduleExpressionTimezone"):
@@ -173,6 +185,12 @@ class AdapterTests(unittest.TestCase):
             with self.subTest(key=key), self.assertRaises(RuntimeError):
                 effects.verify_guard(value)
             guard[key] = original
+        valid_input = guard["Target"]["Input"]
+        guard["Target"]["Input"] = json.dumps({"projectName": CLEANUP_PROJECT,
+            "environmentVariablesOverride": [{"name": "RUN_ID", "value": value["run_id"]}]})
+        with self.assertRaises(RuntimeError):
+            effects.verify_guard(value)
+        guard["Target"]["Input"] = valid_input
         guard["Target"]["RoleArn"] = "arn:aws:iam::942466928325:role/prod"
         with self.assertRaises(RuntimeError):
             effects.verify_guard(value)

@@ -100,22 +100,22 @@ class AWS:
             Name=name, GroupName=GROUP, ScheduleExpression=f"at({expiry.strftime('%Y-%m-%dT%H:%M:%S')})",
             ScheduleExpressionTimezone="UTC", FlexibleTimeWindow={"Mode": "OFF"}, ActionAfterCompletion="DELETE",
             Target={"Arn": "arn:aws:scheduler:::aws-sdk:codebuild:startBuild", "RoleArn": SCHEDULE_ROLE,
-                    "Input": json.dumps({"projectName": CLEANUP_PROJECT, "environmentVariablesOverride": [
-                        {"name": "RUN_ID", "value": manifest["run_id"], "type": "PLAINTEXT"},
-                        {"name": "ACTION", "value": "ttl", "type": "PLAINTEXT"}]}),
+                    "Input": json.dumps({"ProjectName": CLEANUP_PROJECT, "EnvironmentVariablesOverride": [
+                        {"Name": "RUN_ID", "Value": manifest["run_id"], "Type": "PLAINTEXT"},
+                        {"Name": "ACTION", "Value": "ttl", "Type": "PLAINTEXT"}]}),
                     "RetryPolicy": {"MaximumEventAgeInSeconds": 86400, "MaximumRetryAttempts": 185}})
         self.verify_guard(manifest)
 
     def verify_guard(self, manifest):
         guard = self.clients["scheduler"].get_schedule(Name="expiry-" + manifest["run_id"], GroupName=GROUP)
         payload = json.loads(guard["Target"]["Input"])
-        values = {v["name"]: v["value"] for v in payload.get("environmentVariablesOverride", [])}
+        values = {v.get("Name"): v.get("Value") for v in payload.get("EnvironmentVariablesOverride", [])}
         deadline = dt.datetime.fromisoformat(manifest["expires_at"]).astimezone(dt.timezone.utc)
         if (guard["State"] != "ENABLED" or guard.get("ScheduleExpressionTimezone") != "UTC" or
                 guard.get("FlexibleTimeWindow", {}).get("Mode") != "OFF" or
                 guard["Target"]["RoleArn"] != SCHEDULE_ROLE or
                 guard["Target"]["Arn"] != "arn:aws:scheduler:::aws-sdk:codebuild:startBuild" or
-                payload["projectName"] != CLEANUP_PROJECT or values.get("RUN_ID") != manifest["run_id"] or
+                payload.get("ProjectName") != CLEANUP_PROJECT or values.get("RUN_ID") != manifest["run_id"] or
                 values.get("ACTION") != "ttl" or
                 guard["ScheduleExpression"] != f"at({deadline.strftime('%Y-%m-%dT%H:%M:%S')})" or
                 deadline <= dt.datetime.now(dt.timezone.utc)):
