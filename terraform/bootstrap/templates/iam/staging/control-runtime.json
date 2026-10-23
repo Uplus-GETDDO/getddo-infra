@@ -107,10 +107,11 @@
       }
     },
     {
-      "Sid": "ExistingVpcForStageSecurityGroup",
+      "Sid": "StageVpc",
       "Effect": "Allow",
       "Action": [
-        "ec2:CreateSecurityGroup"
+        "ec2:CreateSecurityGroup",
+        "ec2:DescribeVpcAttribute"
       ],
       "Resource": "arn:aws:ec2:ap-northeast-2:942466928325:vpc/vpc-0fcf829db1692b713"
     },
@@ -279,7 +280,7 @@
       "Effect": "Allow",
       "Action": "codebuild:BatchGetBuilds",
       "Resource": "arn:aws:codebuild:ap-northeast-2:942466928325:project/getddo-staging-cleanup",
-      "Sid": "ReadCleanupExecution"
+      "Sid": "CleanupExecution"
     }
   ]
 }
