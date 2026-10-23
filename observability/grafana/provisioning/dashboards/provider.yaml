@@ -7,3 +7,10 @@ providers:
     disableDeletion: true
     editable: false
     options: {path: /etc/grafana/dashboards}
+  - name: Staging
+    orgId: 1
+    folder: Staging
+    type: file
+    disableDeletion: true
+    editable: false
+    options: {path: /etc/grafana/staging-dashboards}

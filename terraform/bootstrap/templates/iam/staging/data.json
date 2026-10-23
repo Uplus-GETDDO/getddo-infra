@@ -153,6 +153,20 @@
           "rds:PubliclyAccessible": "false"
         }
       }
+    },
+    {
+      "Sid": "DeleteOwnedOrphanRedisMember",
+      "Effect": "Allow",
+      "Action": [
+        "elasticache:DeleteCacheCluster"
+      ],
+      "Resource": "arn:aws:elasticache:ap-northeast-2:942466928325:cluster:getddo-staging-*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2",
+          "aws:ResourceTag/Environment": "staging"
+        }
+      }
     }
   ]
 }

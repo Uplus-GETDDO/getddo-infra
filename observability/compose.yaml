@@ -57,6 +57,7 @@ services:
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
       - ./grafana/dashboards:/etc/grafana/dashboards:ro
+      - ./grafana/staging-dashboards:/etc/grafana/staging-dashboards:ro
       - type: bind
         source: /srv/monitoring/grafana
         target: /var/lib/grafana

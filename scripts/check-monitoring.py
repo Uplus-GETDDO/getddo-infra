@@ -39,7 +39,7 @@ def main():
     # Rule checking parses every provisioned PromQL expression, including template filters.
     with tempfile.TemporaryDirectory(prefix='getddo-promql-') as name:
         rules = []
-        for dashboard in (OBS / 'grafana/dashboards').glob('*.json'):
+        for dashboard in list((OBS / 'grafana/dashboards').glob('*.json')) + list((OBS / 'grafana/staging-dashboards').glob('*.json')):
             for panel in json.loads(dashboard.read_text())['panels']:
                 if panel.get('type') == 'text':
                     continue
@@ -49,14 +49,18 @@ def main():
         path = Path(name) / 'rules.yml'
         path.write_text(yaml.safe_dump({'groups': [{'name': 'validation', 'rules': rules}]}))
         subprocess.run([promtool, 'check', 'rules', str(path)], check=True)
-        fixture = OBS / 'grafana/query-tests.yml'
-        tests = yaml.safe_load(fixture.read_text())
         expressions = {rule['expr'] for rule in rules}
-        for case in tests['tests']:
-            for test in case['promql_expr_test']:
-                if test['expr'] not in expressions:
-                    raise ValueError('Query scenario no longer matches a provisioned dashboard expression')
-        subprocess.run([promtool, 'test', 'rules', str(fixture)], check=True)
+        for fixture in [OBS / 'grafana/query-tests.yml', OBS / 'grafana/staging-query-tests.yml']:
+            if not fixture.exists():
+                if fixture.name == 'staging-query-tests.yml':
+                    continue
+                raise FileNotFoundError(fixture)
+            tests = yaml.safe_load(fixture.read_text())
+            for case in tests['tests']:
+                for test in case['promql_expr_test']:
+                    if test['expr'] not in expressions:
+                        raise ValueError('Query scenario no longer matches a provisioned dashboard expression')
+            subprocess.run([promtool, 'test', 'rules', str(fixture)], check=True)
     print('PASS: Compose, monitoring YAML/JSON, Prometheus configuration and dashboard PromQL')
 
 

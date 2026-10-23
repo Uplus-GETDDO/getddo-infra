@@ -65,3 +65,34 @@ resource "aws_iam_role_policy" "read" {
     ]
   })
 }
+
+# Monitor consumes data-only requests; the Stage controller cannot execute on this host.
+resource "aws_iam_role_policy" "staging_targets" {
+  name = "staging-monitoring-targets"
+  role = aws_iam_role.monitoring.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow", Action = "s3:GetObject"
+        Resource = "arn:aws:s3:::getddo-deploy-942466928325-ap-northeast-2/staging/monitoring/request.json"
+      },
+      {
+        Effect = "Allow", Action = "s3:PutObject"
+        Resource = [
+          "arn:aws:s3:::getddo-deploy-942466928325-ap-northeast-2/staging/monitoring/status.json",
+          "arn:aws:s3:::getddo-deploy-942466928325-ap-northeast-2/staging/runs/*/results/monitoring-*.json.gz"
+        ]
+      },
+      {
+        Effect    = "Allow", Action = "s3:ListBucket"
+        Resource  = "arn:aws:s3:::getddo-deploy-942466928325-ap-northeast-2"
+        Condition = { StringEquals = { "s3:prefix" = "staging/monitoring/request.json" } }
+      },
+      {
+        Effect    = "Allow", Action = "ec2:DescribeInstances", Resource = "*"
+        Condition = { StringEquals = { "aws:RequestedRegion" = "ap-northeast-2" } }
+      }
+    ]
+  })
+}

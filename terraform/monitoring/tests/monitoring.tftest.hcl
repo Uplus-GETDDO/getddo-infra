@@ -88,3 +88,15 @@ run "grafana_private_alb_path" {
     error_message = "Only the Grafana subpath may route to the monitoring instance."
   }
 }
+
+run "stage_data_only_monitoring_requests" {
+  command = plan
+  assert {
+    condition     = length([for s in jsondecode(aws_iam_role_policy.staging_targets.policy).Statement : s if s.Action == "s3:GetObject" && s.Resource == "arn:aws:s3:::getddo-deploy-942466928325-ap-northeast-2/staging/monitoring/request.json"]) == 1
+    error_message = "Monitor may consume only the fixed Stage monitoring request."
+  }
+  assert {
+    condition     = length([for s in jsondecode(aws_iam_role_policy.staging_targets.policy).Statement : s if s.Action == "s3:PutObject" && try(contains(s.Resource, "arn:aws:s3:::getddo-deploy-942466928325-ap-northeast-2/staging/monitoring/status.json"), false) && length(s.Resource) == 2]) == 1
+    error_message = "Monitor may acknowledge only the fixed Stage monitoring status object."
+  }
+}

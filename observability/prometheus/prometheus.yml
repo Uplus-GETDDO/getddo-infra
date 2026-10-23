@@ -26,3 +26,40 @@ scrape_configs:
     static_configs:
       - targets: [localhost:9090]
         labels: {environment: prod, server: monitoring}
+  - job_name: staging-api
+    scrape_interval: 5s
+    scrape_timeout: 4s
+    metrics_path: /actuator/prometheus
+    sample_limit: 50000
+    target_limit: 2
+    label_limit: 64
+    label_name_length_limit: 128
+    label_value_length_limit: 2048
+    body_size_limit: 16MB
+    file_sd_configs:
+      - files: [/etc/prometheus/staging-api-targets.json]
+        refresh_interval: 5s
+  - job_name: staging-node
+    scrape_interval: 5s
+    scrape_timeout: 4s
+    sample_limit: 10000
+    target_limit: 3
+    label_limit: 64
+    label_name_length_limit: 128
+    label_value_length_limit: 2048
+    body_size_limit: 8MB
+    file_sd_configs:
+      - files: [/etc/prometheus/staging-node-targets.json]
+        refresh_interval: 5s
+  - job_name: staging-locust
+    scrape_interval: 5s
+    scrape_timeout: 4s
+    sample_limit: 10000
+    target_limit: 1
+    label_limit: 64
+    label_name_length_limit: 128
+    label_value_length_limit: 2048
+    body_size_limit: 8MB
+    file_sd_configs:
+      - files: [/etc/prometheus/staging-locust-targets.json]
+        refresh_interval: 5s

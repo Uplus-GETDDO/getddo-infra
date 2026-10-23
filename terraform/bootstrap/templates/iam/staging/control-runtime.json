@@ -1,0 +1,286 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ReadNetworkAndInventory",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DescribeImages",
+        "ec2:DescribeVpcs",
+        "ec2:DescribeSubnets",
+        "ec2:DescribeSecurityGroups",
+        "ec2:DescribeSecurityGroupRules",
+        "ec2:DescribeInstances",
+        "ec2:DescribeInstanceAttribute",
+        "ec2:DescribeInstanceTypes",
+        "ec2:DescribeVolumes",
+        "ec2:DescribeTags",
+        "ec2:DescribeNetworkInterfaces",
+        "ec2:DescribeInstanceCreditSpecifications",
+        "elasticloadbalancing:DescribeLoadBalancers",
+        "elasticloadbalancing:DescribeLoadBalancerAttributes",
+        "elasticloadbalancing:DescribeTargetGroups",
+        "elasticloadbalancing:DescribeTargetGroupAttributes",
+        "elasticloadbalancing:DescribeTargetHealth",
+        "elasticloadbalancing:DescribeListeners",
+        "elasticloadbalancing:DescribeListenerAttributes",
+        "elasticloadbalancing:DescribeRules",
+        "elasticloadbalancing:DescribeTags",
+        "rds:DescribeDBInstances",
+        "rds:DescribeDBSubnetGroups",
+        "rds:ListTagsForResource",
+        "elasticache:DescribeReplicationGroups",
+        "elasticache:DescribeCacheClusters",
+        "elasticache:DescribeCacheSubnetGroups",
+        "elasticache:DescribeCacheParameterGroups",
+        "elasticache:ListTagsForResource",
+        "ssm:DescribeInstanceInformation",
+        "ssm:GetCommandInvocation",
+        "ssm:DescribeParameters",
+        "logs:DescribeLogGroups"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "ReadStageRuntimeInventory",
+      "Effect": "Allow",
+      "Action": [
+        "iam:ListRoles",
+        "iam:ListInstanceProfiles"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "StateBucketMetadata",
+      "Effect": "Allow",
+      "Action": [
+        "s3:ListBucket"
+      ],
+      "Resource": "arn:aws:s3:::getddo-tfstate-942466928325-ap-northeast-2",
+      "Condition": {
+        "StringLike": {
+          "s3:prefix": [
+            "staging/*",
+            "staging-control/*"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "DeployBucketMetadata",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetBucketLocation"
+      ],
+      "Resource": "arn:aws:s3:::getddo-deploy-942466928325-ap-northeast-2"
+    },
+    {
+      "Sid": "LaunchExistingNetworkDependencies",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:RunInstances"
+      ],
+      "Resource": [
+        "arn:aws:ec2:ap-northeast-2::image/ami-*",
+        "arn:aws:ec2:ap-northeast-2:942466928325:subnet/subnet-0af561003ffe9e5e4",
+        "arn:aws:ec2:ap-northeast-2:942466928325:subnet/subnet-036efc87ab67e6f91",
+        "arn:aws:ec2:ap-northeast-2:942466928325:network-interface/*",
+        "arn:aws:ec2:ap-northeast-2:942466928325:security-group/*"
+      ]
+    },
+    {
+      "Sid": "CreateStageSecurityGroup",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:CreateSecurityGroup"
+      ],
+      "Resource": "arn:aws:ec2:ap-northeast-2:942466928325:security-group/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestTag/Environment": "staging"
+        }
+      }
+    },
+    {
+      "Sid": "StageVpc",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:CreateSecurityGroup",
+        "ec2:DescribeVpcAttribute"
+      ],
+      "Resource": "arn:aws:ec2:ap-northeast-2:942466928325:vpc/vpc-0fcf829db1692b713"
+    },
+    {
+      "Sid": "StageSecurityRules",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:AuthorizeSecurityGroupIngress",
+        "ec2:AuthorizeSecurityGroupEgress",
+        "ec2:RevokeSecurityGroupIngress",
+        "ec2:RevokeSecurityGroupEgress"
+      ],
+      "Resource": "arn:aws:ec2:ap-northeast-2:942466928325:security-group/*",
+      "Condition": {
+        "StringEquals": {
+          "ec2:ResourceTag/Environment": "staging"
+        }
+      }
+    },
+    {
+      "Sid": "StageRuleTags",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:CreateTags",
+        "ec2:DeleteTags"
+      ],
+      "Resource": [
+        "arn:aws:ec2:ap-northeast-2:942466928325:security-group-rule/*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "StageResourceTags",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:CreateTags",
+        "ec2:DeleteTags"
+      ],
+      "Resource": [
+        "arn:aws:ec2:ap-northeast-2:942466928325:instance/*",
+        "arn:aws:ec2:ap-northeast-2:942466928325:volume/*",
+        "arn:aws:ec2:ap-northeast-2:942466928325:security-group/*",
+        "arn:aws:ec2:ap-northeast-2:942466928325:network-interface/*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "ec2:ResourceTag/Environment": "staging"
+        }
+      }
+    },
+    {
+      "Sid": "TagsAtCreation",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:CreateTags"
+      ],
+      "Resource": [
+        "arn:aws:ec2:ap-northeast-2:942466928325:instance/*",
+        "arn:aws:ec2:ap-northeast-2:942466928325:volume/*",
+        "arn:aws:ec2:ap-northeast-2:942466928325:security-group/*",
+        "arn:aws:ec2:ap-northeast-2:942466928325:network-interface/*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "ec2:CreateAction": [
+            "RunInstances",
+            "CreateSecurityGroup",
+            "CreateVolume"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "ApprovedSsmDocument",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:SendCommand"
+      ],
+      "Resource": "arn:aws:ssm:ap-northeast-2::document/AWS-RunShellScript"
+    },
+    {
+      "Sid": "ReadExpiryGuard",
+      "Effect": "Allow",
+      "Action": [
+        "scheduler:GetSchedule"
+      ],
+      "Resource": "arn:aws:scheduler:ap-northeast-2:942466928325:schedule/getddo-staging/expiry-*"
+    },
+    {
+      "Sid": "RemoveExpiryGuard",
+      "Effect": "Allow",
+      "Action": [
+        "scheduler:DeleteSchedule"
+      ],
+      "Resource": "arn:aws:scheduler:ap-northeast-2:942466928325:schedule/getddo-staging/expiry-*"
+    },
+    {
+      "Sid": "StopProvisioningBeforeCleanup",
+      "Effect": "Allow",
+      "Action": [
+        "codebuild:BatchGetBuilds",
+        "codebuild:ListBuildsForProject",
+        "codebuild:StopBuild"
+      ],
+      "Resource": "arn:aws:codebuild:ap-northeast-2:942466928325:project/getddo-staging-up"
+    },
+    {
+      "Sid": "WriteControlBuildLogs",
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ],
+      "Resource": "arn:aws:logs:ap-northeast-2:942466928325:log-group:/getddo/staging/control/*:*"
+    },
+    {
+      "Sid": "PreservePersistentLoginConfiguration",
+      "Effect": "Deny",
+      "Action": [
+        "ssm:DeleteParameter",
+        "ssm:DeleteParameters",
+        "ssm:PutParameter",
+        "ssm:GetParameter",
+        "ssm:GetParameters",
+        "ssm:GetParametersByPath",
+        "ssm:AddTagsToResource",
+        "ssm:RemoveTagsFromResource"
+      ],
+      "Resource": [
+        "arn:aws:ssm:ap-northeast-2:942466928325:parameter/getddo/staging",
+        "arn:aws:ssm:ap-northeast-2:942466928325:parameter/getddo/staging/locust",
+        "arn:aws:ssm:ap-northeast-2:942466928325:parameter/getddo/staging/locust/*"
+      ]
+    },
+    {
+      "Sid": "StateBucketLocation",
+      "Effect": "Allow",
+      "Action": "s3:GetBucketLocation",
+      "Resource": "arn:aws:s3:::getddo-tfstate-942466928325-ap-northeast-2"
+    },
+    {
+      "Sid": "ReadPersistentCredentialMetadata",
+      "Effect": "Allow",
+      "Action": "ssm:ListTagsForResource",
+      "Resource": "arn:aws:ssm:ap-northeast-2:942466928325:parameter/getddo/staging/locust/*"
+    },
+    {
+      "Sid": "BoundedControlMetadata",
+      "Effect": "Allow",
+      "Action": "s3:ListBucket",
+      "Resource": "arn:aws:s3:::getddo-deploy-942466928325-ap-northeast-2",
+      "Condition": {
+        "StringEquals": {
+          "s3:prefix": [
+            "staging/locks/app.json",
+            "staging/monitoring/status.json"
+          ]
+        }
+      }
+    },
+    {
+      "Effect": "Allow",
+      "Action": "codebuild:BatchGetBuilds",
+      "Resource": "arn:aws:codebuild:ap-northeast-2:942466928325:project/getddo-staging-cleanup",
+      "Sid": "CleanupExecution"
+    }
+  ]
+}

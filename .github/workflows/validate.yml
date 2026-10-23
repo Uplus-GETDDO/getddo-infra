@@ -5,6 +5,9 @@ on:
     branches: [main]
 permissions:
   contents: read
+concurrency:
+  group: validate-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   terraform:
     name: Terraform 검증
@@ -21,10 +24,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python3 -m pip install PyYAML==6.0.3 boto3==1.40.59 Werkzeug==3.1.3
       - run: python3 scripts/validate.py scripts
-      - run: python3 -m pip install PyYAML==6.0.3
       - run: bash scripts/install-monitoring-check-tools.sh "$RUNNER_TEMP/monitoring-tools"
       - run: python3 scripts/check-monitoring.py
         env:
           PROMTOOL_BIN: ${{ runner.temp }}/monitoring-tools/promtool
           COMPOSE_BIN: ${{ runner.temp }}/monitoring-tools/docker-compose
+      - run: python3 -m pip install -r loadtest/requirements-test.txt
+      - run: python3 -m playwright install --with-deps chromium
+      - run: python3 -m pytest -q loadtest/tests
+      - run: docker build -f loadtest/Dockerfile -t getddo-stage-locust:ci .
+      - run: docker compose -f loadtest/compose.yaml config --quiet
+        env:
+          LOCUST_BIND_IP: 10.20.0.20

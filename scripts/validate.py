@@ -13,7 +13,7 @@ import sys
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
-ROOTS = [ROOT / 'terraform/bootstrap', ROOT / 'terraform/prod', ROOT / 'terraform/monitoring']
+ROOTS = [ROOT / 'terraform/bootstrap', ROOT / 'terraform/prod', ROOT / 'terraform/monitoring', ROOT / 'terraform/staging', ROOT / 'terraform/staging-control']
 
 
 def run(*args, cwd=None, env=None):
@@ -111,6 +111,11 @@ def terraform_checks():
             work = temp / root.name
             shutil.copytree(root, work, ignore=shutil.ignore_patterns('.terraform', '*.tfstate*', '*.tfvars*', '*.tfplan*'))
             (work / 'backend.tf').unlink(missing_ok=True)
+            if root.name == 'staging':
+                shared = temp / 'prod/templates/api-user-data.sh'
+                if not shared.exists():
+                    shared.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(ROOT / 'terraform/prod/templates/api-user-data.sh', shared)
             env = {k: v for k, v in os.environ.items() if not k.startswith(('AWS_', 'TF_VAR_', 'TF_LOG'))}
             env.update(AWS_EC2_METADATA_DISABLED='true', TF_IN_AUTOMATION='1', CHECKPOINT_DISABLE='1')
             args = ['terraform', f'-chdir={work}', 'init', '-backend=false', '-input=false', '-lockfile=readonly']
@@ -127,7 +132,7 @@ def terraform_checks():
 
 
 def script_checks():
-    for path in (ROOT / "scripts").glob("*.py"):
+    for path in (ROOT / "scripts").rglob("*.py"):
         compile(path.read_text(), str(path), "exec")
     for path in list((ROOT / 'terraform').rglob('*')) + list((ROOT / 'observability').rglob('*')) + list((ROOT / 'scripts').glob('*.sh')):
         if '.terraform' in path.parts:
@@ -138,6 +143,7 @@ def script_checks():
             # Current shell template placeholders are shell-safe insertions; rendering tested by HCL.
             run('bash', '-n', str(path))
     run(sys.executable, "-m", "unittest", "discover", "-s", str(ROOT / "scripts"), "-p", "test_*.py")
+    run(sys.executable, "-m", "unittest", "discover", "-s", str(ROOT / "scripts/tests"), "-p", "test_*.py")
     print("PASS: Python syntax, shell syntax, JSON configuration and unit tests", flush=True)
 
 

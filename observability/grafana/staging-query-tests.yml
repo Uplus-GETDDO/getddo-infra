@@ -1,0 +1,34 @@
+rule_files: []
+evaluation_interval: 5s
+tests:
+- interval: 5s
+  input_series:
+  - series: locust_requests_total{environment="staging",server="locust"}
+    values: 0+100x15
+  - series: locust_failures_total{environment="staging",server="locust"}
+    values: 0+5x15
+  promql_expr_test:
+  - expr: 100 * rate(locust_failures_total{environment="staging"}[1m]) / (rate(locust_requests_total{environment="staging"}[1m])
+      > 0)
+    eval_time: 60s
+    exp_samples:
+    - labels: '{environment="staging",server="locust"}'
+      value: 5
+- interval: 5s
+  input_series:
+  - series: locust_requests_total{environment="staging"}
+    values: 0+0x15
+  - series: locust_failures_total{environment="staging"}
+    values: 0+0x15
+  promql_expr_test:
+  - expr: 100 * rate(locust_failures_total{environment="staging"}[1m]) / (rate(locust_requests_total{environment="staging"}[1m])
+      > 0)
+    eval_time: 60s
+    exp_samples: []
+- interval: 5s
+  input_series: []
+  promql_expr_test:
+  - expr: 100 * rate(locust_failures_total{environment="staging"}[1m]) / (rate(locust_requests_total{environment="staging"}[1m])
+      > 0)
+    eval_time: 60s
+    exp_samples: []
