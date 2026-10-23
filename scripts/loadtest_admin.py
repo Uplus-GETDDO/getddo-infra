@@ -181,6 +181,10 @@ def upload_archive(config, directory):
 def collect(config, client, root=ROOT):
     directory = root / 'reports' / (datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ-') + uuid.uuid4().hex[:8])
     directory.mkdir(parents=True, mode=0o700)
+    # The web collection clears its uncollected flag before S3 is verified.
+    # Keep maintenance locked until this durable marker is cleared on success.
+    private_write(root / '.archive-pending', json.dumps({
+        'run_id': config['run_id'], 'directory': str(directory)}).encode())
     client.collect(directory / 'locust')
     active = root / 'active' / 'scenario.py'
     if active.is_file():
@@ -199,7 +203,9 @@ def collect(config, client, root=ROOT):
         'run_id': config['run_id'], 'collected_at': datetime.now(timezone.utc).isoformat(),
         'source': str((root / 'active').resolve()),
         'active_sha256': hashlib.sha256(active.read_bytes()).hexdigest() if active.is_file() else None}).encode())
-    return upload_archive(config, directory)
+    receipt = upload_archive(config, directory)
+    (root / '.archive-pending').unlink()
+    return receipt
 
 
 def apply(config, path, root=ROOT, manifest_path=MANIFEST):
@@ -233,7 +239,7 @@ def apply(config, path, root=ROOT, manifest_path=MANIFEST):
         raise
     finally:
         # A new master naturally starts outside maintenance mode.
-        if not changed:
+        if not changed and not (root / '.archive-pending').exists():
             client.call('POST', '/control/maintenance', json={'enabled': False})
 
 
@@ -241,10 +247,9 @@ def stop_and_collect(config, root=ROOT):
     client = control(config)
     client.stop()
     client.call('POST', '/control/maintenance', json={'enabled': True})
-    try:
-        return collect(config, client, root)
-    finally:
-        client.call('POST', '/control/maintenance', json={'enabled': False})
+    receipt = collect(config, client, root)
+    client.call('POST', '/control/maintenance', json={'enabled': False})
+    return receipt
 
 
 def mysql_value(value):

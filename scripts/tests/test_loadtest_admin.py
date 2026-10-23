@@ -81,12 +81,41 @@ class OperatorTests(unittest.TestCase):
         client = Mock()
         with patch.object(admin, 'control', return_value=client), \
                 patch.object(admin, 'verify_import'), \
-                patch.object(admin, 'collect', side_effect=RuntimeError('readback mismatch')), \
+                patch.object(admin, 'upload_archive', side_effect=RuntimeError('readback mismatch')), \
                 patch.object(admin, 'compose') as compose:
             with self.assertRaises(RuntimeError):
                 admin.apply(self.config, self.file, self.root, self.manifest)
         compose.assert_not_called()
         self.assertEqual((self.root / 'active').resolve(), self.previous)
+        client.call.assert_called_once_with('POST', '/control/maintenance', json={'enabled': True})
+        self.assertTrue((self.root / '.archive-pending').is_file())
+
+    def test_invalid_candidate_releases_maintenance_only_without_pending_archive(self):
+        self.file.write_text('for broken')
+        for pending in (False, True):
+            if pending:
+                (self.root / '.archive-pending').write_text('pending')
+            client = Mock()
+            with patch.object(admin, 'control', return_value=client):
+                with self.assertRaises(SyntaxError):
+                    admin.apply(self.config, self.file, self.root, self.manifest)
+            self.assertEqual(client.call.call_count, 1 if pending else 2)
+            client.call.assert_called_with('POST', '/control/maintenance',
+                                           json={'enabled': pending})
+
+    def test_failed_collection_keeps_lock_and_retry_clears_pending_after_readback(self):
+        client = Mock()
+        with patch.object(admin, 'control', return_value=client), \
+                patch.object(admin, 'upload_archive', side_effect=RuntimeError('S3 unavailable')):
+            with self.assertRaises(RuntimeError):
+                admin.stop_and_collect(self.config, self.root)
+        client.call.assert_called_once_with('POST', '/control/maintenance', json={'enabled': True})
+        self.assertTrue((self.root / '.archive-pending').is_file())
+        client.reset_mock()
+        with patch.object(admin, 'control', return_value=client), \
+                patch.object(admin, 'upload_archive', return_value={'verified': True}):
+            self.assertEqual(admin.stop_and_collect(self.config, self.root), {'verified': True})
+        self.assertFalse((self.root / '.archive-pending').exists())
         client.call.assert_called_with('POST', '/control/maintenance', json={'enabled': False})
 
     def test_failed_new_workers_restore_previous_manifest_and_release(self):
