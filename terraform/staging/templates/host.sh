@@ -40,4 +40,6 @@ JSON
 /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json -s
 systemctl daemon-reload
 systemctl enable --now node_exporter
+# Retry credentials after initial IAM propagation during host installation.
+systemctl restart amazon-ssm-agent
 touch /opt/getddo/staging/host-ready
