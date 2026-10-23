@@ -15,6 +15,28 @@ import uuid
 from staging_lifecycle import REGION, validate_manifest
 
 
+class StageRuntimeError(RuntimeError):
+    """Only reviewed codes may reach SSM stderr; never include subprocess output."""
+    def __init__(self, stage, reason):
+        if stage not in {"docker", "builder", "compose_config", "compose_up"} or reason not in {
+                "unavailable", "incompatible", "failed", "timeout"}:
+            raise ValueError("Unknown Stage runtime diagnostic")
+        super().__init__(f"STAGE_RUNTIME_FAILED stage={stage} reason={reason}")
+
+
+def runtime_command(args, stage, *, timeout=30, **kwargs):
+    try:
+        result = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                check=False, timeout=timeout, **kwargs)
+    except subprocess.TimeoutExpired:
+        raise StageRuntimeError(stage, "timeout") from None
+    except OSError:
+        raise StageRuntimeError(stage, "unavailable") from None
+    if result.returncode:
+        raise StageRuntimeError(stage, "failed") from None
+    return result.stdout
+
+
 def private_file(path, value):
     path = Path(path)
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o600)
@@ -37,6 +59,13 @@ def install(manifest, actor, source, root=Path("/"), fetch=None, start=True):
         raise ValueError("Only the exact internal Stage ALB is accepted")
     if not re.fullmatch(r"10\.20\.(?:0|1)\.\d{1,3}", deployment["locust_instance"]["private_ip"]):
         raise ValueError("Locust must bind the existing VPC private address")
+    if start:
+        runtime_command(["docker", "info"], "docker")
+        version = runtime_command(["docker", "buildx", "version"], "builder")
+        # Compose 2.40.3's default Bake path requires Buildx >= 0.17.0.
+        match = re.match(rb"github\.com/docker/buildx v?(\d+)\.(\d+)\.(\d+)(?:\s|$)", version)
+        if not match or tuple(map(int, match.groups())) < (0, 17, 0):
+            raise StageRuntimeError("builder", "incompatible")
     if fetch is None:
         def fetch():
             result = subprocess.run(["aws", "ssm", "get-parameters", "--region", REGION, "--with-decryption",
@@ -67,10 +96,10 @@ def install(manifest, actor, source, root=Path("/"), fetch=None, start=True):
         "expected_workers": 2, "scenario": "smoke_events", "actor_file": "/run/scenario/actor.json"}))
     if start:
         environment = dict(os.environ, LOCUST_BIND_IP=deployment["locust_instance"]["private_ip"])
-        result = subprocess.run(["docker", "compose", "-f", "loadtest/compose.yaml", "up", "-d", "--scale", "worker=2"],
-                                cwd=source, env=environment, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
-        if result.returncode:
-            raise RuntimeError("Locust idle runtime installation failed")
+        compose = ["docker", "compose", "-f", "loadtest/compose.yaml"]
+        runtime_command([*compose, "config", "--quiet"], "compose_config", cwd=source, env=environment)
+        runtime_command([*compose, "up", "-d", "--scale", "worker=2"], "compose_up", timeout=900,
+                        cwd=source, env=environment)
 
 
 def main():
@@ -82,4 +111,8 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except StageRuntimeError as error:
+        print(str(error), file=sys.stderr)
+        raise SystemExit(1) from None

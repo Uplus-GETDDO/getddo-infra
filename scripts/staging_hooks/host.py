@@ -17,6 +17,7 @@ REPORTS = Path("/var/lib/getddo-loadtest/reports")
 
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/'scripts'))
+from staging_locust_install import StageRuntimeError
 
 
 def command(args, *, timeout=120, data=None, cwd=None, env=None):
@@ -117,8 +118,14 @@ def main():
     else:raise ValueError('Unsupported Stage host action')
 
 
-if __name__=='__main__':
+def cli():
     try:main()
     except Exception as error:
-        print('Stage host action failed: '+type(error).__name__,file=sys.stderr)
+        # These codes survive in the SSM invocation after rollback deletes hosts.
+        # All other exception messages/output may contain credentials.
+        message = str(error) if isinstance(error, StageRuntimeError) else 'Stage host action failed: unexpected'
+        print(message,file=sys.stderr)
         raise SystemExit(1) from None
+
+
+if __name__=='__main__':cli()

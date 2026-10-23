@@ -77,6 +77,24 @@ class HookTests(unittest.TestCase):
         self.assertIn('--expected-bucket-owner 942466928325',script)
         self.assertNotIn('admin-password',script)
 
+    def test_host_failure_codes_survive_on_stderr_without_secrets(self):
+        import contextlib
+        import io
+        from unittest.mock import patch
+        spec=importlib.util.spec_from_file_location('staging_host',ROOT/'scripts/staging_hooks/host.py')
+        host=importlib.util.module_from_spec(spec);spec.loader.exec_module(host)
+        for error, expected in (
+                (host.StageRuntimeError('builder','incompatible'), 'STAGE_RUNTIME_FAILED stage=builder reason=incompatible'),
+                (host.StageRuntimeError('compose_up','failed'), 'STAGE_RUNTIME_FAILED stage=compose_up reason=failed'),
+                (RuntimeError('SECRET_PASSWORD SECRET_SESSION scrypt:SECRET_HASH'), 'Stage host action failed: unexpected')):
+            with self.subTest(expected=expected), patch.object(host,'main',side_effect=error), \
+                 contextlib.redirect_stderr(io.StringIO()) as stderr, contextlib.redirect_stdout(io.StringIO()) as stdout:
+                with self.assertRaises(SystemExit) as caught:host.cli()
+            self.assertEqual(caught.exception.code,1)
+            self.assertEqual(stderr.getvalue(),expected+'\n')
+            self.assertEqual(stdout.getvalue(),'')
+            self.assertNotIn('SECRET',stderr.getvalue())
+
     def test_host_collection_keeps_credentials_out_of_args_and_reports(self):
         import contextlib
         import io

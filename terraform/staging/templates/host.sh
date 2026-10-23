@@ -5,6 +5,15 @@ python3 -m venv /opt/getddo-staging-venv
 install -d -m 0700 /opt/getddo/staging
 work=$(mktemp -d)
 trap 'rm -rf -- "$temporary" "$work"' EXIT
+# Compose 2.40.3 defaults to Bake; the AL2023 Docker package's Buildx 0.12.1
+# is below Bake's 0.17 minimum. Match Compose's reviewed Buildx dependency.
+# SHA256: https://github.com/docker/buildx/releases/download/v0.29.1/checksums.txt
+curl -fsSL --proto '=https' --tlsv1.2 --retry 3 \
+  https://github.com/docker/buildx/releases/download/v0.29.1/buildx-v0.29.1.linux-amd64 \
+  -o "$work/docker-buildx"
+printf '%s  %s\n' 7d2d7d6d4680aa349614965aaa33ccec43f1a9a21e908a5ce4cb6adfa5ad5141 "$work/docker-buildx" | sha256sum -c -
+install -m 0755 "$work/docker-buildx" /usr/local/lib/docker/cli-plugins/docker-buildx
+docker buildx version >/dev/null
 version=1.12.1
 archive=node_exporter-${version}.linux-amd64.tar.gz
 curl -fsSL --proto '=https' --tlsv1.2 "https://github.com/prometheus/node_exporter/releases/download/v${version}/${archive}" -o "$work/$archive"
