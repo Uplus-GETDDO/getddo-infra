@@ -130,9 +130,12 @@ class Hooks:
                     raise
                 response = self.clients['s3'].get_object(Bucket=self.manifest['deploy_bucket'], Key=key)
                 existing = hashlib.sha256()
-                with response['Body'] as body:
+                body = response['Body']
+                try:
                     for block in body.iter_chunks(1024*1024):
                         existing.update(block)
+                finally:
+                    body.close()
                 if existing.hexdigest() != digest:
                     raise ValueError('Existing runtime bundle integrity mismatch')
         return key,digest
@@ -203,8 +206,11 @@ printf %s {shlex.quote(payload)} | base64 -d | /opt/getddo-staging-venv/bin/pyth
         for item in (index['locust'],index['monitoring']):
             response=self.clients['s3'].get_object(Bucket=m['deploy_bucket'],Key=item['key'])
             digest=hashlib.sha256()
-            with response['Body'] as stream:
+            stream=response['Body']
+            try:
                 for block in stream.iter_chunks(1024*1024):digest.update(block)
+            finally:
+                stream.close()
             if digest.hexdigest()!=item['sha256']:
                 raise ValueError('Collected result readback mismatch')
         payload=json.dumps(index,sort_keys=True,separators=(',',':')).encode()
