@@ -61,6 +61,29 @@ class AdapterTests(unittest.TestCase):
         self.assertLessEqual(len(token), 128)
         self.assertNotEqual(password, token)
 
+    def test_stage_jdbc_verifies_identity_with_mounted_rds_truststore(self):
+        from urllib.parse import parse_qs, urlsplit
+        effects = self.effects()
+        deployment = {'account_id': '942466928325', 'region': 'ap-northeast-2',
+                      'db_endpoint': 'getddo-staging-mysql.example.ap-northeast-2.rds.amazonaws.com',
+                      'redis_endpoint': 'getddo-staging-redis.example.cache.amazonaws.com'}
+        effects.command = Mock(return_value=json.dumps(deployment).encode())
+        effects.terraform = Mock()
+        effects.record = Mock()
+        effects.app_parameter = Mock()
+        effects.apply(manifest())
+        settings = {call.args[1]: call.args[2] for call in effects.app_parameter.call_args_list}
+        jdbc = settings['SPRING_DATASOURCE_URL']
+        address = urlsplit(jdbc.removeprefix('jdbc:'))
+        self.assertEqual(address.hostname, deployment['db_endpoint'])
+        self.assertEqual(address.path, '/getddo')
+        properties = parse_qs(address.query)
+        self.assertEqual(properties['sslMode'], ['VERIFY_IDENTITY'])
+        self.assertEqual(properties.get('trustCertificateKeyStoreUrl'), ['file:/etc/getddo/rds-truststore.p12'])
+        self.assertEqual(properties.get('trustCertificateKeyStoreType'), ['PKCS12'])
+        self.assertEqual(properties.get('trustCertificateKeyStorePassword'), ['changeit'])
+        self.assertEqual(properties.get('fallbackToSystemTrustStore'), ['false'])
+
     def test_foreign_state_prevents_apply_and_destroy(self):
         for action in ('apply', 'destroy'):
             with self.subTest(action=action):

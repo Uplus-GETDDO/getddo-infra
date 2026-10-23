@@ -208,7 +208,11 @@ class Effects(AWS):
             raise RuntimeError("Invalid deployment outputs")
         manifest["deployment"] = deployment
         settings = {
-            "SPRING_DATASOURCE_URL": f"jdbc:mysql://{deployment['db_endpoint']}:3306/getddo?sslMode=VERIFY_IDENTITY",
+            # The image mounts the public RDS CA store prepared by host bootstrap.
+            "SPRING_DATASOURCE_URL": (f"jdbc:mysql://{deployment['db_endpoint']}:3306/getddo?sslMode=VERIFY_IDENTITY"
+                                      "&trustCertificateKeyStoreUrl=file:/etc/getddo/rds-truststore.p12"
+                                      "&trustCertificateKeyStoreType=PKCS12&trustCertificateKeyStorePassword=changeit"
+                                      "&fallbackToSystemTrustStore=false"),
             "SPRING_DATASOURCE_USERNAME": "getddoadmin",
             "SPRING_JPA_HIBERNATE_DDL_AUTO": "validate", "SPRING_FLYWAY_ENABLED": "true",
             "CORS_ALLOWED_ORIGINS": manifest["public_origin"], "AWS_REGION": REGION,
