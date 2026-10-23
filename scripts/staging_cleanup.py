@@ -6,7 +6,7 @@ from botocore.exceptions import ClientError
 from staging_lifecycle import ACCOUNT, REGION
 
 VPC = "vpc-0fcf829db1692b713"
-SHARED_GROUPS = {"sg-09e12310ecd082ffb", "sg-04954d4932de5fa69"}
+SHARED_GROUPS = {"sg-09e12310ecd082ffb", "sg-04954d4932de5fa69", "sg-0d262f6bd69709b25"}
 SHARED_LISTENER = f"arn:aws:elasticloadbalancing:{REGION}:{ACCOUNT}:listener/app/getddo-dev-api-alb/9e65e06e10492070/96403935397fdc93"
 ROLES = ("getddo-staging-api", "getddo-staging-locust")
 # Only these service responses mean a concurrent/idempotent delete succeeded.
@@ -133,12 +133,13 @@ class Orphans:
                 found.append(("log", item["logGroupName"], item))
         ssm = self.clients["ssm"]
         # DescribeParameters returns metadata; cleanup never reads app secret values.
-        for item in self.pages("ssm", "describe_parameters", "Parameters", ParameterFilters=[
-                {"Key": "Name", "Option": "BeginsWith", "Values": ["/getddo/staging/app/"]}]):
-            name = item["Name"]
-            if name.startswith("/getddo/staging/app/"):
-                self.require(tags(ssm.list_tags_for_resource(ResourceType="Parameter", ResourceId=name)["TagList"]))
-                found.append(("parameter", name, item))
+        for prefix in ("/getddo/staging/app/", "/getddo/staging/test-access/"):
+            for item in self.pages("ssm", "describe_parameters", "Parameters", ParameterFilters=[
+                    {"Key": "Name", "Option": "BeginsWith", "Values": [prefix]}]):
+                name = item["Name"]
+                if name.startswith(prefix):
+                    self.require(tags(ssm.list_tags_for_resource(ResourceType="Parameter", ResourceId=name)["TagList"]))
+                    found.append(("parameter", name, item))
         return found
 
     def delete(self, kind, identity, item):

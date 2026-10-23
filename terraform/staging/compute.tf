@@ -45,6 +45,7 @@ resource "aws_instance" "api" {
   depends_on  = [aws_iam_role_policy.stage, aws_cloudwatch_log_group.api]
 }
 resource "aws_instance" "locust" {
+  key_name                    = "getddo-dev-api"
   ami                         = data.aws_ami.stage.id
   instance_type               = "t3.medium"
   subnet_id                   = data.aws_subnet.public["a"].id

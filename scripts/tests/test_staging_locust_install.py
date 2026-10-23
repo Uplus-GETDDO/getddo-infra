@@ -15,7 +15,7 @@ from test_staging_lifecycle import manifest
 class LocustInstallTests(unittest.TestCase):
     def runtime_install(self, results):
         value = manifest()
-        value["deployment"] = {"api_url": "http://internal-stage.ap-northeast-2.elb.amazonaws.com",
+        value["deployment"] = {"db_endpoint": "getddo-staging-mysql.fixture.ap-northeast-2.rds.amazonaws.com", "api_url": "http://internal-stage.ap-northeast-2.elb.amazonaws.com",
                                "locust_instance": {"private_ip": "10.20.0.42"}}
         actor = {"user_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", "role": "USER", "membership": "excellent"}
         fetch = Mock(return_value={"admin-user": "SECRET_ADMIN", "admin-password": "SECRET_PASSWORD",
@@ -62,7 +62,7 @@ class LocustInstallTests(unittest.TestCase):
 
     def test_credentials_are_private_and_idle_install_does_not_start_load(self):
         value = manifest()
-        value["deployment"] = {"api_url": "http://internal-stage.ap-northeast-2.elb.amazonaws.com",
+        value["deployment"] = {"db_endpoint": "getddo-staging-mysql.fixture.ap-northeast-2.rds.amazonaws.com", "api_url": "http://internal-stage.ap-northeast-2.elb.amazonaws.com",
                                "locust_instance": {"private_ip": "10.20.0.42"}}
         actor = {"user_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", "role": "USER", "membership": "excellent"}
         fetch = Mock(return_value={"admin-user": "locust-admin", "admin-password": "test-password",

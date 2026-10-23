@@ -7,10 +7,11 @@ resource "aws_security_group" "stage" {
 }
 locals {
   ingress = {
-    api   = { to = "api", from = "alb", port = 8080 }
-    alb   = { to = "alb", from = "locust", port = 80 }
-    db    = { to = "db", from = "api", port = 3306 }
-    redis = { to = "redis", from = "api", port = 6379 }
+    api       = { to = "api", from = "alb", port = 8080 }
+    alb       = { to = "alb", from = "locust", port = 80 }
+    db        = { to = "db", from = "api", port = 3306 }
+    locust_db = { to = "db", from = "locust", port = 3306 }
+    redis     = { to = "redis", from = "api", port = 6379 }
   }
 }
 resource "aws_vpc_security_group_ingress_rule" "stage" {
@@ -86,4 +87,39 @@ resource "aws_vpc_security_group_egress_rule" "monitor_to_stage" {
   from_port                    = each.value.port
   to_port                      = each.value.port
   tags                         = { Name = "getddo-staging-monitor-${each.key}" }
+}
+
+data "aws_security_group" "ssh_endpoint" {
+  filter {
+    name   = "group-name"
+    values = ["getddo-dev-eice"]
+  }
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_vpc.existing.id]
+  }
+  lifecycle {
+    postcondition {
+      condition     = self.id == "sg-0d262f6bd69709b25"
+      error_message = "Existing Instance Connect Endpoint security group identity changed."
+    }
+  }
+}
+
+resource "aws_vpc_security_group_ingress_rule" "locust_ssh" {
+  security_group_id            = aws_security_group.stage["locust"].id
+  referenced_security_group_id = data.aws_security_group.ssh_endpoint.id
+  ip_protocol                  = "tcp"
+  from_port                    = 22
+  to_port                      = 22
+  tags                         = { Name = "getddo-staging-locust-ssh" }
+}
+
+resource "aws_vpc_security_group_egress_rule" "ssh_endpoint_to_locust" {
+  security_group_id            = data.aws_security_group.ssh_endpoint.id
+  referenced_security_group_id = aws_security_group.stage["locust"].id
+  ip_protocol                  = "tcp"
+  from_port                    = 22
+  to_port                      = 22
+  tags                         = { Name = "getddo-staging-eice-to-locust" }
 }

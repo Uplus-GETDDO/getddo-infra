@@ -115,7 +115,7 @@ class Hooks:
             archive=Path(name)/'runtime.tar.gz'
             with tarfile.open(archive,'w:gz') as bundle:
                 files=list((ROOT/'loadtest').rglob('*'))+[ROOT/'scripts/staging_locust_install.py',
-                       ROOT/'scripts/staging_lifecycle.py',ROOT/'scripts/staging_hooks/host.py']
+                       ROOT/'scripts/staging_lifecycle.py', ROOT/'scripts/loadtest_admin.py',ROOT/'scripts/staging_hooks/host.py']
                 for path in files:
                     if path.is_symlink(): raise ValueError('Runtime source symlink rejected')
                     if path.is_file() and '__pycache__' not in path.parts:
@@ -153,6 +153,21 @@ tar -xzf {directory}/runtime.tar.gz -C {directory}
 printf %s {shlex.quote(payload)} | base64 -d | /opt/getddo-staging-venv/bin/python {directory}/scripts/staging_hooks/host.py {action}
 '''
 
+    def prepare_test_access(self):
+        import secrets
+        from staging_cleanup import Orphans, tags
+        name = '/getddo/staging/test-access/mysql-password'
+        client = self.clients['ssm']
+        try:
+            client.get_parameter(Name=name, WithDecryption=False)
+        except client.exceptions.ParameterNotFound:
+            client.put_parameter(Name=name, Value=secrets.token_urlsafe(36), Type='SecureString',
+                Tags=[{'Key':'Environment','Value':'staging'},
+                      {'Key':'RunId','Value':self.manifest['run_id']}])
+        else:
+            actual = client.list_tags_for_resource(ResourceType='Parameter',ResourceId=name)['TagList']
+            Orphans(self.clients,self.manifest['run_id']).require(tags(actual))
+
     def prepare(self):
         metadata=json.loads((ROOT/'scripts/staging_hooks/backend.json').read_text())
         if set(metadata)!={'source_sha','image_id','archive_sha256','artifact_dir','checkout_dir'}:
@@ -170,6 +185,7 @@ printf %s {shlex.quote(payload)} | base64 -d | /opt/getddo-staging-venv/bin/pyth
                      '--archive-sha256',metadata['archive_sha256'],'--artifact-dir',str(artifact)],cwd=source)
         import uuid
         actor={'user_id':str(uuid.uuid5(uuid.NAMESPACE_URL,'getddo-stage-smoke:'+m['run_id'])),'role':'USER','membership':'excellent'}
+        self.prepare_test_access()
         key,digest=self.runtime()
         self.remote(d['api_instances']['a']['id'],self.host_script(key,digest,'seed',actor))
         self.remote(d['locust_instance']['id'],self.host_script(key,digest,'install',actor),timeout=1200)

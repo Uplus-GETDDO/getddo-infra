@@ -25,6 +25,11 @@ services:
       - "${LOCUST_BIND_IP:?Set Locust EC2 private IPv4}:9646:9646"
     volumes:
       - type: bind
+        source: /opt/getddo-loadtest/active
+        target: /run/personal
+        read_only: true
+        bind: {create_host_path: false}
+      - type: bind
         source: /etc/getddo-loadtest/manifest.json
         target: /etc/getddo-loadtest/manifest.json
         read_only: true
@@ -50,6 +55,11 @@ services:
     command: ["--worker", "--master-host", "master", "--web-base-path", "/locust", "--stop-timeout", "15"]
     depends_on: [master]
     volumes:
+      - type: bind
+        source: /opt/getddo-loadtest/active
+        target: /run/personal
+        read_only: true
+        bind: {create_host_path: false}
       - type: bind
         source: /etc/getddo-loadtest/manifest.json
         target: /etc/getddo-loadtest/manifest.json

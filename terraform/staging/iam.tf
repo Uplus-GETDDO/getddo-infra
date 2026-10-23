@@ -30,10 +30,14 @@ resource "aws_iam_role_policy" "stage" {
       { Effect = "Allow", Action = ["logs:CreateLogStream", "logs:PutLogEvents", "logs:DescribeLogStreams"], Resource = "arn:aws:logs:ap-northeast-2:942466928325:log-group:/getddo/staging/*:*" },
       { Effect = "Allow", Action = ["cloudwatch:PutMetricData"], Resource = "*", Condition = { StringEquals = {
         "cloudwatch:namespace" = each.key == "api" ? ["GETDDO/API", "CWAgent"] : ["CWAgent"], "aws:RequestedRegion" = "ap-northeast-2"
-      } } }
+      } } },
+      { Effect = "Allow", Action = ["ssm:GetParameter", "ssm:GetParameters"], Resource = "arn:aws:ssm:ap-northeast-2:942466928325:parameter/getddo/staging/test-access/mysql-password" }
       ], each.key == "locust" ? [{
         Sid      = "LocustWriteReports", Effect = "Allow", Action = ["s3:PutObject"]
         Resource = "arn:aws:s3:::getddo-deploy-942466928325-ap-northeast-2/staging/runs/${var.run_id}/results/locust-*"
+        }, {
+        Sid      = "OperatorReportReadback", Effect = "Allow", Action = ["s3:PutObject", "s3:GetObject"]
+        Resource = "arn:aws:s3:::getddo-deploy-942466928325-ap-northeast-2/staging/runs/${var.run_id}/results/operator/*"
     }] : [])
   })
 }

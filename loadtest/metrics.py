@@ -8,7 +8,10 @@ STALE_SECONDS = 10
 
 
 class Metrics:
-    def __init__(self, environment, expected):
+    def __init__(self, environment, expected, scenario="smoke_events"):
+        if scenario not in ("smoke_events", "personal"):
+            raise ValueError("unsupported metric scenario")
+        self.scenario = scenario
         self.environment = environment
         self.expected = expected
         self.local = Counter()
@@ -98,7 +101,7 @@ class Metrics:
                        f'{{quantile="{quantile}",scope="{scope}"}}')
         for result in RESULTS:
             metric('locust_business_total', 'counter', self.business[result],
-                   f'{{scenario="smoke_events",method="GET",result="{result}"}}')
+                   f'{{scenario="{self.scenario}",method="{"GET" if self.scenario == "smoke_events" else "MIXED"}",result="{result}"}}')
         return '\n'.join(lines) + '\n'
 
     def application(self, environ, start_response):

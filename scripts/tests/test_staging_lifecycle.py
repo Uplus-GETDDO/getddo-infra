@@ -118,8 +118,10 @@ class LifecycleTests(unittest.TestCase):
         self.assertEqual(effects.calls, [])
 
     def test_credential_preservation(self):
-        names = [*PERSISTENT_PARAMETERS, "/getddo/staging/app/DB_PASSWORD", "/getddo/dev/app/password"]
-        self.assertEqual(cleanup_parameter_names(names), ["/getddo/staging/app/DB_PASSWORD"])
+        temporary = ["/getddo/staging/app/DB_PASSWORD", "/getddo/staging/test-access/mysql-password"]
+        names = [*PERSISTENT_PARAMETERS, *temporary, "/getddo/dev/app/password",
+                 "/getddo/staging/test-access-unrelated/password"]
+        self.assertEqual(cleanup_parameter_names(names), temporary)
 
     def test_changed_persistent_credentials_never_release_ownership(self):
         effects = Fake("verify_credentials")

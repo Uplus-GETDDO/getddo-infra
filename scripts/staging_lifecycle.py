@@ -3,6 +3,7 @@
 import datetime as dt
 import hashlib
 import json
+import math
 import re
 
 ACCOUNT = "942466928325"
@@ -32,10 +33,21 @@ def validate_manifest(value):
     deadline = dt.datetime.fromisoformat(value["expires_at"])
     if deadline.tzinfo is None:
         raise ValueError("Expiry must include a timezone")
-    if not 15 <= value.get("max_duration_minutes", 0) <= 1440:
-        raise ValueError("Maximum lifetime must be 15..1440 minutes")
+    minutes = value.get("max_duration_minutes", 0)
+    if type(minutes) is not int or not 15 <= minutes <= 5760:
+        raise ValueError("Maximum lifetime must be 15..5760 minutes")
     created = dt.datetime.fromisoformat(value["created_at"])
-    if created.tzinfo is None or deadline - created != dt.timedelta(minutes=value["max_duration_minutes"]):
+    if created.tzinfo is None:
+        raise ValueError("Creation time must include a timezone")
+    lifetime = deadline - created
+    if value.get("expiry_mode", "relative") == "absolute":
+        matches = (dt.timedelta(minutes=15) <= lifetime <= dt.timedelta(hours=96)
+                   and math.ceil(lifetime.total_seconds() / 60) == minutes)
+    elif value.get("expiry_mode", "relative") == "relative":
+        matches = lifetime == dt.timedelta(minutes=minutes)
+    else:
+        matches = False
+    if not matches:
         raise ValueError("Expiry does not match the requested maximum lifetime")
     if set(value.get("terraform", {})) != {"ami_id", "monitoring_security_group_id", "shared_alb_security_group_id"}:
         raise ValueError("Only approved non-secret Terraform inputs are accepted")
@@ -46,6 +58,28 @@ def validate_manifest(value):
         if not re.fullmatch(r"scripts/[a-zA-Z0-9_/-]+\.py", path) or ".." in path.split("/"):
             raise ValueError("Immutable bundle integration hooks are required")
     return value
+
+
+def expiry_fields(now, *, max_duration=None, expires_at=None):
+    """Resolve a bounded lifetime while preserving an explicit wall-clock deadline."""
+    if (max_duration is None) == (expires_at is None):
+        raise ValueError("Specify exactly one of --max-duration or --expires-at")
+    if expires_at is not None:
+        try:
+            deadline = dt.datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
+        except (ValueError, TypeError):
+            raise ValueError("--expires-at must be an ISO 8601 time with a timezone") from None
+        if deadline.tzinfo is None or deadline.utcoffset() is None:
+            raise ValueError("--expires-at must include a timezone, for example +09:00")
+        lifetime = deadline - now
+        if not dt.timedelta(minutes=15) <= lifetime <= dt.timedelta(hours=96):
+            raise ValueError("Expiry must be 15 minutes..96 hours after creation")
+        return dict(expires_at=deadline.isoformat(), expiry_mode="absolute",
+                    max_duration_minutes=math.ceil(lifetime.total_seconds() / 60))
+    if type(max_duration) is not int or not 15 <= max_duration <= 5760:
+        raise ValueError("--max-duration must be 15..5760 minutes")
+    return dict(expires_at=(now + dt.timedelta(minutes=max_duration)).isoformat(),
+                max_duration_minutes=max_duration)
 
 
 def verify_bundle(content, expected):
@@ -85,8 +119,9 @@ def check_state_owner(state, run):
 
 
 def cleanup_parameter_names(names):
-    """Only temporary app settings belong to this workload; persistent UI auth survives."""
-    return [n for n in names if n.startswith("/getddo/staging/app/") and n not in PERSISTENT_PARAMETERS]
+    """Temporary app and SQL access settings belong to this workload; UI auth survives."""
+    return [n for n in names if n.startswith(("/getddo/staging/app/", "/getddo/staging/test-access/"))
+            and n not in PERSISTENT_PARAMETERS]
 
 
 def cleanup(effects, manifest, reason):
