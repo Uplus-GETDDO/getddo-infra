@@ -1,75 +1,236 @@
 # 임시 스테이징 부하 테스트
 
-환경 생성은 AWS의 CodeBuild에서, 최대 수명 정리는 독립 Scheduler에서 실행한다. 로컬 터미널을 닫아도 실행과 정리가 계속된다. 생성 완료만으로 부하를 시작하지 않는다. 환경과 역할의 상세 계약은 [Stage lifecycle](../terraform/staging/README.md)을 따른다.
+이 문서는 반복해서 사용할 환경 생성·팀원 시험·결과 보관·삭제 절차입니다. 특정 실행의 run ID·인스턴스 ID·종료 날짜는 고정하지 않습니다. 실행 담당자가 생성 결과와 현재 상태에서 확인해 공유합니다. 개인 시나리오·DB 터미널 기능은 공통 기능이며, 며칠 동안 서버를 유지할지는 매 실행의 만료 설정으로 정합니다.
 
-이 문서는 팀원 실행·복구 절차입니다. 2026-10-23 고정 소스·이미지의 UI/CLI 소규모 부하·결과 재조회·삭제 검증은 완료했으며, 새 코드의 성능이나 전체 TTL 삭제 E2E 검증을 뜻하지 않습니다.
+## 이미 열린 환경을 사용하는 팀원
+
+팀 공용 환경은 한 번에 하나만 사용합니다. 시작 전에 현재 시험 담당자와 사용 시간을 맞춥니다. 이미 서버가 있으면 새 `up`을 요청하지 않습니다.
+
+| 필요한 정보 | 확인 방법 |
+| --- | --- |
+| 현재 run ID·만료 시각 | 실행 담당자가 `up` 결과와 `status`의 `run_id`, `expires_at` 공유 |
+| SSH 대상 | `status`의 `deployment.locust_instance` — Linux 사용자 `ec2-user` |
+| AWS 계정 | 현재 팀 구성은 IAM `gyeongju`, 로컬 실행 프로필 `getddo-dev`. 다른 계정을 쓰려면 별도 권한 확인 |
+| 개인 키 | 기존 `getddo-dev-api.pem`을 본인만 읽는 경로에 보관. Git·문서·채팅에 키 원문을 넣지 않음 |
+| Locust | <https://dzc8oneey9mmx.cloudfront.net/locust/> — `locust-admin` |
+| Grafana | <https://dzc8oneey9mmx.cloudfront.net/grafana/> — 기존 `admin` 계정 |
+| 비밀번호 | 서울 Parameter Store의 `/getddo/staging/locust/admin-password`, `/getddo/monitoring/grafana/admin-password`를 본인 권한으로 조회 |
+
+평소 팀원 사용에는 AWS CLI와 SSH 클라이언트만 필요합니다. 로컬 Python·Terraform은 필요하지 않습니다. Linux/WSL SSH 접속을 실환경에서 검증했습니다. Windows에서도 EICE 로컬 터널과 SSH 클라이언트를 사용할 수 있습니다. Linux가 필요한 환경 생성 스크립트와 구분합니다.
+
+### AWS 인증과 SSH 접속
+
+내 PC에서 인증 계정을 확인합니다. 기대 계정은 `942466928325`, 현재 팀 사용자 ARN은 `arn:aws:iam::942466928325:user/gyeongju`입니다. 프로필 최초 설정·만료 갱신은 [AWS 인증 설정](#aws-인증-설정)을 따릅니다.
+
+```bash
+aws sts get-caller-identity --profile getddo-dev --region ap-northeast-2
+```
+
+Linux/WSL에서는 PEM을 홈 디렉터리로 복사해 권한을 제한합니다. `KEY_SOURCE`는 자신의 실제 개인 키 경로로 바꿉니다.
+
+```bash
+KEY_SOURCE='/path/to/getddo-dev-api.pem'
+mkdir -p ~/.ssh
+chmod 700 ~/.ssh
+install -m 600 "$KEY_SOURCE" ~/.ssh/getddo-dev-api.pem
+```
+
+다음 세 값은 현재 실행 정보로 설정합니다. `STAGE_IP`는 `deployment.locust_instance.private_ip`를 사용합니다. 현재 Terraform은 `10.20.0.250`을 지정하지만 재사용 전 상태를 대조합니다. `EICE_ID`는 실행 담당자가 확인한 기존 EC2 Instance Connect Endpoint ID입니다. 이 명령은 내 PC에서 실행합니다.
+
+```bash
+RUN_ID='현재_run_id'
+STAGE_IP='현재_Locust_사설_IP'
+EICE_ID='현재_Endpoint_ID'
+ssh -i ~/.ssh/getddo-dev-api.pem \
+  -o "HostKeyAlias=getddo-stage-$RUN_ID" \
+  -o "ProxyCommand=aws ec2-instance-connect open-tunnel --profile getddo-dev --region ap-northeast-2 --instance-connect-endpoint-id $EICE_ID --private-ip-address %h --remote-port %p" \
+  "ec2-user@$STAGE_IP"
+```
+
+새 run마다 호스트 키가 달라질 수 있으므로 run별 별칭을 사용합니다. 처음 접속할 때 실행 담당자가 확인한 호스트 지문과 대조합니다. 호스트 키 검증을 끄지 않습니다. AWS `gyeongju`와 SSH `ec2-user`는 서로 다른 계정입니다.
+
+Windows PowerShell은 두 창을 사용합니다. 창 1에서 실제 주소·Endpoint ID를 넣어 터널을 열고 유지합니다.
+
+```powershell
+aws ec2-instance-connect open-tunnel --profile getddo-dev --region ap-northeast-2 --instance-connect-endpoint-id ENDPOINT_ID --private-ip-address STAGE_PRIVATE_IP --remote-port 22 --local-port 2222
+```
+
+창 2에서 실제 PEM 경로와 현재 run ID를 넣어 접속합니다. 개인 키 ACL은 본인만 읽도록 제한합니다. 이 Windows 절차는 제공용이며 실환경 접속 검증은 Linux/WSL에서 수행했습니다.
+
+```powershell
+ssh -i "C:\path\getddo-dev-api.pem" -p 2222 -o HostKeyAlias=getddo-stage-CURRENT_RUN_ID ec2-user@localhost
+```
+
+### 개인 시나리오 작성과 적용
+
+아래 명령부터는 **SSH 서버 셸**에서 실행합니다. 쓰기 가능한 공용 `gyeongju` 디렉터리 안에 자신의 시험 폴더를 만듭니다. `my-test`는 다른 팀원과 겹치지 않는 이름으로 바꿉니다.
+
+```bash
+cd /opt/getddo-loadtest/scenarios/gyeongju
+mkdir -p my-test
+cp events.py my-test/events.py
+cp seed.sql my-test/seed.sql
+nano my-test/events.py
+loadtest apply /opt/getddo-loadtest/scenarios/gyeongju/my-test/events.py
+```
+
+`nano` 저장은 Ctrl+O → Enter, 종료는 Ctrl+X입니다. 성공 출력은 `state: applied`, `workers: 2`, 시나리오 SHA256과 웹 주소를 포함합니다. 파일 저장만으로 Python은 재적재되지 않습니다. `apply`가 이전 결과를 S3에 보관·재조회 검증하고 읽기 전용 스냅샷을 선택한 다음 Locust master와 worker 2개만 재시작합니다. API·DB·Redis는 유지됩니다. 시나리오를 바꾸려고 환경을 다시 생성할 필요는 없습니다.
+
+실행 중에는 apply를 거부합니다. 문법·import 검증 실패 시 이전 시나리오를 유지하고, 교체 후 준비 실패 시 이전 상태 복원을 시도합니다. 적용 중에는 다른 사람이 START하지 않도록 합니다. 한 번 적용한 시나리오는 환경 전체에 공유됩니다.
+
+예제 [events.py](../loadtest/examples/events.py)는 `StageUser`를 상속해 `GET /api/v1/events?page=1&size=10`을 반복하고 1~2초 대기합니다. `catch_response=True` 안에서 `self.check(response, events_page)`를 호출해 응답 계약과 업무 결과를 기록합니다. 개인 파일은 일반 Python 파일 하나, 최대 1MiB이며 설치된 패키지를 사용합니다. 다른 개인 파일 import나 임의 패키지 설치를 전제로 작성하지 않습니다.
+
+기본 `smoke_events`는 합성 USER로 `GET /api/v1/events?page=1&size=1`을 검사합니다. 개인 예제 역시 기본적으로 같은 준비된 합성 USER 헤더를 사용합니다. **가상 사용자 50명은 DB 회원 50명이 아닙니다.** 여러 회원이 필요한 시나리오는 회원·권한·멤버십 데이터를 직접 준비하고 요청별 헤더를 맞춥니다. 상대 API 경로, 고정 요청 이름, 명시적 timeout, 업무 계약에 맞는 검증 함수를 사용합니다. 상세 계약은 [런타임 안내](../loadtest/README.md)와 [CONTRACT](../loadtest/CONTRACT.md)를 따릅니다.
+
+### 더미 데이터 입력과 정리
+
+공통 기본 데이터는 담당자가 준비하고, 시나리오별 더미 데이터는 시험하는 팀원이 넣는 방식을 권장합니다. 제공된 `seed.sql`은 조회 예제이며 보유한 더미 SQL이 자동 적용된 것은 아닙니다. 자신의 시험 폴더에 `seed.sql`과 `cleanup.sql`을 함께 관리합니다.
+
+SSH 서버 셸에서 파일을 편집하고 DB에 접속합니다.
+
+```bash
+nano /opt/getddo-loadtest/scenarios/gyeongju/my-test/seed.sql
+nano /opt/getddo-loadtest/scenarios/gyeongju/my-test/cleanup.sql
+loadtest db
+```
+
+`mysql>`에서 실행합니다. SOURCE 경로는 내 PC가 아니라 SSH 서버의 파일 경로입니다.
+
+```sql
+SELECT DATABASE(), CURRENT_USER();
+SHOW SESSION STATUS LIKE 'Ssl_cipher';
+SOURCE /opt/getddo-loadtest/scenarios/gyeongju/my-test/seed.sql;
+```
+
+`loadtest db`가 `stage_tester` 계정과 서버 인증서를 검증하는 TLS 접속을 처리합니다. 비밀번호를 직접 인자로 넣지 않습니다. 계정은 SELECT·INSERT·UPDATE·DELETE용입니다. 기존 SQL에 CREATE TABLE·ALTER·DROP·TRUNCATE·GRANT가 있다면 데이터 입력 부분과 구분하고 담당자에게 확인합니다.
+
+입력 후 시험별 ID로 필요한 건수·상태·연결 관계를 조회합니다. 반복 입력 시 중복 키·중복 행 처리도 작성합니다. 다른 사람의 부하 중 공용 데이터를 변경하지 않습니다. 시험 종료 후 서버 셸에서 `loadtest collect`로 결과·소스를 보관한 다음 `loadtest db`로 재접속해 정리 파일을 실행합니다.
+
+```sql
+SOURCE /opt/getddo-loadtest/scenarios/gyeongju/my-test/cleanup.sql;
+```
+
+정리 SQL은 자신의 시험 ID·식별자에 해당하는 행만 DELETE하며 외래 키와 삭제 순서를 확인합니다. 공용 데이터·전체 테이블을 일괄 삭제하지 않습니다. 종료는 MySQL의 `\q`입니다. 수집은 Python·SQL 파일을 보관하지만 **DB 전체 덤프를 만들지는 않습니다.** 필요한 데이터는 환경 삭제 전에 별도로 보관합니다.
+
+## 부하 테스트 사용법과 시나리오 관리
+
+Locust에 로그인하고 worker 2개의 준비를 확인합니다. 세션은 30분이며 만료되면 재로그인합니다. 로그인 5회 실패 시 60초 잠금이 있습니다.
+
+| Locust 입력 | 의미 | 첫 확인 예시 |
+| --- | --- | --- |
+| Number of users | 동시 가상 사용자 목표. RPS나 고유 회원 수가 아님 | `2` |
+| Ramp up | 초당 추가할 사용자 수 | `1` |
+| Host | 생성된 Stage 내부 ALB, 고정 대상 | 표시된 값 유지 |
+| Run time | 부하 전체 실행 시간. 증가 구간 포함 | `20s` |
+| Profile | 시나리오 선택 기능이 아님 | 빈 값 |
+
+웹 START 후 [Grafana](#grafana-지표)를 관찰합니다. Run time에 도달하거나 Stop을 누르면 부하만 중지됩니다. 창을 닫아도 서버 작업은 계속될 수 있습니다. 요청 수·실패·업무 결과를 확인한 다음 SSH 서버에서 수집합니다.
+
+```bash
+loadtest collect
+```
+
+수집은 부하 중지·최종 worker 보고 대기·CSV/HTML·실제 적용 스냅샷·개인 Python/SQL 보관과 S3 readback/해시 검증을 수행합니다. 출력의 `bucket`, `prefix`, 파일별 `sha256`을 시험명·시간·users/ramp/duration과 함께 기록합니다. S3에서 해당 prefix를 자신의 PC로 다운로드할 수 있습니다.
+
+```bash
+aws s3 cp s3://BUCKET/RESULT_PREFIX/ ./stage-results/ --recursive \
+  --profile getddo-dev --region ap-northeast-2
+```
+
+`BUCKET`과 `RESULT_PREFIX`는 이번 수집 출력으로 바꿉니다. 받은 `locust/run.html`을 열고, Linux/WSL에서는 해당 `locust` 폴더에서 `sha256sum -c SHA256SUMS`로 보고서 해시를 확인할 수 있습니다. 추가 소스·메타데이터 해시는 수집 JSON의 목록과 대조합니다.
+
+같은 시나리오를 반복하면 수집 성공 후 웹에서 START합니다. 파일을 바꿨다면 `loadtest apply FILE` 성공 후 시작합니다. 수집 실패 시 새 시험을 열지 말고 원인을 해결한 뒤 같은 `loadtest collect`를 재시도합니다. 미완료 업로드를 먼저 복구합니다.
+
+| 증상 | 확인·조치 |
+| --- | --- |
+| `An unknown error occurred` / 409 | 이전 시험 미수집, 실행/중지/apply 중, worker 누락·오래된 통계 확인. 종료·수집 성공과 worker2 준비 후 재시도 |
+| Host/Profile 거부 | Host 유지·Profile 빈 값·Run time 양수 확인 |
+| 변경한 Python이 실행되지 않음 | 저장 후 apply 성공 여부와 SHA 확인 |
+| 요청은 있는데 업무 카운터 없음 | 개인 코드의 `catch_response=True`와 `self.check` 호출 확인 |
+| SSH Permission denied | 기존 PEM, Linux 사용자 `ec2-user`, 키 파일 권한 확인 |
+| `loadtest: command not found` | 내 PC 대신 SSH 서버에서 실행했는지 확인 |
+| SQL 권한 거부 | DML용 계정인지와 SQL에 DDL이 섞였는지 확인 |
+
+## Grafana 지표
+
+기존 Prod 대시보드·데이터 소스·시계열은 유지합니다. [Staging load test](https://dzc8oneey9mmx.cloudfront.net/grafana/d/getddo-staging-overview)와 Staging 폴더의 AWS resources를 사용합니다. 최근 15분부터 확인하고 종료 후 시험 시작~종료 절대 시각으로 고정합니다.
+
+| 순서·화면 | 확인 항목 |
+| --- | --- |
+| 발생기 건전성 | master scrape·expected/connected/fresh/healthy worker, 데이터 신선도. worker2와 발생기 CPU·메모리를 먼저 확인 |
+| Locust 부하·지연 | 사용자·RPS·누적 요청·실패, rolling/cumulative p50/p95/p99. 지연 단위는 초 |
+| 업무 결과 | success, expected_rejection, rate_limited, server_error, http_error, invalid_envelope, transport_error |
+| API/JVM | a/c 요청·RPS·5xx·지연, heap·GC, Hikari active/pending/idle/max, Tomcat 사용량 |
+| 호스트 | API a/c·Locust CPU·메모리·디스크 여유·exporter 상태 |
+| AWS resources | RDS 연결·CPU·I/O 지연·여유 공간, Redis 메모리·eviction·network, ALB target·5xx·지연, CPU credits |
+
+Prometheus Stage 수집은 5초, 짧은 rate는 1분 창입니다. percentile은 master가 전체 요청에서 계산한 값이며 worker percentile 평균이 아닙니다. AWS 지표는 CloudWatch 원래 해상도를 따르고 CPU credits는 5분입니다. No data·NaN·수집 공백·요청0을 성공0으로 해석하지 않습니다. 짧은 시험 후 지표 도착을 기다려 대조합니다.
+
+본격 시험 전에 시나리오·회원/데이터·부하 단계·기대 업무 결과·지연/실패 합격 및 중단 기준을 정합니다. 작은 조회 시험 성공은 쓰기 정합성·동시성·최대 처리량 또는 미정 SLO의 합격을 뜻하지 않습니다.
 
 ## 팀원이 처음 실행할 때
 
-환경 생성·삭제는 본인 PC에서 AWS에 요청하고, 실제 서버 준비는 AWS CodeBuild에서 실행합니다. 부하 실행과 관측은 브라우저의 Locust·Grafana를 사용합니다. 현재 환경 생성 전용 웹 화면은 제공하지 않습니다.
+이 절은 **환경을 생성·종료하는 담당자**용입니다. 서버를 사용하는 팀원은 앞 절을 따릅니다. 생성 스크립트는 Linux/WSL, Python 3.12, AWS CLI, Git·GitHub CLI를 사용하며 로컬 Terraform·Docker는 제출에 필요하지 않습니다. 실제 생성·수집·삭제는 AWS CodeBuild, 독립 만료 정리는 Scheduler가 실행합니다.
 
-### 1. 최초 준비와 권한
+### AWS 인증 설정
 
-- 실행 터미널: Linux 또는 Windows의 WSL2/Bash. 현재 실행기는 `pwd` 등 POSIX 모듈을 사용하므로 Windows PowerShell에서 Python을 직접 실행하는 방식은 지원하지 않습니다. 다른 운영체제에서의 실행은 별도 검증하지 않았습니다. WSL은 요청을 보내는 도구이며 테스트 서버는 AWS에 생성됩니다.
-- 설치: Git, GitHub CLI(`gh`), Python 3.12, AWS CLI(`aws login` 지원 버전). 아래 명령에는 `python3.12`를 사용합니다. 로컬 Terraform·Docker는 아래 bundle 생성·제출에는 필요하지 않으며 AWS 실행기가 사용합니다.
-- GitHub: 본인 계정으로 `gh auth login`을 실행하고 비공개 Infra와 BE 저장소의 읽기·Actions 산출물 다운로드 권한을 확인합니다.
-- AWS: 계정 `942466928325`의 본인 IAM 사용자로 로그인하고 Stage 실행 권한을 받아야 합니다. **팀원에게 이미 권한이 부여됐다고 가정하지 않습니다.** 저장소의 자동 그룹 연결은 현재 `gyeongju`에만 정의돼 있습니다. 관리자가 본인에게 실행 제어·S3 bundle/manifest·자격 설정 메타데이터·Scheduler/PassRole 권한과 Locust 비밀번호 조회 권한을 확인해야 합니다. 기존 정책은 `terraform/bootstrap/staging-control.tf`, `terraform/bootstrap/templates/iam/staging/`에서 확인합니다. 관리자/root 로그인을 매 실행에 사용하거나 다른 사람의 로그인 캐시를 공유하지 않습니다.
-
-다음 예시의 `본인_IAM_사용자명`만 본인 계정명으로 바꿉니다. 프로필은 자신의 PC에서 한 번 설정합니다. 고정 boto3 버전은 AWS CLI의 로그인 세션을 `credential_process`로 사용합니다.
+현재 팀 구성의 `gyeongju` 인증을 사용합니다. 유효한 `getddo-dev`가 있으면 STS 조회부터 하고 재로그인은 생략합니다. 새 PC에서는 다음을 설정합니다. root 인증을 실행 프로필에 연결하지 않습니다.
 
 ```bash
-aws configure set login_session arn:aws:iam::942466928325:user/본인_IAM_사용자명 --profile getddo-cli-login
+aws configure set login_session arn:aws:iam::942466928325:user/gyeongju --profile getddo-cli-login
 aws configure set region ap-northeast-2 --profile getddo-cli-login
-aws configure set credential_process 'aws configure export-credentials --profile getddo-cli-login --format process' --profile getddo-dev
+aws configure set credential_process 'aws configure export-credentials --profile getddo-cli-login --region ap-northeast-2 --format process' --profile getddo-dev
 aws configure set region ap-northeast-2 --profile getddo-dev
 aws login --profile getddo-cli-login --region ap-northeast-2 --remote
-aws sts get-caller-identity --profile getddo-dev
+aws sts get-caller-identity --profile getddo-dev --region ap-northeast-2
 ```
 
-마지막 결과의 계정·사용자를 확인합니다. 세션 만료 시 login만 다시 실행합니다. STS 성공은 모든 Stage 권한이 있다는 뜻은 아닙니다.
+만료 시 login만 다시 실행합니다. `credential_process` 출력은 SDK가 파이프로 읽으므로 직접 출력·저장하지 않습니다. 별도 IAM 사용자는 기존 사용자와 같은 권한을 자동으로 갖지 않습니다. 관리자가 Stage 제어·bundle/결과 S3·SSM 비밀번호 조회·Scheduler/PassRole·EICE 터널 권한을 확인해야 합니다. STS 성공만으로 모든 권한이 확인되는 것은 아닙니다.
 
-### 2. 실행할 코드와 CI 이미지 준비
+### 소스·CI 이미지·bundle 준비
 
-작업 중인 checkout을 바꾸지 않도록 새 작업 디렉터리에서 실행합니다. `gh` 인증을 Git에서도 사용하도록 설정하고 두 저장소를 받습니다.
+검토한 고정 Infra·BE 소스와 **같은 BE SHA의 성공한 CI 이미지 산출물**을 사용합니다. 준비 담당자가 bundle/config와 해시를 만들고 다른 실행자에게 전달할 수도 있습니다. main을 새로 병합해도 기존 환경 이미지는 자동 갱신되지 않습니다.
+
+작업 중인 checkout을 바꾸지 않고 새 폴더에서 준비합니다. 로컬 Python 환경·산출물은 checkout 밖 `stage-work`에 둡니다.
 
 ```bash
+gh auth login
 gh auth setup-git
 mkdir getddo-stage-run
 cd getddo-stage-run
 git clone https://github.com/Uplus-GETDDO/getddo-infra.git
 git clone --no-checkout https://github.com/Uplus-GETDDO/getddo-be.git
+mkdir -p stage-work/image
+python3.12 -m venv stage-work/venv
+stage-work/venv/bin/python -m pip install boto3==1.40.59
 cd getddo-infra
-python3.12 -m venv .venv
-.venv/bin/python -m pip install boto3==1.40.59
 export AWS_PROFILE=getddo-dev
-mkdir -p .stage/image
 ```
 
-BE의 같은 저장소 PR에서 **빌드·테스트와 Docker 이미지 작업이 성공한 실행**을 선택합니다. GitHub Actions 실행 화면에서 실행 ID와 재시도 번호를 확인해 다음 세 값을 입력합니다. 첫 실행의 재시도 번호는 `1`입니다. `dev` push는 Stage 이미지 산출물을 게시하지 않으며, 산출물은 7일 보관되므로 만료됐다면 해당 PR의 CI를 다시 실행해야 합니다. 이미 병합된 PR의 남아 있는 산출물도 동일한 고정 SHA로 검증합니다.
+GitHub Actions에서 필요한 백엔드 commit의 빌드·테스트·이미지가 성공한 실행을 선택합니다. `CI_RUN_ID`, `CI_ATTEMPT`를 실제 값으로 바꿉니다. commit SHA·산출물 revision·이미지 해시는 빌더가 대조합니다. 만료된 산출물은 해당 소스의 CI를 다시 실행해 준비합니다. 이 절차가 운영 API를 배포하는 명령은 아닙니다.
 
 ```bash
-PR_NUMBER='테스트할_BE_PR_번호'
-CI_RUN_ID='성공한_Actions_실행_ID'
+CI_RUN_ID='성공한_BE_Actions_실행_ID'
 CI_ATTEMPT='1'
 export INFRA_SHA="$(git rev-parse HEAD)"
-BACKEND_SHA="$(gh pr view "$PR_NUMBER" --repo Uplus-GETDDO/getddo-be --json headRefOid --jq .headRefOid)"
+BACKEND_SHA="$(gh run view "$CI_RUN_ID" --repo Uplus-GETDDO/getddo-be --json headSha --jq .headSha)"
 git -C ../getddo-be checkout --detach "$BACKEND_SHA"
 gh run download "$CI_RUN_ID" --repo Uplus-GETDDO/getddo-be \
-  --name "staging-image-${BACKEND_SHA}-${CI_ATTEMPT}" --dir .stage/image
-.venv/bin/python scripts/build-staging-bundle.py \
+  --name "staging-image-${BACKEND_SHA}-${CI_ATTEMPT}" --dir ../stage-work/image
+../stage-work/venv/bin/python scripts/build-staging-bundle.py \
   --infra-sha "$INFRA_SHA" \
   --backend ../getddo-be --backend-sha "$BACKEND_SHA" \
-  --artifact-dir .stage/image --output .stage/source.tar.gz
+  --artifact-dir ../stage-work/image --output ../stage-work/source.tar.gz
 ```
 
-bundle에는 Infra·BE 소스와 CI 이미지가 들어갑니다. 빌더가 checkout SHA·이미지 revision·해시를 검증하며, 기존 출력 파일 덮어쓰기는 거부합니다. 재시험용 bundle을 만들 때는 새 작업 디렉터리 또는 다른 출력 파일명을 사용합니다. 변경된 PR head와 이전 CI 이미지를 섞지 않습니다.
+선택한 실행의 head SHA가 검토한 백엔드 commit인지 확인합니다. 빌더 출력의 source SHA·image ID·image archive SHA256·bundle SHA256을 기록합니다. 기존 출력 덮어쓰기는 거부하므로 다시 만들 때 새 경로를 사용합니다.
 
-설정 파일을 생성합니다. 아래 AMI·보안 그룹·주소는 이 계정의 기존 구성 기준입니다. AMI가 더 이상 available 상태가 아니거나 x86_64 Amazon Linux 2023 이미지가 아니면 검토한 이미지로 바꾼 뒤 진행합니다. 비밀번호는 넣지 않습니다.
+[설정 계약](../terraform/staging/README.md#submission-and-recovery)에 맞는 비밀 없는 config를 만듭니다. AMI는 available·x86_64 Amazon Linux 2023인지, SG·CloudFront는 현재 계정 구성인지 사전에 검토합니다. 아래는 기존 계정 구성 예시이며 새 계정에 그대로 적용하지 않습니다.
 
 ```bash
 aws ec2 describe-images --region ap-northeast-2 --image-ids ami-0870825cefcaafcc8 \
   --query 'Images[].{Id:ImageId,State:State,Architecture:Architecture,Name:Name}'
-.venv/bin/python - <<'PY'
+../stage-work/venv/bin/python - <<'PY'
 import json
 import os
 from pathlib import Path
@@ -84,216 +245,83 @@ config = {
     "hooks": {name: f"scripts/staging_hooks/{name}.py"
               for name in ("prepare", "collect", "detach")}
 }
-Path(".stage/config.json").write_text(json.dumps(config, indent=2) + "\n")
+Path("../stage-work/config.json").write_text(json.dumps(config, indent=2) + "\n")
 PY
 ```
 
-`.venv/`·`.stage/`는 로컬 작업용이며 Git에 추가하지 않습니다. 준비 담당자가 한 번 만들고 다른 실행자에게 접근이 제한된 경로로 bundle·대응 config·빌더 출력의 SHA256을 전달해도 됩니다. 받는 사람도 본인 AWS 인증을 사용하고 SHA256과 검증 대상 버전을 확인합니다. 개인 `/tmp`나 로그인 캐시는 공유하지 않습니다.
-
-### 3. 매번 실행: 생성 → 브라우저 시험 → 삭제
-
-위 작업 디렉터리에서 실행합니다. `stage up`이라는 설치된 명령은 없습니다. 아래는 저장소의 Python 스크립트를 직접 실행하는 명령입니다.
-
-```bash
-export AWS_PROFILE=getddo-dev
-.venv/bin/python scripts/staging.py up --max-duration 120 \
-  --bundle .stage/source.tar.gz --config .stage/config.json
-RUN_ID='up이 반환한 run_id'
-.venv/bin/python scripts/staging.py status --run-id "$RUN_ID"
-```
-
-- `up`은 환경 생성 요청입니다. 120분은 요청 시점부터의 최대 수명이며 준비 완료 후 시험 시간이 아닙니다. `run_id`는 이번 환경의 식별자입니다. 다른 터미널에서도 같은 값을 사용합니다.
-- `up` 반환은 생성 완료가 아닙니다. status를 반복 조회해 `phase`가 `ready`가 된 뒤 시험합니다. `build_id`는 AWS CodeBuild 진행 확인에 사용합니다. 반환 후 터미널을 닫아도 생성·만료 정리는 계속됩니다.
-- Locust: `https://dzc8oneey9mmx.cloudfront.net/locust/`, 아이디 `locust-admin`. 비밀번호는 AWS 서울 리전의 Parameter Store `/getddo/staging/locust/admin-password`에서 본인 권한으로 복호화해 확인합니다.
-- 처음에는 Locust UI에서 사용자 수 `2`, 초당 생성 `1`, 실행 시간 `30s`로 시작합니다. 초기 시나리오는 이벤트 목록 조회 `smoke_events`입니다. 업무 시나리오는 시험 전에 별도로 준비합니다.
-- Grafana: `https://dzc8oneey9mmx.cloudfront.net/grafana/` → 기존 계정 로그인 → `Staging` 폴더 → 최근 15분. 요청 수·RPS·실패 수·p95 지연·worker 2개·API a/c 처리량부터 확인합니다.
-
-종료 후 결과 수집을 요청하고, 해당 CodeBuild 성공과 status의 `phase: collected`·결과 갱신을 확인한 뒤 삭제합니다. 각 명령은 비동기 요청이므로 바로 이어서 실행하지 않고 해당 작업의 완료를 기다립니다.
-
-```bash
-.venv/bin/python scripts/staging.py collect --run-id "$RUN_ID"
-.venv/bin/python scripts/staging.py status --run-id "$RUN_ID"
-# collect의 CodeBuild 성공과 결과 보관을 확인한 뒤 실행
-.venv/bin/python scripts/staging.py destroy --run-id "$RUN_ID"
-.venv/bin/python scripts/staging.py status --run-id "$RUN_ID"
-```
-
-마지막에 `phase: destroyed`까지 확인합니다. Locust Stop은 부하만 멈추고 AWS 자원은 삭제하지 않습니다. `destroy`는 결과 보관을 검증한 뒤 Stage 서버·DB 등을 삭제하며 운영 환경·Grafana·S3 결과는 보존합니다. 결과는 `staging/runs/RUN_ID/results/`에 저장되며 색인은 status의 `results`로 확인합니다.
-
-환경은 팀 공용으로 동시에 1개만 사용합니다. 다른 팀원이 사용 중이면 기다리며 기존 잠금이나 다른 사람의 run을 임의로 삭제하지 않습니다. `AccessDenied`는 본인 권한 확인, 생성·삭제 실패는 status와 CodeBuild 로그 확인부터 시작합니다. 실패한 채 새 up을 반복하지 말고 아래 복구 절차를 따릅니다.
-
-## 부하 테스트 사용법과 시나리오 관리
-
-### 지금 할 일: 기본 동작 확인
-
-이미 환경을 생성했다면 up을 다시 실행하지 않습니다. `status`의 `ready`와 생성 CodeBuild 성공을 확인한 뒤 아래 순서로 한 번 시험합니다. 다음 값은 기능 확인용 예시이며 성능 합격 기준이 아닙니다.
-
-| 순서 | 할 일 | 확인할 것 |
-| --- | --- | --- |
-| 1 | Locust에 로그인하고 worker 연결 확인 | worker 2개가 준비돼 있어야 시작 가능 |
-| 2 | 아래 입력값으로 START | 사용자 2명·초당 생성 1명·30초 실행 |
-| 3 | Locust Statistics·Failures 확인 | 요청이 실제 발생하고 실패가 있는지 확인. 실패 시 오류 종류 확인 |
-| 4 | Grafana Staging 폴더에서 시험 시간 조회 | 최근 15분에서 시작해 실제 시험 시간으로 좁힘. 요청·실패 수, RPS·p95, worker, API a/c 처리 확인 |
-| 5 | collect 실행 후 완료 확인 | CodeBuild 성공, `phase: collected`, `results` 색인 갱신 |
-| 6 | 계속 시험하거나 destroy 실행 | 반복 전 수집 완료 필요. 최종 종료는 `phase: destroyed`까지 확인 |
-
-| Locust 입력 | 의미 | 첫 시험 입력 |
-| --- | --- | --- |
-| Number of users | 동시 가상 사용자 수. 초당 요청 수나 서로 다른 회원 수가 아님 | `2` |
-| Ramp up | 매초 추가할 가상 사용자 수 | `1` |
-| Host | 부하 대상 Stage 내부 ALB. 현재 값 유지 | 수정하지 않음 |
-| Run time | 부하를 실행할 시간. 서버 수명과 별개 | `30s` |
-| Profile | 현재 구성에서는 비어 있지 않은 값을 거부함. 시나리오 선택 기능이 아님 | 비워둠 |
-
-Locust는 `https://dzc8oneey9mmx.cloudfront.net/locust/`, Grafana는 `https://dzc8oneey9mmx.cloudfront.net/grafana/`입니다. Locust 아이디는 `locust-admin`, 비밀번호는 서울 Parameter Store `/getddo/staging/locust/admin-password`에서 본인 권한으로 확인합니다. Grafana는 기존 계정을 사용합니다.
-
-### 현재 실행되는 시나리오
-
-현재 허용된 시나리오는 **`smoke_events` 하나**입니다.
-
-```text
-합성 USER 헤더를 붙여 GET /api/v1/events?page=1&size=1
-→ HTTP 200, success=true, code=SUCCESS, 목록·페이지 응답 구조 확인
-→ 요청이 끝난 뒤 1~2초 대기
-→ 실행 시간 동안 반복
-```
-
-- 모든 가상 사용자가 준비된 같은 테스트 회원 정보를 사용합니다. 가상 사용자 수를 늘려도 고유 회원 수가 늘지는 않습니다.
-- 이벤트 목록이 비어 있어도 정상 페이지 구조면 성공입니다. 항목 개별 내용·쓰기 업무·DB 사후 정합성을 검증하는 시나리오는 아닙니다.
-- 429, 서버 오류, 기타 HTTP 오류, 응답 구조 오류, 전송 오류는 구분해 실패로 집계합니다. 요청 제한은 해제하지 않습니다.
-- 사용자 수와 대기 시간·응답 시간으로 실제 RPS가 결정됩니다. 사용자 100명이 곧 100 RPS라는 뜻은 아닙니다.
-- 이번 요청 수를 과거 시험의 41건·39건에 맞출 필요는 없습니다. 지연·스케줄링에 따라 달라집니다. 요청 0건을 성공으로 해석하지 않습니다.
-- 웹 UI에서는 인원·증가 속도·시간만 바꿉니다. 시나리오 파일 업로드·선택이나 Profile을 통한 변경은 현재 지원하지 않습니다.
-
-### 반복 시험과 종료
-
-처음 준비한 저장소 루트·Python 환경·본인 AWS 프로필을 사용합니다. `RUN_ID`는 지금 생성한 실행 ID입니다. 작업은 비동기이므로 각 CodeBuild 종료와 manifest 단계를 확인합니다.
-
-```bash
-export AWS_PROFILE=getddo-dev
-RUN_ID='지금 생성한 run_id'
-.venv/bin/python scripts/staging.py collect --run-id "$RUN_ID"
-.venv/bin/python scripts/staging.py status --run-id "$RUN_ID"
-# CodeBuild 성공 + collected + results 갱신 확인
-# 추가 시험: Locust에서 다시 START. 비교하려면 인원·증가 속도·시간 중 하나만 변경
-# 최종 종료: 다른 시험을 시작하지 않은 상태에서 아래 실행
-.venv/bin/python scripts/staging.py destroy --run-id "$RUN_ID"
-.venv/bin/python scripts/staging.py status --run-id "$RUN_ID"
-# CodeBuild 성공 + destroyed 확인까지 반복 조회
-```
-
-**지금 시험을 끝내고 정리할 때는 `destroy`를 바로 실행해도 됩니다.** destroy 자체가 부하 중지·최종 결과 보관과 검증을 수행하므로 별도 collect가 필수는 아닙니다. 추가 시험 전에 이전 결과만 보관하고 싶을 때 collect를 사용합니다.
-
-**Stop·30초 타이머·브라우저 종료는 서버 삭제가 아닙니다.** collect는 부하를 멈추고 Locust CSV/HTML·Grafana 쿼리/시계열을 S3에 보관합니다. destroy는 최종 보관을 다시 검증하고 Stage 자원을 삭제합니다. 결과 저장 실패로 정상 삭제가 중단되면 오류를 복구한 뒤 같은 run으로 재시도합니다. 운영 자원·기존 Grafana·보관 결과는 유지됩니다.
-
-### 다시 START할 때 Unknown error가 뜨면
-
-현재 UI는 시작 요청이 거부됐을 때 구체적인 사유 대신 `An unknown error occurred`로 표시할 수 있습니다. 입력값이 틀렸다고 단정하지 않습니다.
-
-- 이전 시험이 STOPPED인데 미수집 결과가 남으면 서버가 HTTP 409로 다음 시작을 거부합니다. collect를 실행하고 CodeBuild 성공·`collected`·결과 색인 갱신 후 다시 START합니다. 화면의 통계를 내려받는 것만으로 AWS 보관 완료를 대신하지 않습니다.
-- worker 누락·통계 지연, 아직 실행/중지 처리 중인 경우도 409가 됩니다. 수집으로 해결되지 않으면 상태·worker·CodeBuild를 확인합니다.
-- Profile 입력이나 Host 변경은 거부됩니다. Profile은 비우고 Host는 유지합니다. 세션 만료는 다시 로그인합니다.
-- `50명 / Ramp up 1 / 3m` 자체는 유효한 설정입니다. 목표 50명까지 약 50초가 걸리고 실행 시간 3분에는 이 증가 구간도 포함됩니다. 이 값의 성능 합격 여부는 별도 기준으로 판단합니다.
-
-### 업무 시나리오를 추가할 때
-
-먼저 다음 내용을 정합니다. 웹 화면을 조작하는 E2E가 아니라 API 요청 흐름을 Python으로 작성합니다.
-
-| 정할 내용 | 작성할 항목 |
-| --- | --- |
-| 목적·흐름 | 조회/출석/응모 등 시험할 업무와 API 호출 순서 |
-| 사용자·데이터 | 고유 회원 수·등급·권한, 필요한 이벤트/응모권 등 초기 데이터와 준비 방법 |
-| 부하 | 동시 사용자, 증가 속도, 사용자 대기 시간, 실행 시간, 업무별 비중 |
-| 판정 | 기대 업무 결과, 정상 거절과 오류의 구분, 쓰기 후 DB 확인 항목 |
-| 기준·종료 | 목표 RPS·지연·오류율, 시험 중단 조건, 재시험용 데이터 정리 방법 |
-
-Infra 저장소에서 코드와 테스트를 변경하고 리뷰·CI를 거쳐 새 bundle로 반영합니다. 새 bundle을 만들기만 해서는 실행 중 환경이 바뀌지 않습니다. 현재 결과를 수집·삭제 완료한 뒤 새 bundle/config로 환경을 생성합니다.
-
-| 코드 | 변경할 내용 |
-| --- | --- |
-| `loadtest/locustfile.py` | 사용자 동작·호출 순서·대기 시간·업무별 비중 |
-| `loadtest/scenario.py` | 상대 API 경로·응답 검증·명시적 정상 거절 판정 |
-| `loadtest/config.py` | 새 시나리오 허용과 입력 검증 |
-| `scripts/staging_locust_install.py` 및 prepare hook | 시나리오 설정·테스트 사용자/데이터 준비. 별도 회원 풀은 현재 자동 제공되지 않음 |
-| `loadtest/metrics.py`·관측 설정 | 현재 smoke_events에 고정된 업무 지표를 새 시나리오에 맞춰 수정·검증 |
-| `loadtest/tests/` | 호출·판정·로그인/UI/통계 동작 검증. 실제 AWS 시험과 구분 |
-
-시나리오별 정합성·성능 기준은 아직 공통으로 확정돼 있지 않습니다. 기본 조회 시험이 성공했다고 출석·응모·동시성이나 서비스 최대 처리량까지 검증됐다고 기록하지 않습니다. 응답 본문·회원 ID·비밀번호를 요청 이름·로그·Grafana 라벨에 넣지 않습니다.
-
 <a id="준비와-실행"></a>
 
-## 실행 계약과 복구 참고
+### 생성과 만료 설정
 
-| 명령·파일 | 의미 |
-| --- | --- |
-| `up` | 고정 bundle·config를 전달하고 AWS 환경 생성 요청 |
-| `status` | 지정한 run의 manifest·단계·결과 색인 조회 |
-| `collect` | 부하 중지·결과 보관·재조회 검증 요청. 완료 시 `collected` |
-| `destroy` | 결과 보관 검증 후 임시 자원 삭제 요청. 실제 잔여 0 확인 후 `destroyed` |
-| bundle | Infra·BE 소스와 고정 CI 이미지를 묶은 파일. 비밀번호를 넣지 않음 |
-| config | 같은 Infra SHA·AMI·공유 보안 그룹·CloudFront·hook 경로를 지정하는 비밀 아닌 설정 |
+다음은 요청 시점부터 120분 예시입니다. 수명은 준비 시간을 포함한 **15~5760분(최대96시간)**입니다. 생성만으로 부하가 자동 시작되지는 않습니다.
 
-최대 수명은 15~1440분 중 필수 지정합니다. 상세 소유권·설정 계약은 [State·설정 예시](../terraform/staging/README.md#submission-and-recovery)를 따릅니다. `ready`에는 앱 두 대 배포, 전용 DB·Redis, 테스트용 USER 준비, Locust master·worker 2개의 대기 상태, HTTPS health와 모니터 등록 확인이 포함됩니다. 실제 업무 부하는 별도로 시작합니다.
-
-CLI 로그인 세션이 유효하면 기존 본인 세션을 재사용합니다. `credential_process` 출력은 SDK가 파이프로만 읽으므로 직접 출력·저장하지 않습니다. CodeBuild와 EC2는 자체 역할을 사용합니다. 생성·삭제 실패 복구는 아래 [수집과 삭제](#수집과-삭제)를 따릅니다.
-
-## 로그인과 같은 master 제어
-
-- 주소: `https://dzc8oneey9mmx.cloudfront.net/locust/`
-- 아이디: `locust-admin`
-- 비밀번호: Parameter Store `/getddo/staging/locust/admin-password`의 SecureString. 서울 리전 콘솔에서 본인 권한으로 확인한다. 문서·PR·터미널 인자에 값을 복사하지 않는다.
-- 계정명·세션 비밀 경로: `/getddo/staging/locust/admin-user`, `/getddo/staging/locust/session-secret`.
-
-위 세 파라미터는 최초 생성한 영구 설정이다. up·destroy·rollback·TTL에서 회전하거나 삭제하지 않는다. EC2가 역할로 값을 읽고 비밀번호는 해시, 세션 비밀은 root 전용 `/run` 파일로만 전달한다. worker에는 로그인 비밀을 마운트하지 않는다.
-
-웹 UI와 `loadtest/control.py`는 같은 master의 인증·CSRF 보호 HTTP API를 사용한다. 컨트롤러 인자의 사용자/비밀번호는 값이 아닌 실행 사용자 소유 0600 파일 경로다. 외부 CLI는 본인만 읽는 임시 경로를 사용하고, EC2 내부 수집은 비밀번호를 stdin으로만 전달한다. 사용 후 인증 정보는 보관하지 않는다.
-
-```sh
-python3 loadtest/control.py --origin https://dzc8oneey9mmx.cloudfront.net \
-  --username-file /run/private/username --password-file /run/private/password \
-  run --users 2 --spawn-rate 1 --duration 30
+```bash
+export AWS_PROFILE=getddo-dev
+../stage-work/venv/bin/python scripts/staging.py up --max-duration 120 \
+  --bundle ../stage-work/source.tar.gz --config ../stage-work/config.json
+RUN_ID='up이_반환한_run_id'
+../stage-work/venv/bin/python scripts/staging.py status --run-id "$RUN_ID"
 ```
 
-`stop`, `collect --output DIR`도 같은 전역 인증 인자를 쓴다. 부하 대상은 생성된 전용 internal Stage ALB로 고정하며 UI의 임의 host·리다이렉트로 변경할 수 없다. 전체 성능 시나리오는 시험 전에 작성한다. 기본 `smoke_events`는 합성 USER로 `GET /api/v1/events`를 조회하고 HTTP 상태뿐 아니라 ResponseEnvelope와 페이지 형태를 검사하는 플랫폼 확인용이다.
+특정 시각에 정리를 시작하려면 위 `--max-duration` 대신 `--expires-at`을 사용합니다. 아래 날짜는 원하는 날짜와 시간대로 바꾸며, 요청 시점에서 15분 이상·96시간 이내여야 합니다. 두 만료 인자는 동시에 사용할 수 없습니다.
 
-## Grafana 지표
+```bash
+EXPIRES_AT='YYYY-MM-DDTHH:MM:SS+09:00'
+../stage-work/venv/bin/python scripts/staging.py up --expires-at "$EXPIRES_AT" \
+  --bundle ../stage-work/source.tar.gz --config ../stage-work/config.json
+```
 
-기존 Prod 대시보드·UID·데이터 소스·시계열을 유지하고 별도 `Staging` 폴더를 추가한다. 같은 Prometheus에 Stage API·node·Locust job을 별도로 등록하며 임시 대상만 삭제한다.
+`up` 반환은 `{run_id, build_id, expires_at}`이며 생성 완료가 아닙니다. 같은 run으로 status를 반복 조회하고 생성 CodeBuild가 성공·완료되고 `phase: ready`가 된 뒤 접속합니다. `ready`는 API 두 대·DB/Redis·합성 USER·Locust master/worker2·HTTPS·모니터 등록을 확인한 상태입니다. 반환 후 터미널을 닫아도 AWS 작업과 예약 정리는 계속됩니다.
 
-| 화면 | 지표와 해석 |
-| --- | --- |
-| Staging load test | 사용자 수, master rolling RPS, 전체 요청·실패 수, 1분 실패율, rolling/cumulative p50·p95·p99(초) |
-| Locust 결과·건전성 | 업무 결과별 수·초당 횟수, 429/서버 오류/응답 계약 오류/전송 오류, master scrape, expected·connected·fresh·healthy worker, 최근 요청·worker 데이터 신선도 |
-| API/JVM | a/c 요청 수·RPS, 성공/오류 지연 p95·p99, 5xx, heap·GC, DB pool active/pending/idle/max, Tomcat busy/current/max |
-| 서버 | API a/c·Locust CPU, 사용·가용 메모리, 파일시스템 여유, exporter 수집 상태 |
-| Staging AWS resources | 실제 Stage RDS·Redis·ALB·TG·EC2 차원의 CPU·메모리·연결·디스크·IOPS·I/O 지연·큐, Redis eviction·network, ALB 5xx·연결 오류·지연·healthy targets, CPU credits |
+`status`의 `deployment.locust_instance`, 만료 시각, EICE 정보와 호스트 지문을 팀원에게 공유합니다. 다음 명령은 CodeBuild 진행 조회입니다. `BUILD_ID`는 해당 작업 응답값으로 바꿉니다.
 
-Prometheus는 Stage를 5초마다 수집한다. 짧은 부하의 rate는 1분 창을 사용한다. Locust percentile은 master가 전체 요청에서 계산한 값이며 worker percentile 평균을 사용하지 않는다. 수집 누락·오래된 데이터·요청 없음은 정상 0으로 치환하지 않는다. AWS 지표는 원래 CloudWatch 해상도를 따른다. CPU credits는 5분이며 새 자원의 지표 도착 지연은 Prometheus 수집 주기와 별개다.
-
-Monitor는 고정 S3 데이터 요청만 읽고 실제 EC2의 계정·VPC·이름·Environment·RunId·주소를 검증한다. Stage runner에 기존 monitor의 임의 SSM 명령 실행 권한을 주지 않는다. Stage 생성 시 monitor→Stage 목적지 포트만 임시 허용한다.
+```bash
+aws codebuild batch-get-builds --ids BUILD_ID \
+  --query 'builds[].{Status:buildStatus,Phase:currentPhase,Complete:buildComplete}' \
+  --profile getddo-dev --region ap-northeast-2
+```
 
 ## 수집과 삭제
 
-```sh
-AWS_PROFILE=getddo-dev python3 scripts/staging.py collect --run-id RUN_ID
-AWS_PROFILE=getddo-dev python3 scripts/staging.py destroy --run-id RUN_ID
-AWS_PROFILE=getddo-dev python3 scripts/staging.py status --run-id RUN_ID
+개인 시험이 끝나면 SSH 서버의 `loadtest collect` 후 `exit`로 나갑니다. 공용 환경 전체를 삭제하지 않습니다. 모든 팀원의 사용이 끝났을 때만 담당자가 내 PC의 저장소 루트에서 아래 명령을 사용합니다.
+
+```bash
+../stage-work/venv/bin/python scripts/staging.py collect --run-id "$RUN_ID"
+../stage-work/venv/bin/python scripts/staging.py status --run-id "$RUN_ID"
+# collect CodeBuild 성공·완료와 갱신된 results를 확인한 뒤 아래 삭제 요청
+../stage-work/venv/bin/python scripts/staging.py destroy --run-id "$RUN_ID"
+../stage-work/venv/bin/python scripts/staging.py status --run-id "$RUN_ID"
 ```
 
-수집은 부하를 멈춘 후 Locust CSV·전체 이력·실패/예외 수·HTML·메타데이터와 Grafana Stage 쿼리·시계열을 S3에 보관한다. 결과 색인은 Infra SHA·백엔드 SHA·이미지 ID·archive digest와 두 보고서의 객체 키·SHA256을 포함한다. 모든 결과를 다시 읽어 해시가 일치해야 성공이다. 로그인 비밀번호·쿠키·세션 비밀·앱 비밀은 결과에 넣지 않는다. 보관 기간은 아직 정하지 않았으며 자동 만료를 설정하지 않는다.
+각 명령은 비동기 요청입니다. 같은 수집을 중복 요청하거나 수집과 삭제를 겹쳐 실행하지 않습니다. `phase: collected`만으로 이번 요청 완료를 판단하지 말고 **반환된 CodeBuild 성공·완료와 results 갱신**을 함께 확인합니다. `collected`는 자원이 계속 실행 중일 수 있는 단계이며 부하 상태는 Locust에서 확인합니다. 정상 destroy 자체도 최종 부하 중지·수집을 수행하므로 사전 collect가 반드시 필요한 것은 아닙니다.
 
-정상 destroy에서 결과 보관이 실패하면 삭제를 멈추고 실패를 보고한다. 최대 수명·생성 실패 정리에서는 수집을 최대 6분 시도한 뒤 임시 자원 삭제를 우선한다. monitor 대상 해제 후 Terraform destroy를 실행하고 AWS 서비스별 잔여 자원을 확인한다. 자원이 남거나 소유권이 맞지 않으면 성공으로 표시하거나 singleton 잠금을 해제하지 않는다.
+결과 색인은 manifest `results`의 key/SHA256을 통해 `staging/runs/RUN_ID/results/`에서 조회합니다. 개인 호스트 수집은 그 아래 `operator/` prefix를 반환합니다. CSV·이력·실패/예외 요약·HTML·메타데이터·실제 선택한 Python 및 개인 Python/SQL을 보관합니다. 결과에는 비밀번호·쿠키·세션 비밀·개인정보를 넣지 않습니다.
 
-중단된 생성은 CodeBuild의 `buildComplete`까지 확인한 뒤 최신 실행 기록을 다시 읽는다. Terraform 실행 전에 기록한 build ID·사용자/호스트·State 경로·작업 종류·시간이 잠금과 일치하고 해당 실행이 종료된 경우에만 기존 잠금 객체를 ETag 조건으로 제거한다. 살아 있거나 소유권을 입증하지 못한 잠금은 제거하지 않는다.
+### Grafana 이력과 수집 제한
 
-Terraform에 기록되지 않은 부분 생성 자원은 실제 `Environment=staging`과 해당 `RunId` 태그를 모두 확인한 후 제한 시간 내 서비스별로 삭제한다. Terraform 실패 후 이 경로를 사용한 경우 State를 다시 정상 destroy로 정리해야 하며, 다른 실행·공유 자원·지속 설정의 소유권이 불명확하면 중단한다.
+공용 Prometheus는 환경 삭제 후에도 유지되며 보존은 **14일 또는20GB 중 먼저 도달하는 한도**입니다. 14일 전부 보장을 뜻하지 않습니다. S3 결과 장기 보관 기간은 별도 미정이며 `staging/` 결과 자동 만료를 추가하지 않았습니다.
+
+환경 전체 수집에서 유효한 24시간 이내 등록은 Grafana 쿼리·시계열 S3 내보내기를 수행합니다. **생성~만료 수명이 24시간을 초과하거나 등록 만료 후 수집하면** 현재 공유 exporter의 지원 범위를 벗어나 `collection_status: partial`, `monitoring_status: unavailable`과 다음 사유를 기록합니다.
+
+- `lifetime_exceeds_monitoring_limit`: 수명이24시간 초과.
+- `expired_monitoring_registration`: 수명이24시간 이내여도 등록 만료 후 수집.
+
+이 경우에도 Locust·개인 Python/SQL 보관과 readback/해시 검증은 필수입니다. Grafana 실시간 조회·기존 Prometheus 이력은 별개로 유지합니다. 필요한 그래프·패널 데이터는 시험 직후 보관합니다. 지원 구간에서 발생한 인증·소유권·무결성 오류를 위 제한으로 무시하지 않습니다.
+
+### 삭제 범위와 복구
 
 | 삭제 | 유지 |
 | --- | --- |
-| Stage EC2·EBS·전용 ALB/TG·listener rule·RDS/Redis·전용 subnet group/SG·추가 egress rule·workload 역할·앱 파라미터·임시 API log group | Prod 자원·기존 monitor/Grafana와 이력·검증한 S3 결과/산출물·영구 Locust 로그인 3개·persistent CodeBuild/Scheduler 제어 설정 |
+| Stage EC2/EBS·시험 RDS/Redis·전용 ALB/TG·임시 rule/SG/IAM·앱/시험 DB 접속 파라미터·임시 로그 | Prod·기존 공유 네트워크·monitor/Grafana·S3 결과·영구 Locust 로그인3개·지속 제어 기반·State/manifest 기록 |
 
-`destroyed`는 Terraform 종료만을 뜻하지 않는다. 실제 잔여 자원 0과 영구 로그인 설정 보존 확인이 필요하다. `/locust/`는 임시 listener rule이 없어지면 사용 불가하며 기존 `/grafana/`는 계속 유지한다.
+만료 시각은 삭제 **시작**이며 실제 RDS 등 삭제에는 추가 시간이 걸립니다. 정상 destroy는 필수 보관·재조회 검증 또는 detach 실패 시 삭제를 중단합니다. TTL·생성 실패 rollback은 수집을 최대360초 시도한 뒤 임시 자원 삭제를 우선합니다. 장애로 삭제가 실패하면 소유 잠금을 유지할 수 있습니다.
 
-## 최종 인수 기준
+생성·삭제 실패 시 해당 CodeBuild 종료와 manifest·오류를 먼저 확인합니다. 실패한 채 새 up을 반복하거나 살아 있는 실행의 잠금을 강제로 삭제하지 않습니다. 소유권·부분 자원·Terraform 잠금 복구는 [실행 계약](../terraform/staging/README.md#submission-and-recovery)을 따릅니다.
 
-리뷰 반영한 최종 두 PR SHA로 환경을 만들고, UI와 CLI에서 작은 부하(각 사용자 2명·초당 생성 1명·30초)를 명시적으로 실행한다. 두 worker, API a/c 처리, 업무 응답과 Grafana 수신을 대조하고 결과 재조회·삭제·잔여 0·Prod/monitor/로그인 보존까지 확인한다. 이는 한계 성능이나 아직 정하지 않은 SLO 합격 기준을 확정하는 시험이 아니다. 코드 수정이 필요하면 수정 SHA에서 다시 검증한다. 팀원 승인 1명이 필요한 PR은 열린 상태로 남기며 자동 병합하지 않는다.
+최종 `destroyed`는 실제 run 소유 잔여 자원0과 영구 로그인 설정 보존을 확인한 상태입니다. 담당자는 해당 CodeBuild 성공·manifest·자원 재고를 확인합니다. `/locust/` 접속 불가와 기존 `/grafana/` 계속 접근은 삭제 후 정상이며, Grafana가 열린다는 사실로 Stage가 남았다고 판단하지 않습니다.
+
+## 검증 범위
+
+개인 Python 적용·오류 파일 거부·실행 중 교체 거부, 기존 PEM SSH, DB TLS와 데이터 CRUD, 웹·개인 시나리오의 작은 부하와 Grafana 대조, 결과·소스 S3 readback을 실환경에서 확인했습니다. 별도 검증 환경에서 5분 뒤 TTL 정리 작업을 시작하고 전체 삭제·독립 잔여0·Prod/monitor/영구 로그인 보존도 확인했습니다. 5분은 검증용 시작 예약 간격이며 일반 수명 기본값이나 전체 AWS 삭제 완료 시간은 아닙니다.
+
+이는 매 실행의 정상 동작이나 최대 성능을 보장하는 판정이 아닙니다. 새 소스·AMI·권한·환경 변경은 다시 검증하며, 업무별 쓰기/동시성 정합성·부하 한계·SLO 기준은 별도로 정합니다.

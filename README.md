@@ -115,45 +115,29 @@ Terraform 검사는 backend를 제거한 임시 복사본과 mock AWS Provider�
 
 ## 임시 스테이징 부하 테스트
 
-API a/c `t3.small`, 전용 RDS/Redis·내부 ALB, Locust `t3.medium` 한 대(master+worker 2개)를 시험할 때만 생성합니다. 기존 Prod와 상시 Grafana는 유지합니다. 환경 생성·결과 보관·삭제는 스크립트, 실제 부하 시작·중지는 Locust UI 또는 CLI가 맡습니다.
+API a/c `t3.small`, 전용 RDS/Redis·내부 ALB와 Locust `t3.medium` 한 대(master+worker2개)를 시험할 때만 생성합니다. 기존 Prod·상시 Grafana는 유지합니다. 환경 생성·수집·삭제는 AWS 작업으로 실행하고, 부하는 Locust UI에서 제어합니다. 실행 중 서버에 SSH로 접속해 개인 Python 시나리오를 적용하고 시험 DB 데이터를 준비할 수 있습니다.
 
-- **처음 실행하는 팀원:** [최초 권한·도구 준비 → CI 이미지/bundle 생성 → 환경 생성·시험·삭제](docs/staging-loadtest.md#팀원이-처음-실행할-때)
-- **환경 생성 후 사용할 때:** [Locust 입력값·현재 시나리오·Grafana 확인·반복 시험·종료·업무 시나리오 추가](docs/staging-loadtest.md#부하-테스트-사용법과-시나리오-관리)
-- [State·실행 소유권·정리 계약과 config 예시](terraform/staging/README.md)
-- [Locust UI/CLI·통계와 검증](loadtest/README.md)
-- [백엔드 Stage 이미지·배포 경로](https://github.com/Uplus-GETDDO/getddo-be/blob/dev/docs/06-runbook/staging-deployment.md)
+- **이미 서버를 사용하는 팀원:** [SSH 접속·개인 시나리오·더미 SQL·결과 수집](docs/staging-loadtest.md#이미-열린-환경을-사용하는-팀원)
+- **환경 생성 담당자:** [AWS 인증·소스/이미지 준비·bundle/config·생성과 만료](docs/staging-loadtest.md#팀원이-처음-실행할-때)
+- [Locust 입력값·반복 시험](docs/staging-loadtest.md#부하-테스트-사용법과-시나리오-관리) · [Grafana 지표](docs/staging-loadtest.md#grafana-지표) · [수집·삭제·복구](docs/staging-loadtest.md#수집과-삭제)
+- [State·설정 계약](terraform/staging/README.md) · [Locust 런타임 계약](loadtest/CONTRACT.md)
 
-### 생성·조회·결과 수집·삭제
+### 생성·접속·종료의 구분
 
-앞의 Python 환경, 유효한 `getddo-dev` 인증, 검증된 source bundle과 비밀값 없는 config를 먼저 준비합니다. `SOURCE.tar.gz`·`CONFIG.json`은 위 실행 절차에 따라 준비한 실제 경로로 바꾸고, `RUN_ID`는 up이 반환한 이번 실행 ID로 바꿉니다.
+최대 수명은 요청 시점부터 **15~5760분(96시간)**이며 `--max-duration` 또는 시간대가 포함된 `--expires-at` 중 하나를 지정합니다. 특정 주말의 종료 날짜는 공통 기본값이 아닙니다. 현재 run ID·SSH 대상·만료 시각은 실행마다 조회해 공유합니다.
 
-```bash
-AWS_PROFILE=getddo-dev /tmp/getddo-infra-venv/bin/python scripts/staging.py up \
-  --max-duration 120 --bundle SOURCE.tar.gz --config CONFIG.json
-AWS_PROFILE=getddo-dev /tmp/getddo-infra-venv/bin/python scripts/staging.py status --run-id RUN_ID
-# ready 확인 후 UI/CLI에서 부하 시작
-AWS_PROFILE=getddo-dev /tmp/getddo-infra-venv/bin/python scripts/staging.py collect --run-id RUN_ID
-AWS_PROFILE=getddo-dev /tmp/getddo-infra-venv/bin/python scripts/staging.py destroy --run-id RUN_ID
-AWS_PROFILE=getddo-dev /tmp/getddo-infra-venv/bin/python scripts/staging.py status --run-id RUN_ID
-```
-
-최대 수명은 15~1440분에서 필수 입력하며, 120분은 예시입니다. 생성 요청부터 시간을 계산하고 만료 시 정리를 시작합니다. up의 `run_id/build_id/expires_at` 반환 후에는 터미널을 닫아도 AWS 실행이 계속됩니다. CodeBuild 성공과 manifest의 `ready`를 확인한 뒤 부하를 시작하며 up이 자동으로 부하를 주지는 않습니다. 고정 SDK와 AWS CLI 로그인 연결은 [본인 AWS 인증 설정](docs/staging-loadtest.md#1-최초-준비와-권한)를 따릅니다.
-
-### 접속·관측
-
-| 항목 | 사용 방법 |
+| 위치 | 사용하는 기능 |
 | --- | --- |
-| Locust | [HTTPS /locust/](https://dzc8oneey9mmx.cloudfront.net/locust/) — ready 동안 사용. 아이디 `locust-admin`, 비밀번호는 서울 Parameter Store `/getddo/staging/locust/admin-password` SecureString에서 본인 권한으로 조회 |
-| 부하 제어 | UI 또는 `loadtest/control.py`의 run/stop/collect가 같은 master를 사용. CLI 인증 파일은 실행 사용자 소유 0600 파일이며 원문을 인자로 넣지 않음 |
-| Grafana | [기존 HTTPS /grafana/](https://dzc8oneey9mmx.cloudfront.net/grafana/)의 Staging 폴더. 기존 Grafana 계정·비밀번호를 사용 |
-| 관측 지표 | Locust 사용자·RPS·p50/p95/p99·실패·업무 결과·worker, API/JVM·호스트, RDS/Redis/ALB·CPU credits. [지표별 해석](docs/staging-loadtest.md#grafana-지표) 참고 |
+| 생성 담당자 PC | `scripts/staging.py up/status/collect/destroy` — 고정 bundle/config 준비 후 AWS에 비동기 작업 요청 |
+| SSH 서버 | `loadtest apply FILE`, `loadtest db`, `loadtest collect` — 개인 시나리오·데이터·시험 결과 관리 |
+| [Locust 웹](https://dzc8oneey9mmx.cloudfront.net/locust/) | `locust-admin` 로그인 후 사용자·증가 속도·실행 시간 입력. 비밀번호는 서울 Parameter Store `/getddo/staging/locust/admin-password` |
+| [Grafana 웹](https://dzc8oneey9mmx.cloudfront.net/grafana/) | 기존 계정으로 Staging 폴더의 발생기·업무 결과·API/JVM·호스트·AWS 지표 관찰 |
 
-UI Stop·CLI stop은 부하만 중지합니다. **서버·DB까지 삭제하려면 `scripts/staging.py destroy`를 실행해야 합니다.** 시험을 반복하기 전 collect로 이전 결과를 보관합니다. 삭제 후 `/locust/`를 사용할 수 없는 것은 정상이며 기존 `/grafana/`는 유지됩니다.
+개인 시험은 Stop/시간 종료 후 SSH 서버의 `loadtest collect`로 보관합니다. 공유 환경을 종료하는 `destroy`는 모든 팀원 사용이 끝난 뒤 담당자가 요청합니다. 터미널 종료와 독립된 Scheduler가 만료 정리를 시작하며 실제 자원 삭제 완료에는 추가 시간이 걸립니다.
 
-### 보관·정리와 확인한 범위
+### 결과 보관과 검증 범위
 
-- 결과는 비공개 배포 버킷의 `staging/runs/RUN_ID/results/`에 보관합니다. manifest의 `results`가 색인 key/SHA256을 제공하고, Locust CSV/HTML과 Grafana 쿼리·시계열의 key/해시를 연결합니다. 정상 destroy는 보관·재조회 검증 실패 시 삭제를 중단합니다.
-- 생성 실패/TTL은 수집을 최대 360초 시도한 뒤 임시 자원 삭제를 우선합니다. 실제 잔여 자원이 없고 영구 로그인 설정이 보존돼야 소유 잠금을 해제합니다.
-- 삭제 대상은 Stage EC2/EBS·전용 DB/Redis·ALB/TG·임시 rule/SG/IAM·앱 설정입니다. Prod·공유 네트워크·monitor/대시보드·S3 결과·Locust 로그인 3개·지속 제어 기반·State/manifest는 보존합니다.
-- Prometheus는 14일/20GB 한도이며 S3 결과 보관 기간은 별도 미정입니다. 임의 S3 자동 만료를 추가하지 않았습니다.
-- 2026-10-23 기능 인수: UI 41건·CLI 39건 모두 실패 0, Grafana 대조·S3 재조회·정상 destroy·독립 잔여 0 확인. 생성 실패 rollback도 실제 검증했습니다. **만료 시각의 전체 workload 삭제 E2E는 미수행**이며 Scheduler 전달 계약·TTL 모의 검증과 구분합니다. 성능 한계/SLO 시험은 아닙니다.
+- Locust CSV/HTML·개인 Python/SQL은 S3 저장 후 readback·해시 검증합니다. SQL 파일 보관은 DB 전체 백업이 아닙니다.
+- Grafana S3 내보내기는 유효한 24시간 이내 등록을 지원합니다. 수명24시간 초과·등록 만료 후 수집은 모니터링 export를 `partial`로 표시하고 필수 Locust/소스 보관은 검증합니다. [제한과 사유](docs/staging-loadtest.md#grafana-이력과-수집-제한)를 확인합니다.
+- 공용 Prometheus 이력은 14일 또는20GB 한도이며 먼저 도달하는 제한이 적용됩니다. S3 결과의 장기 보관 기간은 미정입니다.
+- SSH·개인 시나리오·DB TLS/CRUD·소규모 부하·Grafana 대조·S3 재조회와 별도 환경의 TTL 자동 삭제·독립 잔여0을 실환경에서 확인했습니다. 이는 한계 성능·SLO 합격 검증이 아닙니다.
