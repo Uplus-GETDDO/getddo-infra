@@ -53,14 +53,17 @@ aws ec2 describe-subnets --profile getddo-gyeongju --region ap-northeast-2 \
   --query 'Subnets[].{Id:SubnetId,AZ:AvailabilityZone,FreeIPs:AvailableIpAddressCount}' --no-cli-pager
 ```
 
-snapshot 이름은 작업 시각으로 고유하게 만든다. 생성과 `available` 완료 대기도 관찰자가
+snapshot 이름은 기존 IAM 접두사에 UUID를 붙여 생성 시도마다 새로 만든다.
+응답 유실이나 waiter 실패 시에는 기존 ID의 상태를 먼저 조회한다. 생성이 성공했다면
+해당 ID의 완료 대기만 재시도하고, 새 snapshot 생성이 필요할 때 새 UUID를 사용한다.
+생성과 `available` 완료 대기도 관찰자가
 있는 확정된 저트래픽 작업 시간 안에서 수행한다. Single-AZ snapshot 생성은 수초에서
 수분간 I/O를 일시 중단할 수 있으므로, 생성 요청 전부터 API 오류율·p95와 DB 지연을
 관찰하고 대기·전환·안정 확인까지 이어간다. 확정 임계치를 초과하면 DB 전환으로
 진행하지 않고 아래 중단 절차를 따른다.
 
 ```bash
-snapshot_id="getddo-dev-mysql-pre-multiaz-$(date -u +%Y%m%d%H%M%S)"
+snapshot_id="getddo-dev-mysql-pre-multiaz-$(python3 -c 'import uuid; print(uuid.uuid4())')"
 aws rds create-db-snapshot --profile getddo-gyeongju --region ap-northeast-2 \
   --db-instance-identifier getddo-dev-mysql --db-snapshot-identifier "$snapshot_id" --no-cli-pager
 aws rds wait db-snapshot-available --profile getddo-gyeongju --region ap-northeast-2 \
