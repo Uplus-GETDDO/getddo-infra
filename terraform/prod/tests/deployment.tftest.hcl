@@ -95,7 +95,7 @@ run "private_database_and_limited_operator_access" {
   assert {
     condition = (
       aws_db_instance.main.multi_az &&
-      aws_db_instance.main.apply_immediately &&
+      !aws_db_instance.main.apply_immediately &&
       !aws_db_instance.main.publicly_accessible &&
       aws_db_instance.main.storage_encrypted &&
       aws_db_instance.main.deletion_protection &&
@@ -105,7 +105,7 @@ run "private_database_and_limited_operator_access" {
       aws_db_instance.main.copy_tags_to_snapshot &&
       aws_db_instance.main.password_wo_version == var.db_master_password_version
     )
-    error_message = "운영 DB는 비공개 Multi-AZ·즉시 적용과 암호화·삭제 보호·백업·입력 비밀번호 버전을 유지해야 합니다."
+    error_message = "운영 DB는 비공개 Multi-AZ·기본 유지보수 창 적용과 암호화·삭제 보호·백업·입력 비밀번호 버전을 유지해야 합니다."
   }
 
   assert {
@@ -143,6 +143,17 @@ run "private_database_and_limited_operator_access" {
   assert {
     condition     = aws_instance.api.metadata_options[0].http_tokens == "required" && aws_instance.api.root_block_device[0].encrypted
     error_message = "EC2는 IMDSv2와 암호화 디스크를 사용해야 합니다."
+  }
+}
+
+run "approved_database_immediate_apply" {
+  command = plan
+  variables {
+    db_apply_immediately = true
+  }
+  assert {
+    condition     = aws_db_instance.main.apply_immediately && aws_db_instance.main.multi_az
+    error_message = "승인된 전환 plan에서만 RDS 즉시 적용을 명시적으로 선택할 수 있어야 합니다."
   }
 }
 

@@ -29,6 +29,9 @@
    보호 브랜치 직접 push로 우회하지 않는다. State 주소·기존 리소스 import를 변경하지 않는다.
 3. `getddo-gyeongju`의 STS 계정 `942466928325`와 ARN을 확인한다.
    프로필명만 신뢰하지 않는다. `getddo-root`는 필요한 IAM 보완에만 사용한다.
+   이 런북은 실제 운영자 프로필을 사용한다. README의 예시 `getddo-dev`와 별개이며,
+   해당 프로필의 기존 credential_process 충돌을 피한다. 다른 운영자는 자신의
+   승인된 프로필로 바꾸되 위 계정·실행 주체를 먼저 검증한다.
 4. 아래 조회로 pending 변경·유지보수·서브넷 상태·여유 IP·현재 사양의 Multi-AZ 지원을
    다시 확인한다. 진행 중인 변경·배포가 있으면 중복 실행하지 않는다.
 5. 저트래픽 작업 시작/종료 시간, 관찰 담당자·연락 수단을 정하고 최근 정상 구간의
@@ -80,18 +83,19 @@ mock apply는 외부 AWS API·원격 State를 사용하지 않으며 실제 HA �
 | root | 기존 S3 State 키 | 허용하는 변경 |
 | --- | --- | --- |
 | `terraform/bootstrap` | `bootstrap/terraform.tfstate` | 필요할 때 기존 운영자 DB 정책의 snapshot 생성 권한만 수정 |
-| `terraform/prod` | `dev/terraform.tfstate` | 기존 `aws_db_instance.main` in-place Multi-AZ 활성화·즉시 적용 |
+| `terraform/prod` | `dev/terraform.tfstate` | 기존 `aws_db_instance.main` in-place Multi-AZ 활성화·이번 전환만 즉시 적용 |
 
 실제 입력은 기존 운영 경로로 전달한다. 테스트 비밀값·추측한 tfvars를 사용하지 않는다.
-비밀번호와 write-only 버전은 기존 값을 보존한다. `apply_immediately=true`는 관찰자가
-있는 확정된 작업 시간에만 실행한다. 다른 pending 변경도 함께 적용될 수 있다.
+비밀번호와 write-only 버전은 기존 값을 보존한다. `db_apply_immediately`는 bool이며
+기본값은 false다. 관찰자가 있는 확정된 작업 시간의 전환 plan에만 명시적으로 true를
+전달한다. tfvars에 true를 영구 저장하지 않는다. 다른 pending 변경도 함께 적용될 수 있다.
 
 ```bash
 # 실행 전에 AWS_PROFILE, 실제 변수 및 ephemeral 비밀값을 기존의 안전한 경로로 준비한다.
 # plan 파일은 비밀값을 포함할 수 있다. chmod 700 작업 경로와 umask 077을 사용한다.
 umask 077
 terraform -chdir=terraform/prod init -input=false
-terraform -chdir=terraform/prod plan -input=false -lock-timeout=60s -out=/tmp/rds-ha-prod.tfplan
+terraform -chdir=terraform/prod plan -input=false -lock-timeout=60s -var=db_apply_immediately=true -out=/tmp/rds-ha-prod.tfplan
 terraform -chdir=terraform/prod show -no-color /tmp/rds-ha-prod.tfplan
 # 위 모든 게이트와 전체 plan 검토를 통과한 뒤에만 같은 plan을 적용한다.
 terraform -chdir=terraform/prod apply /tmp/rds-ha-prod.tfplan
@@ -126,17 +130,16 @@ Initializing 종료와 storage 필드 소멸, 무관한 pending 변경 없음, �
 ## 전환 직후 즉시 적용 설정 복구
 
 `apply_immediately=true`는 Terraform의 후속 DB 변경에도 사용되는 값이다.
-위 전환·대기 초기화·서비스 안정 확인을 모두 마친 직후, 같은 작업 브랜치·PR에서
-`terraform/prod/database.tf`의 `apply_immediately`를 `false`로 되돌리고
-`deployment.tftest.hcl`의 해당 assertion도 `!aws_db_instance.main.apply_immediately`로
-맞춘다. Multi-AZ와 나머지 보호 설정은 유지한다. 이 복구 확인까지 작업 완료에 포함한다.
+위 전환·대기 초기화·서비스 안정 확인을 모두 마친 직후 pending 변경이 없음을 확인하고,
+`db_apply_immediately=true` override를 제거해 기본값 false로 복구한다. Multi-AZ와
+나머지 보호 설정은 유지한다. 소스 수정이나 추가 PR은 필요하지 않으며, 이 복구 확인까지
+작업 완료에 포함한다. 기존 tfvars·환경 변수에도 true가 남아 있지 않은지 확인한다.
 
-Terraform mock 검사를 다시 실행하고 기존 실제 입력·State·잠금으로 새로운 전체 저장
+기존 실제 입력·State·잠금으로 override 없는 새로운 전체 저장
 plan을 생성한다. 기대 변경은 `apply_immediately: true → false`뿐이며, Multi-AZ 해제·
 삭제·교체·비밀번호/endpoint 변경·무관한 변경이면 중단한다. 검토한 동일 plan으로 반영하고
 후속 전체 plan에서 잔여 변경이 없는지 확인한다. 이전 전환 plan을 재사용하지 않는다.
-코드 수정은 같은 PR의 리뷰·CI 절차를 따르며 추가 PR이나 보호 브랜치 직접 push로
-우회하지 않는다.
+추가 PR이나 보호 브랜치 직접 push로 우회하지 않는다.
 
 `false`는 이후 변경 중 유지보수 창을 따르는 항목을 다음 창으로 미루는 설정이며,
 모든 DB 변경을 예약하거나 이미 진행 중인 작업을 취소하는 값은 아니다.

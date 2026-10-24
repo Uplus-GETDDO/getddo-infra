@@ -21,9 +21,8 @@ resource "aws_db_instance" "main" {
 
   # 기존 DNS를 유지하는 동기 대기 DB다. 대기 DB는 읽기 트래픽을 받지 않는다.
   multi_az = true
-  # 백엔드 선배포·백업·보류 변경 확인 후 관찰자가 있는 작업 시간에 적용한다.
-  # 전환·초기화·서비스 안정 확인 직후 런북에 따라 false로 복구한다.
-  apply_immediately      = true
+  # 승인된 전환 plan에서만 즉시 적용을 선택하고 평소에는 유지보수 창을 따른다.
+  apply_immediately      = var.db_apply_immediately
   publicly_accessible    = false
   db_subnet_group_name   = aws_db_subnet_group.main.name
   vpc_security_group_ids = [aws_security_group.db.id]
