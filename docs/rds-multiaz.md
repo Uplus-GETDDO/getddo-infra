@@ -53,7 +53,11 @@ aws ec2 describe-subnets --profile getddo-gyeongju --region ap-northeast-2 \
   --query 'Subnets[].{Id:SubnetId,AZ:AvailabilityZone,FreeIPs:AvailableIpAddressCount}' --no-cli-pager
 ```
 
-snapshot 이름은 작업 시각으로 고유하게 만든다.
+snapshot 이름은 작업 시각으로 고유하게 만든다. 생성과 `available` 완료 대기도 관찰자가
+있는 확정된 저트래픽 작업 시간 안에서 수행한다. Single-AZ snapshot 생성은 수초에서
+수분간 I/O를 일시 중단할 수 있으므로, 생성 요청 전부터 API 오류율·p95와 DB 지연을
+관찰하고 대기·전환·안정 확인까지 이어간다. 확정 임계치를 초과하면 DB 전환으로
+진행하지 않고 아래 중단 절차를 따른다.
 
 ```bash
 snapshot_id="getddo-dev-mysql-pre-multiaz-$(date -u +%Y%m%d%H%M%S)"
@@ -116,6 +120,26 @@ Initializing 종료와 storage 필드 소멸, 무관한 pending 변경 없음, �
 안전한 대상이 없으면 쓰기는 미실시로 기록한다. 안정 관찰 뒤 전체 prod plan을 다시 실행해
 잔여 변경을 확인하고 그림/README의 실제 상태를 갱신한다.
 
+## 전환 직후 즉시 적용 설정 복구
+
+`apply_immediately=true`는 Terraform의 후속 DB 변경에도 사용되는 값이다.
+위 전환·대기 초기화·서비스 안정 확인을 모두 마친 직후, 같은 작업 브랜치·PR에서
+`terraform/prod/database.tf`의 `apply_immediately`를 `false`로 되돌리고
+`deployment.tftest.hcl`의 해당 assertion도 `!aws_db_instance.main.apply_immediately`로
+맞춘다. Multi-AZ와 나머지 보호 설정은 유지한다. 이 복구 확인까지 작업 완료에 포함한다.
+
+Terraform mock 검사를 다시 실행하고 기존 실제 입력·State·잠금으로 새로운 전체 저장
+plan을 생성한다. 기대 변경은 `apply_immediately: true → false`뿐이며, Multi-AZ 해제·
+삭제·교체·비밀번호/endpoint 변경·무관한 변경이면 중단한다. 검토한 동일 plan으로 반영하고
+후속 전체 plan에서 잔여 변경이 없는지 확인한다. 이전 전환 plan을 재사용하지 않는다.
+코드 수정은 같은 PR의 리뷰·CI 절차를 따르며 추가 PR이나 보호 브랜치 직접 push로
+우회하지 않는다.
+
+`false`는 이후 변경 중 유지보수 창을 따르는 항목을 다음 창으로 미루는 설정이며,
+모든 DB 변경을 예약하거나 이미 진행 중인 작업을 취소하는 값은 아니다.
+실제 DB 변경을 포함하는 후속 plan에서는 각 항목의 AWS 적용 시점과 pending 변경을
+다시 확인한다. 이 설정 복구를 위해 재부팅하거나 강제 전환하지 않는다.
+
 ## 중단과 복구
 
 확정 임계치를 초과하면 추가 배포·시험을 중단하고 시각·이벤트·지표를 보존한다.
@@ -132,4 +156,5 @@ Single-AZ 복귀는 별도 변경 검토 대상이다. 강제 전환·재부팅�
 - [Multi-AZ DB 인스턴스](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZSingleStandby.html)
 - [전환·대기 볼륨 초기화](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZ.Migrating.html)
 - [DB 설정 적용 시점](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_ModifyInstance.Settings.html)
+- [Single-AZ 수동 snapshot의 I/O 영향](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_CreateSnapshot.html)
 - [AWS 공개 서울 RDS 요금](https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRDS/current/ap-northeast-2/index.json)
