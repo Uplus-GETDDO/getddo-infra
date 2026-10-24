@@ -201,6 +201,9 @@ gh auth setup-git
 mkdir getddo-stage-run
 cd getddo-stage-run
 git clone https://github.com/Uplus-GETDDO/getddo-infra.git
+export INFRA_SHA='검토한_Infra_40자리_commit_SHA'
+git -C getddo-infra checkout --detach "$INFRA_SHA"
+test "$(git -C getddo-infra rev-parse HEAD)" = "$INFRA_SHA"
 git clone --no-checkout https://github.com/Uplus-GETDDO/getddo-be.git
 mkdir -p stage-work/image
 python3.12 -m venv stage-work/venv
@@ -209,13 +212,14 @@ cd getddo-infra
 export AWS_PROFILE=getddo-dev
 ```
 
-GitHub Actions에서 필요한 백엔드 commit의 빌드·테스트·이미지가 성공한 실행을 선택합니다. `CI_RUN_ID`, `CI_ATTEMPT`를 실제 값으로 바꿉니다. commit SHA·산출물 revision·이미지 해시는 빌더가 대조합니다. 만료된 산출물은 해당 소스의 CI를 다시 실행해 준비합니다. 이 절차가 운영 API를 배포하는 명령은 아닙니다.
+GitHub Actions에서 필요한 백엔드 commit의 빌드·테스트·이미지가 성공한 실행을 선택합니다. `INFRA_SHA`는 검토한 40자리 Infra commit으로, `CI_RUN_ID`, `CI_ATTEMPT`, `BACKEND_SHA`는 해당 검토 대상의 실제 값으로 바꿉니다. commit SHA·산출물 revision·이미지 해시는 빌더가 대조합니다. 만료된 산출물은 해당 소스의 CI를 다시 실행해 준비합니다. 이 절차가 운영 API를 배포하는 명령은 아닙니다.
 
 ```bash
 CI_RUN_ID='성공한_BE_Actions_실행_ID'
 CI_ATTEMPT='1'
-export INFRA_SHA="$(git rev-parse HEAD)"
-BACKEND_SHA="$(gh run view "$CI_RUN_ID" --repo Uplus-GETDDO/getddo-be --json headSha --jq .headSha)"
+test "$(git rev-parse HEAD)" = "$INFRA_SHA"
+BACKEND_SHA='검토한_BE_40자리_commit_SHA'
+test "$(gh run view "$CI_RUN_ID" --repo Uplus-GETDDO/getddo-be --json headSha --jq .headSha)" = "$BACKEND_SHA"
 git -C ../getddo-be checkout --detach "$BACKEND_SHA"
 gh run download "$CI_RUN_ID" --repo Uplus-GETDDO/getddo-be \
   --name "staging-image-${BACKEND_SHA}-${CI_ATTEMPT}" --dir ../stage-work/image
