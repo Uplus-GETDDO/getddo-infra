@@ -14,7 +14,7 @@ GETDDO 운영 인프라·공용 모니터링·임시 스테이징 부하 테스�
 | CloudFront | 공개 HTTPS 진입점. API는 캐시 없이 내부 ALB로 전달하고, `/images/*`는 OAC로 비공개 S3에서 조회 |
 | 내부 ALB | 두 AZ의 사설 서브넷에 배치. HTTP 80 → API 서버 8080으로 요청 분산 |
 | API A / C | `ap-northeast-2a` / `ap-northeast-2c`의 `t3.small` EC2. Docker 앱 실행, 공인 IPv4·IGW로 외부 통신, 보안 그룹으로 인바운드 제한 |
-| RDS | 비공개 MySQL 8.4, `db.t4g.micro`, Single-AZ. API 보안 그룹에서만 3306 접속 허용 |
+| RDS | 비공개 MySQL 8.4, `db.t4g.micro`, Multi-AZ 동기 대기 구성. API 보안 그룹에서만 3306 접속 허용 |
 | Redis | 비공개 Redis OSS 단일 노드. TLS·AUTH 연결, 공유 요청 제한 저장소 |
 | S3 | 이미지·배포 파일 저장소 분리. API 역할로 이미지 업로드, CloudFront OAC로 조회 |
 | Parameter Store | 앱 설정·비밀값 저장. 서버 역할로 조회 |
@@ -24,7 +24,7 @@ GETDDO 운영 인프라·공용 모니터링·임시 스테이징 부하 테스�
 - 실선: 서비스 요청 / 점선: 설정·배포·모니터링
 - 외부 HTTPS는 CloudFront에서 종료. ALB·API 구간은 사설망 HTTP
 - DB 관리 접속은 EC2 Instance Connect Endpoint·SSH 터널로 API 서버 경유
-- RDS는 현재 Single-AZ다. [Multi-AZ 적용 준비·검증·복구 절차](docs/rds-multiaz.md)를 따르며 백엔드 준비와 실제 적용 확인 전에는 전환 완료로 보지 않는다. Redis는 복제본·자동 장애 전환 없는 단일 노드
+- RDS는 2026-10-25 Multi-AZ 적용과 저장 장치 초기화를 확인했다. [적용·검증·복구 절차와 실제 결과](docs/rds-multiaz.md)를 참고한다. Redis는 복제본·자동 장애 전환 없는 단일 노드
 
 ## 레포 구조
 
