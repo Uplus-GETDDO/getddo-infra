@@ -174,6 +174,8 @@ Prometheus Stage 수집은 5초, 짧은 rate는 1분 창입니다. percentile은
 
 ### AWS 인증 설정
 
+`aws login`에는 **AWS CLI 2.32.0 이상**이 필요합니다. 내 PC에서 `aws --version`으로 확인하고, 구버전이면 [공식 설치·업데이트 안내](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)를 따릅니다. 관리자는 Stage 실행 권한과 별도로 IAM 사용자/그룹의 `SignInLocalDevelopmentAccess` 또는 동등한 `signin` 권한을 확인합니다. 자세한 선행 조건은 [AWS 로그인 공식 문서](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-sign-in.html)를 참고합니다.
+
 현재 팀 구성의 `gyeongju` 인증을 사용합니다. 유효한 `getddo-dev`가 있으면 STS 조회부터 하고 재로그인은 생략합니다. 새 PC에서는 다음을 설정합니다. root 인증을 실행 프로필에 연결하지 않습니다.
 
 ```bash
@@ -293,7 +295,7 @@ aws codebuild batch-get-builds --ids BUILD_ID \
 ../stage-work/venv/bin/python scripts/staging.py status --run-id "$RUN_ID"
 ```
 
-각 명령은 비동기 요청입니다. 같은 수집을 중복 요청하거나 수집과 삭제를 겹쳐 실행하지 않습니다. `phase: collected`만으로 이번 요청 완료를 판단하지 말고 **반환된 CodeBuild 성공·완료와 results 갱신**을 함께 확인합니다. `collected`는 자원이 계속 실행 중일 수 있는 단계이며 부하 상태는 Locust에서 확인합니다. 정상 destroy 자체도 최종 부하 중지·수집을 수행하므로 사전 collect가 반드시 필요한 것은 아닙니다.
+각 명령은 비동기 요청입니다. 반환된 CodeBuild가 성공·완료되고 이번 수집 결과가 갱신될 때까지 같은 run의 `status`를 반복 조회합니다. 같은 수집을 중복 요청하거나 수집과 삭제를 겹쳐 실행하지 않습니다. `phase: collected`만으로 이번 요청 완료를 판단하지 말고 **반환된 CodeBuild 성공·완료와 results 갱신**을 함께 확인합니다. `collected`는 자원이 계속 실행 중일 수 있는 단계이며 부하 상태는 Locust에서 확인합니다. 정상 destroy 자체도 최종 부하 중지·수집을 수행하므로 사전 collect가 반드시 필요한 것은 아닙니다.
 
 결과 색인은 manifest `results`의 key/SHA256을 통해 `staging/runs/RUN_ID/results/`에서 조회합니다. 개인 호스트 수집은 그 아래 `operator/` prefix를 반환합니다. CSV·이력·실패/예외 요약·HTML·메타데이터·실제 선택한 Python 및 개인 Python/SQL을 보관합니다. 결과에는 비밀번호·쿠키·세션 비밀·개인정보를 넣지 않습니다.
 
