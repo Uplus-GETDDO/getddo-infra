@@ -1,5 +1,6 @@
 """Immutable-bundle staging integration. Never forwards secret-bearing diagnostics."""
 import base64
+import datetime as dt
 import hashlib
 import json
 from pathlib import Path
@@ -115,7 +116,7 @@ class Hooks:
             archive=Path(name)/'runtime.tar.gz'
             with tarfile.open(archive,'w:gz') as bundle:
                 files=list((ROOT/'loadtest').rglob('*'))+[ROOT/'scripts/staging_locust_install.py',
-                       ROOT/'scripts/staging_lifecycle.py',ROOT/'scripts/staging_hooks/host.py']
+                       ROOT/'scripts/staging_lifecycle.py', ROOT/'scripts/loadtest_admin.py',ROOT/'scripts/staging_hooks/host.py']
                 for path in files:
                     if path.is_symlink(): raise ValueError('Runtime source symlink rejected')
                     if path.is_file() and '__pycache__' not in path.parts:
@@ -153,6 +154,21 @@ tar -xzf {directory}/runtime.tar.gz -C {directory}
 printf %s {shlex.quote(payload)} | base64 -d | /opt/getddo-staging-venv/bin/python {directory}/scripts/staging_hooks/host.py {action}
 '''
 
+    def prepare_test_access(self):
+        import secrets
+        from staging_cleanup import Orphans, tags
+        name = '/getddo/staging/test-access/mysql-password'
+        client = self.clients['ssm']
+        try:
+            client.get_parameter(Name=name, WithDecryption=False)
+        except client.exceptions.ParameterNotFound:
+            client.put_parameter(Name=name, Value=secrets.token_urlsafe(36), Type='SecureString',
+                Tags=[{'Key':'Environment','Value':'staging'},
+                      {'Key':'RunId','Value':self.manifest['run_id']}])
+        else:
+            actual = client.list_tags_for_resource(ResourceType='Parameter',ResourceId=name)['TagList']
+            Orphans(self.clients,self.manifest['run_id']).require(tags(actual))
+
     def prepare(self):
         metadata=json.loads((ROOT/'scripts/staging_hooks/backend.json').read_text())
         if set(metadata)!={'source_sha','image_id','archive_sha256','artifact_dir','checkout_dir'}:
@@ -170,6 +186,7 @@ printf %s {shlex.quote(payload)} | base64 -d | /opt/getddo-staging-venv/bin/pyth
                      '--archive-sha256',metadata['archive_sha256'],'--artifact-dir',str(artifact)],cwd=source)
         import uuid
         actor={'user_id':str(uuid.uuid5(uuid.NAMESPACE_URL,'getddo-stage-smoke:'+m['run_id'])),'role':'USER','membership':'excellent'}
+        self.prepare_test_access()
         key,digest=self.runtime()
         self.remote(d['api_instances']['a']['id'],self.host_script(key,digest,'seed',actor))
         self.remote(d['locust_instance']['id'],self.host_script(key,digest,'install',actor),timeout=1200)
@@ -197,13 +214,7 @@ printf %s {shlex.quote(payload)} | base64 -d | /opt/getddo-staging-venv/bin/pyth
         receipt=json.loads(output.strip().splitlines()[-1])
         if set(receipt)!={'key','sha256'} or not receipt['key'].startswith(f"staging/runs/{m['run_id']}/results/") or not re.fullmatch(r'[a-f0-9]{64}',receipt['sha256']):
             raise ValueError('Stage report receipt mismatch')
-        monitoring=self.monitoring('collect', timeout=180)
-        # One receipt references both immutable report objects; AWS adapter readback verifies this index.
-        metadata=json.loads((ROOT/'scripts/staging_hooks/backend.json').read_text())
-        index={'run_id':m['run_id'],'infra_source_sha':m['source_sha'],
-               'backend':{key:metadata[key] for key in ('source_sha','image_id','archive_sha256')},
-               'locust':receipt,'monitoring':monitoring['results']}
-        for item in (index['locust'],index['monitoring']):
+        def verify_receipt(item):
             response=self.clients['s3'].get_object(Bucket=m['deploy_bucket'],Key=item['key'])
             digest=hashlib.sha256()
             stream=response['Body']
@@ -213,10 +224,33 @@ printf %s {shlex.quote(payload)} | base64 -d | /opt/getddo-staging-venv/bin/pyth
                 stream.close()
             if digest.hexdigest()!=item['sha256']:
                 raise ValueError('Collected result readback mismatch')
+
+        # Locust reports and personal Python/SQL are mandatory even when the
+        # unchanged shared monitoring exporter cannot archive this time range.
+        verify_receipt(receipt)
+        created=dt.datetime.fromisoformat(m['created_at'])
+        expiry=dt.datetime.fromisoformat(m['expires_at'])
+        reason=('lifetime_exceeds_monitoring_limit' if expiry-created>dt.timedelta(hours=24)
+                else 'expired_monitoring_registration' if expiry<=dt.datetime.now(dt.timezone.utc) else None)
+        metadata=json.loads((ROOT/'scripts/staging_hooks/backend.json').read_text())
+        index={'run_id':m['run_id'],'infra_source_sha':m['source_sha'],
+               'backend':{key:metadata[key] for key in ('source_sha','image_id','archive_sha256')},
+               'locust':receipt}
+        if reason:
+            index.update(collection_status='partial', monitoring={'status':'unavailable','reason':reason})
+        else:
+            # Supported exports remain strict: authentication, ownership and
+            # integrity failures still pause normal deletion.
+            monitoring=self.monitoring('collect', timeout=180)
+            index['monitoring']=monitoring['results']
+            verify_receipt(index['monitoring'])
         payload=json.dumps(index,sort_keys=True,separators=(',',':')).encode()
         digest=hashlib.sha256(payload).hexdigest();key=f"staging/runs/{m['run_id']}/results/index-{digest}.json"
         self.clients['s3'].put_object(Bucket=m['deploy_bucket'],Key=key,Body=payload,ServerSideEncryption='AES256')
-        return {'key':key,'sha256':digest}
+        result={'key':key,'sha256':digest}
+        if reason:
+            result.update(collection_status='partial',monitoring_status='unavailable',monitoring_reason=reason)
+        return result
 
 
 def main(action):

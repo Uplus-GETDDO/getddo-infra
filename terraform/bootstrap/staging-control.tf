@@ -83,6 +83,14 @@ resource "aws_iam_policy" "staging_control_ui" {
       Resource = "arn:aws:ec2:ap-northeast-2:942466928325:security-group/sg-09e12310ecd082ffb"
     },
     {
+      Sid      = "StageExistingSshKey", Effect = "Allow", Action = "ec2:RunInstances",
+      Resource = "arn:aws:ec2:ap-northeast-2:942466928325:key-pair/getddo-dev-api"
+    },
+    {
+      Sid      = "StageSshEndpointEgress", Effect = "Allow", Action = ["ec2:AuthorizeSecurityGroupEgress", "ec2:RevokeSecurityGroupEgress"],
+      Resource = "arn:aws:ec2:ap-northeast-2:942466928325:security-group/sg-0d262f6bd69709b25"
+    },
+    {
       Sid      = "StageMonitorSgEgress", Effect = "Allow", Action = ["ec2:AuthorizeSecurityGroupEgress", "ec2:RevokeSecurityGroupEgress"],
       Resource = "arn:aws:ec2:ap-northeast-2:942466928325:security-group/sg-04954d4932de5fa69"
     }
@@ -92,4 +100,16 @@ resource "aws_iam_role_policy_attachment" "staging_control_ui" {
   for_each   = toset(["up", "cleanup"])
   role       = aws_iam_role.staging_control[each.key].name
   policy_arn = aws_iam_policy.staging_control_ui.arn
+}
+
+resource "aws_iam_group_policy" "staging_terminal" {
+  name  = "staging-terminal-access"
+  group = aws_iam_group.staging.name
+  policy = jsonencode({ Version = "2012-10-17", Statement = [
+    { Effect   = "Allow", Action = "ec2-instance-connect:OpenTunnel",
+      Resource = "arn:aws:ec2:ap-northeast-2:942466928325:instance-connect-endpoint/eice-0faadf70e78c2a080",
+      Condition = { NumericEquals = { "ec2-instance-connect:remotePort" = "22" },
+    IpAddress = { "ec2-instance-connect:privateIpAddress" = ["10.20.0.250/32"] } } },
+    { Effect = "Allow", Action = ["ec2:DescribeInstanceConnectEndpoints", "ec2:DescribeKeyPairs"], Resource = "*" }
+  ] })
 }

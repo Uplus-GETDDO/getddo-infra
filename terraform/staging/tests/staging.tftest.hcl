@@ -51,6 +51,10 @@ override_data {
   values = { id = "sg-09e12310ecd082ffb", vpc_id = "vpc-0fcf829db1692b713" }
 }
 override_data {
+  target = data.aws_security_group.ssh_endpoint
+  values = { id = "sg-0d262f6bd69709b25", vpc_id = "vpc-0fcf829db1692b713" }
+}
+override_data {
   target = data.aws_lb.shared
   values = {
     arn             = "arn:aws:elasticloadbalancing:ap-northeast-2:942466928325:loadbalancer/app/getddo-dev-api-alb/9e65e06e10492070"
@@ -146,7 +150,10 @@ run "runtime_cannot_modify_control_source_or_locks" {
     error_message = "Read-only platform smoke does not require API artifact/control writes."
   }
   assert {
-    condition     = one([for statement in jsondecode(aws_iam_role_policy.stage["locust"].policy).Statement : statement.Resource if contains(statement.Action, "s3:PutObject")]) == "arn:aws:s3:::getddo-deploy-942466928325-ap-northeast-2/staging/runs/${var.run_id}/results/locust-*"
+    condition = toset([for statement in jsondecode(aws_iam_role_policy.stage["locust"].policy).Statement : statement.Resource if contains(statement.Action, "s3:PutObject")]) == toset([
+      "arn:aws:s3:::getddo-deploy-942466928325-ap-northeast-2/staging/runs/${var.run_id}/results/locust-*",
+      "arn:aws:s3:::getddo-deploy-942466928325-ap-northeast-2/staging/runs/${var.run_id}/results/operator/*"
+    ])
     error_message = "Locust can write only its own report objects, never control manifests or bundles."
   }
 }
@@ -155,4 +162,29 @@ run "reject_invalid_run_owner" {
   command = plan
   variables { run_id = "prod" }
   expect_failures = [var.run_id]
+}
+
+run "terminal_access_is_limited_to_endpoint_and_staging_database" {
+  command = apply
+  assert {
+    condition = (
+      aws_instance.locust.private_ip == "10.20.0.250" &&
+      aws_instance.locust.key_name == "getddo-dev-api" &&
+      aws_vpc_security_group_ingress_rule.locust_ssh.referenced_security_group_id == data.aws_security_group.ssh_endpoint.id &&
+      aws_vpc_security_group_ingress_rule.locust_ssh.security_group_id == aws_security_group.stage["locust"].id &&
+      aws_vpc_security_group_ingress_rule.locust_ssh.from_port == 22 &&
+      aws_vpc_security_group_ingress_rule.locust_ssh.to_port == 22 &&
+      aws_vpc_security_group_ingress_rule.locust_ssh.cidr_ipv4 == null &&
+      aws_vpc_security_group_egress_rule.ssh_endpoint_to_locust.security_group_id == data.aws_security_group.ssh_endpoint.id &&
+      aws_vpc_security_group_egress_rule.ssh_endpoint_to_locust.referenced_security_group_id == aws_security_group.stage["locust"].id &&
+      aws_vpc_security_group_egress_rule.ssh_endpoint_to_locust.from_port == 22 &&
+      aws_vpc_security_group_egress_rule.ssh_endpoint_to_locust.to_port == 22 &&
+      aws_vpc_security_group_egress_rule.ssh_endpoint_to_locust.cidr_ipv4 == null &&
+      aws_vpc_security_group_ingress_rule.stage["locust_db"].referenced_security_group_id == aws_security_group.stage["locust"].id &&
+      aws_vpc_security_group_ingress_rule.stage["locust_db"].security_group_id == aws_security_group.stage["db"].id &&
+      aws_vpc_security_group_ingress_rule.stage["locust_db"].from_port == 3306 &&
+      aws_vpc_security_group_ingress_rule.stage["locust_db"].to_port == 3306
+    )
+    error_message = "Only the fixed Stage Locust IP accepts endpoint SSH; terminal SQL reaches only the dedicated Stage DB."
+  }
 }

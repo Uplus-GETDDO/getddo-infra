@@ -57,6 +57,12 @@ def seed(manifest,actor):
             elif tuple(current)!=('Stage smoke','USER','ACTIVE','EXCELLENT'):
                 raise ValueError('Synthetic actor conflicts with existing data')
         connection.commit()
+        access=parameters(['test-access/mysql-password'])
+        with connection.cursor() as cursor:
+            cursor.execute("CREATE USER IF NOT EXISTS 'stage_tester'@'%%' IDENTIFIED BY %s REQUIRE SSL",(access['mysql-password'],))
+            cursor.execute("ALTER USER 'stage_tester'@'%%' IDENTIFIED BY %s REQUIRE SSL",(access['mysql-password'],))
+            cursor.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON getddo.* TO 'stage_tester'@'%'")
+
     request=urllib.request.Request('http://127.0.0.1:8080/api/v1/events?page=1&size=1',
                                    headers={'X-User-ID':actor['user_id'],'X-User-Role':'USER','X-User-Membership':'excellent'})
     with urllib.request.urlopen(request,timeout=15) as response:
@@ -92,6 +98,17 @@ client.collect(Path('/reports')/payload['output'])
             for path in sorted(reports.iterdir()):
                 if path.is_symlink() or not path.is_file(): raise ValueError('Report path is unsafe')
                 bundle.add(path,arcname=path.name,recursive=False)
+            personal_root=Path('/opt/getddo-loadtest')
+            sources=personal_root/'scenarios'
+            candidates=list(sources.rglob('*')) if sources.is_dir() else []
+            for path in sorted(candidates):
+                if path.is_symlink(): raise ValueError('Scenario source symlink rejected')
+                if path.is_file() and path.suffix in ('.py','.sql'):
+                    if path.stat().st_size > 10*1024*1024:
+                        raise ValueError('Scenario source exceeds archive limit')
+                    bundle.add(path,arcname='sources/'+str(path.relative_to(sources)),recursive=False)
+            active=personal_root/'active'/'scenario.py'
+            if active.is_file():bundle.add(active,arcname='active-scenario.py',recursive=False)
             (directory/'run.json').write_text(json.dumps({'run_id':manifest['run_id'],
                 'infra_source_sha':manifest['source_sha'],'created_at':manifest['created_at'],
                 'expires_at':manifest['expires_at'],'collection':'locust'}))

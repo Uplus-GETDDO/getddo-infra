@@ -434,15 +434,16 @@ class Effects(AWS):
         ssm = self.clients["ssm"]
         from staging_cleanup import Orphans, tags
         from staging_lifecycle import cleanup_parameter_names
-        for page in ssm.get_paginator("describe_parameters").paginate(ParameterFilters=[
-                {"Key": "Name", "Option": "BeginsWith", "Values": ["/getddo/staging/app/"]}]):
-            for name in cleanup_parameter_names([p["Name"] for p in page["Parameters"]]):
-                actual = ssm.list_tags_for_resource(ResourceType="Parameter", ResourceId=name)["TagList"]
-                Orphans(self.clients, manifest["run_id"]).require(tags(actual))
-                try:
-                    ssm.delete_parameter(Name=name)
-                except ssm.exceptions.ParameterNotFound:
-                    pass
+        for prefix in ("/getddo/staging/app/", "/getddo/staging/test-access/"):
+            for page in ssm.get_paginator("describe_parameters").paginate(ParameterFilters=[
+                    {"Key": "Name", "Option": "BeginsWith", "Values": [prefix]}]):
+                for name in cleanup_parameter_names([p["Name"] for p in page["Parameters"]]):
+                    actual = ssm.list_tags_for_resource(ResourceType="Parameter", ResourceId=name)["TagList"]
+                    Orphans(self.clients, manifest["run_id"]).require(tags(actual))
+                    try:
+                        ssm.delete_parameter(Name=name)
+                    except ssm.exceptions.ParameterNotFound:
+                        pass
 
     def delete_deployment_lock(self, manifest):
         # HeadObject uses a generic 404 rather than a typed NoSuchKey exception.

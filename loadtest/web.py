@@ -39,7 +39,7 @@ def install_web(environment, config, auth, reports=Path('/reports')):
     web.login_manager.user_loader(lambda name: Admin(name) if hmac.compare_digest(name.encode(), username.encode()) else None)
     state = {'failures': 0, 'locked_until': 0., 'pending': False,
              'uncollected': False, 'started': None, 'stopped': None, 'parameters': None,
-             'stop_checkpoint': None, 'stopping': False}
+             'stop_checkpoint': None, 'stopping': False, 'maintenance': False}
     environment.stage_control = state
     web.auth_args = {'username_password_callback': '/locust/login_submit'}
 
@@ -148,6 +148,17 @@ new MutationObserver(function(){document.querySelectorAll('input[name="host"]').
     def health():
         return jsonify(alive=True, ready=environment.stage_metrics.healthy())
 
+    @app.post('/locust/control/maintenance')
+    def maintenance():
+        payload = request.get_json(silent=True)
+        if not isinstance(payload, dict) or type(payload.get('enabled')) is not bool:
+            abort(400)
+        if payload['enabled'] and (state['pending'] or state['stopping']
+                or environment.runner.state not in ('ready', 'stopped')):
+            abort(409, 'stop the current test before applying a scenario')
+        state['maintenance'] = payload['enabled']
+        return jsonify(maintenance=state['maintenance'])
+
     def swarm():
         form = request.form
         if request.is_json:
@@ -167,7 +178,7 @@ new MutationObserver(function(){document.querySelectorAll('input[name="host"]').
                 raise ValueError()
         except (KeyError, TypeError, ValueError):
             abort(400, 'positive users, spawn_rate and explicit run_time required')
-        if (state['pending'] or state['uncollected']
+        if (state['maintenance'] or state['pending'] or state['uncollected']
                 or environment.runner.state not in ('ready', 'stopped')):
             abort(409, 'running or reports require collection')
         if not environment.stage_metrics.healthy():

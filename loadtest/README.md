@@ -50,8 +50,52 @@ proper scenario before full performance testing: use `LockedSession` with
 relative paths, stable names, a callable `validate_data`, and explicitly allowed
 `(HTTP status, envelope code)` rejection pairs in `envelope_result`. Record only
 the bounded result vocabulary; keep health requests out of business counters.
-The manifest accepts only the reviewed `smoke_events` scenario until code adds
-another reviewed scenario. Unsupported/missing configuration fails closed.
+The default manifest selects `smoke_events`. The installed host operator can
+select a trusted personal scenario using an immutable read-only snapshot.
+Unsupported/missing configuration fails closed.
+
+## Personal scenarios on the Stage host
+
+Connect to the Stage Locust host using the documented SSH tunnel. Copy
+`loadtest/examples/events.py` and `seed.sql` into your own directory under
+`/opt/getddo-loadtest/scenarios/<name>/`. Edit them there. Use `loadtest db` for
+an interactive verified-TLS MySQL session with the Stage test-only DML account;
+`SOURCE /opt/getddo-loadtest/scenarios/<name>/seed.sql;` executes your SQL file.
+
+A personal Python file imports `StageUser` from `loadtest.runtime`. This supplies
+the exact Stage target and current seeded actor headers. Use relative API paths,
+explicit request timeouts and stable request names. Use `self.check(response,
+validator)` inside `catch_response=True` to record bounded business outcomes.
+Native Locust HTTP metrics work for every request; business counters require this
+explicit check. Actor headers can be overridden per request for deliberately
+prepared test members whose data and memberships you control.
+
+```sh
+loadtest apply /opt/getddo-loadtest/scenarios/<name>/events.py
+# Open /locust/: users=2, ramp up=1, run time=30s, Profile empty.
+loadtest collect
+loadtest db
+```
+
+`apply` refuses an active test, validates the candidate syntax/imports/tasks with
+the installed image, saves previous results with S3 hash readback, selects an
+immutable snapshot and recreates only master and two workers. Readiness failure
+restores the previous manifest and snapshot. File edits alone do not reload
+Python. `collect` stops users, waits for final worker reports, archives Locust
+reports plus current Python/SQL sources and verifies S3 readback. Another web
+START requires collection of the previous run; a 409/unknown-error popup can
+mean uncollected results, an active apply, or unavailable workers. Keep Profile
+empty and the Stage host unchanged. A web Stop never deletes AWS resources.
+
+This is trusted team Python, not sandboxed untrusted code. Do not put secrets in
+scenario/SQL files; these files are included in retained evidence. The installed
+host wrapper uses its instance role and root-owned operator configuration;
+credentials are fetched in memory. MySQL receives a temporary 0600 client file
+on tmpfs, verified server TLS, and no password in command arguments. `db` does
+not lock the shared environment: coordinate data changes with the current test
+owner and avoid changing fixtures during another person's run. All team folders
+and test data share the same temporary host/database and are deleted at expiry;
+keep required data dumps separately before the scheduled cleanup.
 
 Local verification (no Docker/AWS/Java):
 
