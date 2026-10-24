@@ -85,16 +85,39 @@ run "reject_invalid_redis_password_version" {
 }
 
 run "private_database_and_limited_operator_access" {
-  command = plan
+  command = apply
 
-  assert {
-    condition     = !aws_db_instance.main.publicly_accessible && !aws_db_instance.main.multi_az
-    error_message = "첫 DB는 외부에 공개되지 않는 Single-AZ여야 합니다."
+  variables {
+    # 기본값 1 고정이 아니라 실제 입력 버전을 전달하는 계약을 검사한다.
+    db_master_password_version = 7
   }
 
   assert {
-    condition     = length(aws_subnet.data) == 2 && length(toset([for subnet in aws_subnet.data : subnet.availability_zone])) == 2
-    error_message = "RDS용 서브넷은 서로 다른 두 AZ에 있어야 합니다."
+    condition = (
+      aws_db_instance.main.multi_az &&
+      !aws_db_instance.main.apply_immediately &&
+      !aws_db_instance.main.publicly_accessible &&
+      aws_db_instance.main.storage_encrypted &&
+      aws_db_instance.main.deletion_protection &&
+      aws_db_instance.main.backup_retention_period == 1 &&
+      !aws_db_instance.main.skip_final_snapshot &&
+      aws_db_instance.main.final_snapshot_identifier == "getddo-dev-mysql-final" &&
+      aws_db_instance.main.copy_tags_to_snapshot &&
+      aws_db_instance.main.password_wo_version == var.db_master_password_version
+    )
+    error_message = "운영 DB는 비공개 Multi-AZ·기본 유지보수 창 적용과 암호화·삭제 보호·백업·입력 비밀번호 버전을 유지해야 합니다."
+  }
+
+  assert {
+    condition = (
+      length(aws_subnet.data) == 2 &&
+      length(toset([for subnet in aws_subnet.data : subnet.availability_zone])) == 2 &&
+      alltrue([for subnet in aws_subnet.data : !subnet.map_public_ip_on_launch]) &&
+      toset(aws_db_subnet_group.main.subnet_ids) == toset([for subnet in aws_subnet.data : subnet.id]) &&
+      aws_db_instance.main.db_subnet_group_name == aws_db_subnet_group.main.name &&
+      length(aws_route_table.data.route) == 0
+    )
+    error_message = "RDS는 서로 다른 두 AZ의 사설 data 서브넷과 외부 기본 경로 없는 라우팅을 사용해야 합니다."
   }
 
   assert {
@@ -103,13 +126,34 @@ run "private_database_and_limited_operator_access" {
   }
 
   assert {
-    condition     = aws_vpc_security_group_ingress_rule.db_from_api.cidr_ipv4 == null && aws_vpc_security_group_ingress_rule.db_from_api.from_port == 3306
-    error_message = "DB 인바운드는 IP 전체를 허용하면 안 됩니다."
+    condition = (
+      toset(aws_db_instance.main.vpc_security_group_ids) == toset([aws_security_group.db.id]) &&
+      aws_security_group.db.vpc_id == aws_vpc.main.id &&
+      aws_vpc_security_group_ingress_rule.db_from_api.security_group_id == aws_security_group.db.id &&
+      aws_vpc_security_group_ingress_rule.db_from_api.referenced_security_group_id == aws_security_group.api.id &&
+      aws_vpc_security_group_ingress_rule.db_from_api.cidr_ipv4 == null &&
+      aws_vpc_security_group_ingress_rule.db_from_api.cidr_ipv6 == null &&
+      aws_vpc_security_group_ingress_rule.db_from_api.ip_protocol == "tcp" &&
+      aws_vpc_security_group_ingress_rule.db_from_api.from_port == 3306 &&
+      aws_vpc_security_group_ingress_rule.db_from_api.to_port == 3306
+    )
+    error_message = "DB는 기존 DB 보안 그룹에서 API 보안 그룹의 TCP 3306 연결만 허용해야 합니다."
   }
 
   assert {
     condition     = aws_instance.api.metadata_options[0].http_tokens == "required" && aws_instance.api.root_block_device[0].encrypted
     error_message = "EC2는 IMDSv2와 암호화 디스크를 사용해야 합니다."
+  }
+}
+
+run "approved_database_immediate_apply" {
+  command = plan
+  variables {
+    db_apply_immediately = true
+  }
+  assert {
+    condition     = aws_db_instance.main.apply_immediately && aws_db_instance.main.multi_az
+    error_message = "승인된 전환 plan에서만 RDS 즉시 적용을 명시적으로 선택할 수 있어야 합니다."
   }
 }
 

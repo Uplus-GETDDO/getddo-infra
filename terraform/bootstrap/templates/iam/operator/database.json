@@ -211,6 +211,22 @@
       }
     },
     {
+      "Sid": "CreateProductionPreMultiAzSnapshot",
+      "Effect": "Allow",
+      "Action": [
+        "rds:CreateDBSnapshot"
+      ],
+      "Resource": [
+        "arn:aws:rds:ap-northeast-2:942466928325:db:getddo-dev-mysql",
+        "arn:aws:rds:ap-northeast-2:942466928325:snapshot:getddo-dev-mysql-pre-multiaz-*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
+    },
+    {
       "Sid": "UseDatabaseKeyThroughSeoulRds",
       "Effect": "Allow",
       "Action": [

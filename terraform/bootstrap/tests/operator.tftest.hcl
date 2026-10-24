@@ -135,3 +135,20 @@ run "stage_database_modification_is_not_granted" {
     error_message = "Do not grant stage DB modification using an unsupported public-access condition; preserve private creation and restore."
   }
 }
+
+run "production_pre_multiaz_snapshot_boundary" {
+  command = plan
+
+  assert {
+    condition = (
+      one([for s in jsondecode(aws_iam_policy.operator["GetddoDevOperatorDatabase"].policy).Statement : s if s.Sid == "CreateProductionPreMultiAzSnapshot"]).Action == ["rds:CreateDBSnapshot"] &&
+      toset(one([for s in jsondecode(aws_iam_policy.operator["GetddoDevOperatorDatabase"].policy).Statement : s if s.Sid == "CreateProductionPreMultiAzSnapshot"]).Resource) == toset([
+        "arn:aws:rds:ap-northeast-2:942466928325:db:getddo-dev-mysql",
+        "arn:aws:rds:ap-northeast-2:942466928325:snapshot:getddo-dev-mysql-pre-multiaz-*"
+      ]) &&
+      one([for s in jsondecode(aws_iam_policy.operator["GetddoDevOperatorDatabase"].policy).Statement : s if s.Sid == "CreateProductionPreMultiAzSnapshot"]).Condition.StringEquals["aws:RequestedRegion"] == "ap-northeast-2" &&
+      !strcontains(aws_iam_policy.operator["GetddoDevOperatorDatabase"].policy, "rds:RebootDBInstance")
+    )
+    error_message = "운영 백업 생성은 기존 DB와 전용 snapshot 이름으로 제한하고 강제 전환 권한은 추가하지 않아야 합니다."
+  }
+}

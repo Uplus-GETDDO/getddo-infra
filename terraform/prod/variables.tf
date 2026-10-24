@@ -43,6 +43,12 @@ variable "db_master_password" {
   }
 }
 
+variable "db_apply_immediately" {
+  type        = bool
+  default     = false
+  description = "Apply RDS changes immediately only during an approved observed operation"
+}
+
 variable "db_master_password_version" {
   type        = number
   default     = 1
