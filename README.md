@@ -24,7 +24,7 @@ GETDDO 운영 인프라·공용 모니터링·임시 스테이징 부하 테스�
 - 실선: 서비스 요청 / 점선: 설정·배포·모니터링
 - 외부 HTTPS는 CloudFront에서 종료. ALB·API 구간은 사설망 HTTP
 - DB 관리 접속은 EC2 Instance Connect Endpoint·SSH 터널로 API 서버 경유
-- RDS는 Single-AZ, Redis는 복제본·자동 장애 전환 없는 단일 노드
+- RDS는 현재 Single-AZ다. [Multi-AZ 적용 준비·검증·복구 절차](docs/rds-multiaz.md)를 따르며 백엔드 준비와 실제 적용 확인 전에는 전환 완료로 보지 않는다. Redis는 복제본·자동 장애 전환 없는 단일 노드
 
 ## 레포 구조
 
