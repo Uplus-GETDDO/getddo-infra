@@ -70,6 +70,14 @@ snapshot 이름은 기존 IAM 접두사에 UUID를 붙여 생성 시도마다 �
 진행하지 않고 아래 중단 절차를 따른다.
 
 ```bash
+copy_tags_to_snapshot="$(aws rds describe-db-instances \
+  --profile getddo-gyeongju --region ap-northeast-2 \
+  --db-instance-identifier getddo-dev-mysql \
+  --query 'DBInstances[0].CopyTagsToSnapshot' --output text --no-cli-pager)"
+if [ "$copy_tags_to_snapshot" != "True" ]; then
+  echo "CopyTagsToSnapshot must be true; stop and review without modifying the DB" >&2
+  exit 1
+fi
 snapshot_id="getddo-dev-mysql-pre-multiaz-$(python3 -c 'import uuid; print(uuid.uuid4())')"
 aws rds create-db-snapshot --profile getddo-gyeongju --region ap-northeast-2 \
   --db-instance-identifier getddo-dev-mysql --db-snapshot-identifier "$snapshot_id" --no-cli-pager
