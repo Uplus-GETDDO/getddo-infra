@@ -39,7 +39,10 @@
    허용 수치와 초과 지속 시간을 담당자와 확정하여 기록한다. 미확정이면 적용하지 않는다.
 6. LatestRestorableTime과 현재 UTC의 차이를 기록하고, 아래 전용 이름으로 작업 직전
    수동 snapshot을 생성해 `available`을 확인한다. IAM 보완은 별도 bootstrap 전체 plan을
-   먼저 검토한다. 이중화 적용 단계에서는 `RebootDBInstance` 권한을 추가하거나 실행하지
+   먼저 검토한다. 수동 snapshot은 기존 DB 태그를 복사하므로 `CreateDBSnapshot`과 별도로
+   전용 snapshot 접두사에 대한 `AddTagsToResource` 실효 권한도 확인한다. 기존 DB/다른
+   snapshot의 태그 권한을 확대하거나 태그를 제거해 권한 검사를 피하지 않는다.
+   이중화 적용 단계에서는 `RebootDBInstance` 권한을 추가하거나 실행하지
    않는다. 후속 실제 시험은 아래 별도 게이트와 임시 권한 절차를 따른다.
 
 ```bash
@@ -67,6 +70,14 @@ snapshot 이름은 기존 IAM 접두사에 UUID를 붙여 생성 시도마다 �
 진행하지 않고 아래 중단 절차를 따른다.
 
 ```bash
+copy_tags_to_snapshot="$(aws rds describe-db-instances \
+  --profile getddo-gyeongju --region ap-northeast-2 \
+  --db-instance-identifier getddo-dev-mysql \
+  --query 'DBInstances[0].CopyTagsToSnapshot' --output text --no-cli-pager)"
+if [ "$copy_tags_to_snapshot" != "True" ]; then
+  echo "CopyTagsToSnapshot must be true; stop and review without modifying the DB" >&2
+  exit 1
+fi
 snapshot_id="getddo-dev-mysql-pre-multiaz-$(python3 -c 'import uuid; print(uuid.uuid4())')"
 aws rds create-db-snapshot --profile getddo-gyeongju --region ap-northeast-2 \
   --db-instance-identifier getddo-dev-mysql --db-snapshot-identifier "$snapshot_id" --no-cli-pager
@@ -83,7 +94,7 @@ mock apply는 외부 AWS API·원격 State를 사용하지 않으며 실제 HA �
 
 | root | 기존 S3 State 키 | 허용하는 변경 |
 | --- | --- | --- |
-| `terraform/bootstrap` | `bootstrap/terraform.tfstate` | 필요할 때 기존 운영자 DB 정책의 snapshot 생성 권한만 수정 |
+| `terraform/bootstrap` | `bootstrap/terraform.tfstate` | 필요할 때 기존 운영자 DB 정책의 전용 snapshot 생성 및 태그 추가 권한만 수정 |
 | `terraform/prod` | `dev/terraform.tfstate` | 기존 `aws_db_instance.main` in-place Multi-AZ 활성화·이번 전환만 즉시 적용 |
 
 실제 입력은 기존 운영 경로로 전달한다. 테스트 비밀값·추측한 tfvars를 사용하지 않는다.
