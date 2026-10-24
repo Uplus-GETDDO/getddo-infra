@@ -8,30 +8,38 @@ from pathlib import Path
 import sys
 import uuid
 
-from staging_lifecycle import ACCOUNT, BUCKET, LOCK, REGION, validate_manifest
+from staging_lifecycle import ACCOUNT, BUCKET, LOCK, REGION, expiry_fields, validate_manifest
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=["up", "status", "collect", "destroy"])
-    parser.add_argument("--max-duration", type=int, help="Mandatory maximum lifetime in minutes (15..1440)")
+    expiry = parser.add_mutually_exclusive_group()
+    expiry.add_argument("--max-duration", type=int, help="Maximum lifetime in minutes (15..5760)")
+    expiry.add_argument("--expires-at", help="Absolute ISO 8601 expiry with timezone (15 minutes..96 hours)")
     parser.add_argument("--bundle", type=Path)
     parser.add_argument("--config", type=Path)
     parser.add_argument("--run-id")
     args = parser.parse_args()
+    now = dt.datetime.now(dt.timezone.utc)
+    if args.action == "up":
+        if not args.bundle or not args.config:
+            parser.error("up requires --bundle, --config, and one expiry option")
+        try:
+            lifetime = expiry_fields(now, max_duration=args.max_duration, expires_at=args.expires_at)
+        except ValueError as error:
+            parser.error(str(error))
+    elif args.max_duration is not None or args.expires_at is not None:
+        parser.error("Expiry options are only accepted for up")
     from staging_aws import AWS
     aws = AWS()
     if args.action == "up":
-        if not args.max_duration or not 15 <= args.max_duration <= 1440 or not args.bundle or not args.config:
-            parser.error("up requires --max-duration 15..1440, --bundle, and --config")
         config = json.loads(args.config.read_text())
-        now = dt.datetime.now(dt.timezone.utc)
         content = args.bundle.read_bytes()
         digest = hashlib.sha256(content).hexdigest()
         manifest = validate_manifest(dict(config, account_id=ACCOUNT, region=REGION, deploy_bucket=BUCKET,
             run_id=uuid.uuid4().hex, bundle_sha256=digest, bundle_key=f"staging/bundles/{digest}.tar.gz",
-            created_at=now.isoformat(), expires_at=(now + dt.timedelta(minutes=args.max_duration)).isoformat(),
-            max_duration_minutes=args.max_duration, phase="submitted"))
+            created_at=now.isoformat(), phase="submitted", **lifetime))
         for hook in ("prepare", "collect", "detach"):
             if not manifest.get("hooks", {}).get(hook):
                 parser.error("config requires immutable hooks for prepare/collect/detach")

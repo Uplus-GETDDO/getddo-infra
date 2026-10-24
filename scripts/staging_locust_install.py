@@ -8,6 +8,8 @@ import json
 import os
 from pathlib import Path
 import re
+import shlex
+import shutil
 import subprocess
 import sys
 import uuid
@@ -45,6 +47,45 @@ def private_file(path, value):
         os.write(fd, value.encode())
     finally:
         os.close(fd)
+
+
+def install_operator(manifest, source, root):
+    deployment = manifest['deployment']
+    base = root / 'opt/getddo-loadtest'
+    for path in (base, base/'scenarios', base/'releases', base/'reports'):
+        if path.is_symlink(): raise ValueError('Operator directory must not be a symlink')
+        path.mkdir(parents=True, exist_ok=True, mode=0o755)
+        path.chmod(0o755 if path in (base, base/'scenarios') else 0o700)
+    default = base/'releases/default'
+    default.mkdir(mode=0o700, exist_ok=True)
+    if not (base/'active').exists(): (base/'active').symlink_to(default)
+    examples = source/'loadtest/examples'
+    personal = base/'scenarios/gyeongju'
+    personal.mkdir(mode=0o755, exist_ok=True)
+    personal.chmod(0o755)
+    if examples.is_dir():
+        for path in examples.iterdir():
+            if path.is_file() and not path.is_symlink() and path.suffix in ('.py','.sql'):
+                destination = personal/path.name
+                if not destination.exists(): shutil.copyfile(path,destination)
+    configuration = {
+        'source_dir': str(source), 'run_id': manifest['run_id'],
+        'public_origin': manifest['public_origin'], 'expected_workers': 2,
+        'locust_bind_ip': deployment['locust_instance']['private_ip'],
+        'deploy_bucket': manifest['deploy_bucket'], 'region': manifest['region'],
+        'db_host': deployment['db_endpoint'], 'db_name': 'getddo', 'db_user': 'stage_tester',
+        'db_password_parameter': '/getddo/staging/test-access/mysql-password'
+    }
+    private_file(root/'etc/getddo-loadtest/operator.json',json.dumps(configuration))
+    binary = root/'usr/local/bin/loadtest'
+    binary.parent.mkdir(parents=True,exist_ok=True)
+    wrapper = '#!/bin/sh\nexec sudo /opt/getddo-staging-venv/bin/python ' + shlex.quote(str(source/'scripts/loadtest_admin.py')) + ' "$@"\n'
+    private_file(binary,wrapper);binary.chmod(0o755)
+    if root == Path('/'):
+        import pwd
+        owner=pwd.getpwnam('ec2-user')
+        os.chown(base/'scenarios',owner.pw_uid,owner.pw_gid)
+        for path in [personal,*personal.iterdir()]: os.chown(path,owner.pw_uid,owner.pw_gid)
 
 
 def install(manifest, actor, source, root=Path("/"), fetch=None, start=True):
@@ -94,6 +135,7 @@ def install(manifest, actor, source, root=Path("/"), fetch=None, start=True):
     private_file(manifest_dir / "manifest.json", json.dumps({
         "environment": "staging", "target": target, "public_origin": manifest["public_origin"],
         "expected_workers": 2, "scenario": "smoke_events", "actor_file": "/run/scenario/actor.json"}))
+    install_operator(manifest, source, root)
     if start:
         environment = dict(os.environ, LOCUST_BIND_IP=deployment["locust_instance"]["private_ip"])
         compose = ["docker", "compose", "-f", "loadtest/compose.yaml"]

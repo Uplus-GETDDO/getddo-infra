@@ -66,7 +66,7 @@ def package(infra, infra_sha, backend, backend_sha, artifact, output):
         with tarfile.open(output,'w:gz') as bundle:
             for path in sorted(source.rglob('*')):
                 if path.is_symlink():raise ValueError('Bundle cannot contain filesystem links')
-                if path.is_file():bundle.add(path,arcname=str(path.relative_to(source)),recursive=False)
+                if path.is_file() or path.is_dir():bundle.add(path,arcname=str(path.relative_to(source)),recursive=False)
     output.chmod(0o600)
     return {'infra_source_sha':infra_sha,'backend_source_sha':backend_sha,'image_id':image_id,
             'image_archive_sha256':checksum,'bundle_sha256':file_sha(output),'bundle':str(output)}

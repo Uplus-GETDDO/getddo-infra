@@ -32,12 +32,15 @@ def protected_read(path, secret=False):
 
 def load_manifest(path=MANIFEST):
     config = json.loads(protected_read(path))
-    if set(config) != {'environment', 'target', 'public_origin', 'expected_workers', 'scenario', 'actor_file'}:
+    fields = {'environment', 'target', 'public_origin', 'expected_workers', 'scenario', 'actor_file'}
+    if set(config) != fields | ({'scenario_file'} if config.get('scenario') == 'personal' else set()):
         raise ValueError('manifest fields do not match runtime contract')
-    if config['environment'] != 'staging' or config['scenario'] != 'smoke_events':
+    if config['environment'] != 'staging' or config['scenario'] not in ('smoke_events', 'personal'):
         raise ValueError('explicit supported staging scenario required')
     if not re.fullmatch(r'http://internal-[a-zA-Z0-9-]+\.ap-northeast-2\.elb\.amazonaws\.com', config['target']):
         raise ValueError('exact internal Stage HTTP ALB origin required')
+    if config['scenario'] == 'personal' and config['scenario_file'] != '/run/personal/scenario.py':
+        raise ValueError('personal scenario must use its protected mount')
     origin = urlsplit(config['public_origin'])
     if (origin.scheme != 'https' or not re.fullmatch(r'[a-z0-9]+\.cloudfront\.net', origin.netloc)
             or origin.path or origin.query or origin.fragment):

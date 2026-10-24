@@ -259,15 +259,33 @@ class AdapterTests(unittest.TestCase):
                 effects.extract(value, Path(directory))
 
     def test_app_cleanup_never_touches_persistent_credentials(self):
+        from staging_lifecycle import PERSISTENT_PARAMETERS
         effects = self.effects()
         ssm = effects.clients["ssm"]
         value = manifest()
         app = "/getddo/staging/app/SPRING_DATASOURCE_PASSWORD"
-        ssm.get_paginator.return_value.paginate.return_value = [{"Parameters": [
-            {"Name": app}, {"Name": "/getddo/staging/locust/admin-password"}]}]
+        database = "/getddo/staging/test-access/mysql-password"
+        ssm.get_paginator.return_value.paginate.side_effect = [
+            [{"Parameters": [{"Name": app}, *({"Name": name} for name in PERSISTENT_PARAMETERS)]}],
+            [{"Parameters": [{"Name": database}]}]]
         ssm.list_tags_for_resource.return_value = {"TagList": [{"Key": "Environment", "Value": "staging"}, {"Key": "RunId", "Value": value["run_id"]}]}
         effects.delete_app_parameters(value)
-        ssm.delete_parameter.assert_called_once_with(Name=app)
+        self.assertEqual(ssm.delete_parameter.call_args_list, [unittest.mock.call(Name=app), unittest.mock.call(Name=database)])
+        filters = [call.kwargs["ParameterFilters"][0]["Values"]
+                   for call in ssm.get_paginator.return_value.paginate.call_args_list]
+        self.assertEqual(filters, [["/getddo/staging/app/"], ["/getddo/staging/test-access/"]])
+        self.assertEqual({call.kwargs["ResourceId"] for call in ssm.list_tags_for_resource.call_args_list}, {app, database})
+
+    def test_foreign_test_database_parameter_cannot_be_deleted(self):
+        effects = self.effects()
+        ssm = effects.clients["ssm"]
+        ssm.get_paginator.return_value.paginate.side_effect = [
+            [{"Parameters": []}], [{"Parameters": [{"Name": "/getddo/staging/test-access/mysql-password"}]}]]
+        ssm.list_tags_for_resource.return_value = {"TagList": [
+            {"Key": "Environment", "Value": "staging"}, {"Key": "RunId", "Value": "another-run"}]}
+        with self.assertRaisesRegex(RuntimeError, "ownership"):
+            effects.delete_app_parameters(manifest())
+        ssm.delete_parameter.assert_not_called()
 
     def test_missing_deployment_lock_does_not_require_whole_bucket_metadata(self):
         effects = self.effects()

@@ -23,6 +23,7 @@ Read-only mounts (host → container):
 - `/etc/getddo-loadtest/manifest.json` → `/etc/getddo-loadtest/manifest.json`
 - `/run/getddo-staging/locust` → `/run/secrets` (master only)
 - `/run/getddo-staging/locust-scenario` → `/run/scenario` (all processes)
+- `/opt/getddo-loadtest/active` → `/run/personal` (all processes, immutable root-owned snapshot)
 - `/var/lib/getddo-loadtest/reports` → `/reports` (master writable)
 
 Root-owned manifest, not group/world writable:
@@ -37,6 +38,13 @@ Root-owned manifest, not group/world writable:
   "actor_file": "/run/scenario/actor.json"
 }
 ```
+
+A personal manifest replaces `scenario` with `personal` and adds exactly
+`"scenario_file": "/run/personal/scenario.py"`. `loadtest.runtime.StageUser` is
+the common base. Only concrete subclasses with tasks are loaded. Scenario import
+executes trusted team Python; target locking is a convenience constraint, not a
+security sandbox. The host CLI owns syntax/import validation, immutable releases,
+archival/readback and rollback.
 
 The lifecycle owner writes the exact Stage Terraform output into this trusted
 manifest; runtime validates internal ALB syntax and locks every request to that
@@ -72,6 +80,12 @@ start returns 409. Repeated runs require collect first (409 otherwise). Export
 artifacts have fixed names inside mounted reports; collect before next run or
 destroy. Separate AWS expiry remains mandatory and owns deletion.
 
+Authenticated `POST /locust/control/maintenance` with `{"enabled":true}`
+atomically refuses running/pending/stopping states and blocks new web START.
+Collection remains available. Apply enables maintenance before collection and
+switching; a new master starts without maintenance. A failed validation restores
+maintenance=false on the existing master. Local `flock` serializes apply/collect.
+
 `GET /locust/control/session` returns authenticated `csrf`, `state` and
 `collectible`. Collection waits for completed stop and fresh reports from every
 expected connected worker after the stop checkpoint, including final requests.
@@ -99,7 +113,7 @@ Counters reset when process/test resets; use Prometheus rate with reset handling
 | `locust_workers_connected` | gauge | native nonmissing worker count |
 | `locust_workers_fresh` | gauge | worker reports received within 10 seconds, no ID label |
 | `locust_workers_healthy` | gauge | fresh count >= expected and connected count >= expected |
-| `locust_business_total{scenario="smoke_events",method="GET",result="success\|expected_rejection\|rate_limited\|server_error\|http_error\|invalid_envelope\|transport_error"}` | counter | deduplicated cumulative worker business reports |
+| `locust_business_total{scenario="smoke_events\|personal",method="GET\|MIXED",result="success\|expected_rejection\|rate_limited\|server_error\|http_error\|invalid_envelope\|transport_error"}` | counter | deduplicated cumulative worker business reports |
 
 `rate_limited` is HTTP429. `server_error` is HTTP5xx; expected business rejection
 is explicitly configured `(status, envelope code)` and never server_error.

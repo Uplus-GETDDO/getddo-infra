@@ -1,7 +1,7 @@
 # Stage-only host preparation; no application or load is started here.
-dnf install -y amazon-cloudwatch-agent python3-pip
-python3 -m venv /opt/getddo-staging-venv
-/opt/getddo-staging-venv/bin/pip install --quiet Werkzeug==3.1.3 PyMySQL==1.1.2
+dnf install -y amazon-cloudwatch-agent python3.12 python3.12-pip mariadb105 nano
+python3.12 -m venv /opt/getddo-staging-venv
+/opt/getddo-staging-venv/bin/pip install --quiet Werkzeug==3.1.3 PyMySQL==1.1.2 requests==2.34.2
 install -d -m 0700 /opt/getddo/staging
 work=$(mktemp -d)
 trap 'rm -rf -- "$temporary" "$work"' EXIT
@@ -40,4 +40,6 @@ JSON
 /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json -s
 systemctl daemon-reload
 systemctl enable --now node_exporter
+# Retry credentials after initial IAM propagation during host installation.
+systemctl restart amazon-ssm-agent
 touch /opt/getddo/staging/host-ready
