@@ -42,7 +42,7 @@
    먼저 검토한다. 이번에는 `RebootDBInstance` 권한을 추가하거나 실행하지 않는다.
 
 ```bash
-aws sts get-caller-identity --profile getddo-gyeongju --no-cli-pager
+aws sts get-caller-identity --profile getddo-gyeongju --region ap-northeast-2 --no-cli-pager
 aws rds describe-db-instances --profile getddo-gyeongju --region ap-northeast-2 \
   --db-instance-identifier getddo-dev-mysql --no-cli-pager
 aws rds describe-pending-maintenance-actions --profile getddo-gyeongju \
