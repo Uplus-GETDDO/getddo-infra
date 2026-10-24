@@ -86,7 +86,7 @@ mock apply는 외부 AWS API·원격 State를 사용하지 않으며 실제 HA �
 
 | root | 기존 S3 State 키 | 허용하는 변경 |
 | --- | --- | --- |
-| `terraform/bootstrap` | `bootstrap/terraform.tfstate` | 필요할 때 기존 운영자 DB 정책의 snapshot 생성 권한만 수정 |
+| `terraform/bootstrap` | `bootstrap/terraform.tfstate` | 필요할 때 기존 운영자 DB 정책의 전용 snapshot 생성 및 태그 추가 권한만 수정 |
 | `terraform/prod` | `dev/terraform.tfstate` | 기존 `aws_db_instance.main` in-place Multi-AZ 활성화·이번 전환만 즉시 적용 |
 
 실제 입력은 기존 운영 경로로 전달한다. 테스트 비밀값·추측한 tfvars를 사용하지 않는다.
