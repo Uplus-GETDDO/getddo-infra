@@ -39,7 +39,10 @@
    허용 수치와 초과 지속 시간을 담당자와 확정하여 기록한다. 미확정이면 적용하지 않는다.
 6. LatestRestorableTime과 현재 UTC의 차이를 기록하고, 아래 전용 이름으로 작업 직전
    수동 snapshot을 생성해 `available`을 확인한다. IAM 보완은 별도 bootstrap 전체 plan을
-   먼저 검토한다. 이중화 적용 단계에서는 `RebootDBInstance` 권한을 추가하거나 실행하지
+   먼저 검토한다. 수동 snapshot은 기존 DB 태그를 복사하므로 `CreateDBSnapshot`과 별도로
+   전용 snapshot 접두사에 대한 `AddTagsToResource` 실효 권한도 확인한다. 기존 DB/다른
+   snapshot의 태그 권한을 확대하거나 태그를 제거해 권한 검사를 피하지 않는다.
+   이중화 적용 단계에서는 `RebootDBInstance` 권한을 추가하거나 실행하지
    않는다. 후속 실제 시험은 아래 별도 게이트와 임시 권한 절차를 따른다.
 
 ```bash

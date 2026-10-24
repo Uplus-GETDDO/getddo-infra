@@ -151,4 +151,13 @@ run "production_pre_multiaz_snapshot_boundary" {
     )
     error_message = "운영 백업 생성은 기존 DB와 전용 snapshot 이름으로 제한하고 강제 전환 권한은 추가하지 않아야 합니다."
   }
+
+  assert {
+    condition = (
+      one([for s in jsondecode(aws_iam_policy.operator["GetddoDevOperatorDatabase"].policy).Statement : s if s.Sid == "TagProductionPreMultiAzSnapshot"]).Action == ["rds:AddTagsToResource"] &&
+      one([for s in jsondecode(aws_iam_policy.operator["GetddoDevOperatorDatabase"].policy).Statement : s if s.Sid == "TagProductionPreMultiAzSnapshot"]).Resource == ["arn:aws:rds:ap-northeast-2:942466928325:snapshot:getddo-dev-mysql-pre-multiaz-*"] &&
+      one([for s in jsondecode(aws_iam_policy.operator["GetddoDevOperatorDatabase"].policy).Statement : s if s.Sid == "TagProductionPreMultiAzSnapshot"]).Condition.StringEquals["aws:RequestedRegion"] == "ap-northeast-2"
+    )
+    error_message = "자동 복사 태그 권한은 전용 사전 snapshot 접두사와 서울로만 제한해야 합니다."
+  }
 }
