@@ -1,7 +1,7 @@
 # 운영 Redis 이중화 절차
 
-기존 `getddo-dev-redis`에 복제본 한 대를 추가하고 Multi-AZ와 자동 장애 전환을 활성화한다.
-목표는 서로 다른 AZ의 primary 1대와 replica 1대다. 실제 구성과 시험 결과는
+2026-10-25 기존 `getddo-dev-redis`에 복제본 한 대를 추가하고 Multi-AZ와 자동 장애 전환을 활성화했다.
+서로 다른 AZ의 primary 1대와 replica 1대를 사용한다. 실제 구성과 시험 결과는
 [장애 전환 시험 결과](redis-failover-test-results.md)에서 확인한다.
 
 ## 연결과 데이터 계약
@@ -18,6 +18,13 @@ RDS 반영 전 Redis 저널도 장애 시 유실될 수 있다. 이미 RDS에 �
 일반 공유 연결·응모 평가 전용 풀·이력 워커 전용 풀의 세 경로를 각각 확인한다. Redis 판정 오류 시
 기존 fail-open을 유지하며 사용자·업무 검증은 계속한다. 이미 초과 판정을 얻은 요청은
 기존 429와 Retry-After를 유지한다. 업무 거절 응답도 정상적인 제한기 통과 결과일 수 있다.
+
+## 적용 기록과 비용
+
+- 적용 소스: `6c69d96f24844a411385ad969a13d0e767489847` ([구현 PR #17](https://github.com/Uplus-GETDDO/getddo-infra/pull/17)).
+- 최초 적용 배치: primary `2a`, replica `2c`. 실제 장애 전환 뒤 역할은 [시험 결과](redis-failover-test-results.md)를 따른다.
+- 공식 서울 요금표를 2026-10-25 재조회했다. Redis `cache.t4g.micro` 노드당 시간당 US$0.024, 730시간 기준 추가 US$17.52/월이며 두 노드 합계 US$35.04다. 세금·환율·할인·별도 전송 비용은 제외한다.
+- [서울 ElastiCache 공식 요금표](https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonElastiCache/current/ap-northeast-2/index.json), 발행 2026-10-14.
 
 ## 적용
 

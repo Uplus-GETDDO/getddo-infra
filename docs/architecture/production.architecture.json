@@ -3,7 +3,7 @@
   "diagram_type": "architecture",
   "meta": {
     "title": "GETDDO 운영 아키텍처",
-    "subtitle": "현재 배포 구성 · 2026-10-25 RDS Multi-AZ 확인",
+    "subtitle": "운영 구성 · Redis HA 적용 2026-10-25",
     "output": "production.html",
     "viewBox": [
       1340,
@@ -75,7 +75,7 @@
       "type": "database",
       "label": "RDS + Redis",
       "sublabel": "MySQL :3306 / Redis :6379",
-      "tag": "비공개 · Multi-AZ / 캐시 1대",
+      "tag": "비공개 · 두 AZ 이중화",
       "pos": [
         1080,
         250
@@ -307,7 +307,7 @@
       "items": [
         "CloudFront → VPC origin → 내부 ALB → API A/C",
         "A는 2a, C는 2c에 배치된 t3.small 서버",
-        "앱은 Multi-AZ RDS와 TLS Redis를 공유"
+        "앱은 두 AZ의 RDS·Redis HA를 공유"
       ]
     },
     {

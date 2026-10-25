@@ -15,7 +15,7 @@ GETDDO 운영 인프라·공용 모니터링·임시 스테이징 부하 테스�
 | 내부 ALB | 두 AZ의 사설 서브넷에 배치. HTTP 80 → API 서버 8080으로 요청 분산 |
 | API A / C | `ap-northeast-2a` / `ap-northeast-2c`의 `t3.small` EC2. Docker 앱 실행, 공인 IPv4·IGW로 외부 통신, 보안 그룹으로 인바운드 제한 |
 | RDS | 비공개 MySQL 8.4, `db.t4g.micro`, Multi-AZ 동기 대기 구성. API 보안 그룹에서만 3306 접속 허용 |
-| Redis | 비공개 Redis OSS 단일 노드. TLS·AUTH 연결, 공유 요청 제한 저장소 |
+| Redis | 두 AZ의 Redis OSS primary/replica와 자동 장애 전환. TLS·AUTH 공유 요청 제한 저장소 |
 | S3 | 이미지·배포 파일 저장소 분리. API 역할로 이미지 업로드, CloudFront OAC로 조회 |
 | Parameter Store | 앱 설정·비밀값 저장. 서버 역할로 조회 |
 | GitHub Actions · SSM | 백엔드 빌드·배포. OIDC 임시 권한, S3 파일 전달, SSM Run Command로 서버 배포 |
@@ -24,7 +24,7 @@ GETDDO 운영 인프라·공용 모니터링·임시 스테이징 부하 테스�
 - 실선: 서비스 요청 / 점선: 설정·배포·모니터링
 - 외부 HTTPS는 CloudFront에서 종료. ALB·API 구간은 사설망 HTTP
 - DB 관리 접속은 EC2 Instance Connect Endpoint·SSH 터널로 API 서버 경유
-- RDS는 2026-10-25 Multi-AZ 적용과 실제 장애 전환 시험을 완료했다. [적용·복구 절차](docs/rds-multiaz.md) · [전환 시간·503 응답·데이터 검증 결과](docs/rds-failover-test-results.md). Redis는 복제본·자동 장애 전환 없는 단일 노드
+- RDS는 2026-10-25 Multi-AZ 적용과 실제 장애 전환 시험을 완료했다. [적용·복구 절차](docs/rds-multiaz.md) · [전환 시간·503 응답·데이터 검증 결과](docs/rds-failover-test-results.md). Redis는 2026-10-25 두 AZ의 primary/replica와 자동 장애 전환 적용을 완료했다. [운영 절차](docs/redis-ha.md) · [시험 결과](docs/redis-failover-test-results.md)
 
 ## 레포 구조
 
