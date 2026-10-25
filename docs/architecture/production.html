@@ -527,12 +527,12 @@
         <div class="pulse-dot"></div>
         <h1>GETDDO 운영 아키텍처</h1>
       </div>
-      <p class="subtitle">현재 배포 구성 · 2026-10-25 RDS Multi-AZ 확인</p>
+      <p class="subtitle">운영 구성 · Redis HA 적용 2026-10-25</p>
     </div>
 
     <!-- Main Diagram -->
     <div class="diagram-container">
-      <svg viewBox="0 0 1340 680" role="img" aria-label="GETDDO 운영 아키텍처 — 현재 배포 구성 · 2026-10-25 RDS Multi-AZ 확인 (architecture diagram)">
+      <svg viewBox="0 0 1340 680" role="img" aria-label="GETDDO 운영 아키텍처 — 운영 구성 · Redis HA 적용 2026-10-25 (architecture diagram)">
         <!-- Definitions -->
         <defs>
           <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
@@ -599,7 +599,7 @@
         <rect x="1080" y="250" width="220" height="78" rx="6" class="c-database" stroke-width="1.5"/>
         <text x="1190" y="287" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">RDS + Redis</text>
         <text x="1190" y="303" class="t-muted" font-size="9" text-anchor="middle">MySQL :3306 / Redis :6379</text>
-        <text x="1190" y="320" class="t-database" font-size="7" text-anchor="middle">비공개 · Multi-AZ / 캐시 1대</text>
+        <text x="1190" y="320" class="t-database" font-size="7" text-anchor="middle">비공개 · 두 AZ 이중화</text>
 
         <rect x="270" y="70" width="170" height="78" rx="6" class="c-mask"/>
         <rect x="270" y="70" width="170" height="78" rx="6" class="c-cloud" stroke-width="1.5"/>
@@ -677,7 +677,7 @@
         <ul>
           <li>&bull; CloudFront → VPC origin → 내부 ALB → API A/C</li>
           <li>&bull; A는 2a, C는 2c에 배치된 t3.small 서버</li>
-          <li>&bull; 앱은 Multi-AZ RDS와 TLS Redis를 공유</li>
+          <li>&bull; 앱은 두 AZ의 RDS·Redis HA를 공유</li>
         </ul>
       </div>
 
