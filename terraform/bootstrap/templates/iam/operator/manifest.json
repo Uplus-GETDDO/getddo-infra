@@ -46,5 +46,11 @@
       "name": "GetddoDevOperatorOperations",
       "file": "operations.json"
     }
+  ],
+  "inline_policies": [
+    {
+      "name": "ecr-management",
+      "file": "ecr.json"
+    }
   ]
 }

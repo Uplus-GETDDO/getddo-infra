@@ -29,3 +29,17 @@ resource "aws_iam_group_policy" "operator_two_api" {
   group  = aws_iam_group.operator.name
   policy = file("${path.module}/templates/iam/operator/two-api-management.json")
 }
+
+# Preserve the ten managed attachments; group inline policies share a 5120-character limit.
+resource "aws_iam_group_policy" "operator_ecr" {
+  name   = local.operator_manifest.inline_policies[0].name
+  group  = aws_iam_group.operator.name
+  policy = file("${path.module}/templates/iam/operator/ecr.json")
+
+  lifecycle {
+    precondition {
+      condition     = length(jsonencode(jsondecode(file("${path.module}/templates/iam/operator/two-api-management.json")))) + length(jsonencode(jsondecode(file("${path.module}/templates/iam/operator/ecr.json")))) <= 5120
+      error_message = "Operator group inline policies must fit the combined IAM size limit."
+    }
+  }
+}
