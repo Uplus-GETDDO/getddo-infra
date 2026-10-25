@@ -201,6 +201,7 @@ class Runner:
         self.args, self.run_id, self.request_file = args, run_id, request_file
         self.last_start = None
         self.sent = 0
+        self.load_sent = 0
 
     def request(self, phase, headers=None):
         # Called only by the scheduler; one shared pacing clock covers all phases.
@@ -253,19 +254,23 @@ class Runner:
         start = time.monotonic()
         count = 0
         blocked = None
+        invalid_response = False
         with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
             pending = set()
-            while pending or (blocked is None and count < MAX_REQUESTS and time.monotonic() - start < MAX_SECONDS):
+            while pending or (blocked is None and not invalid_response and count < MAX_REQUESTS and time.monotonic() - start < MAX_SECONDS):
                 done = {future for future in pending if future.done()}
                 for future in done:
                     record = self.save(future.result())
                     if valid_block(record):
                         blocked = record
+                    elif not (record.get('status') == 200 and record.get('probe_body') is True):
+                        invalid_response = True
                 pending -= done
-                if blocked is None and len(pending) < 2 and count < MAX_REQUESTS and time.monotonic() - start + INTERVAL < MAX_SECONDS:
+                if blocked is None and not invalid_response and len(pending) < 2 and count < MAX_REQUESTS and time.monotonic() - start + INTERVAL < MAX_SECONDS:
                     scheduled = self.request('load')
                     # Observe completions again after pacing, before starting more traffic.
-                    if any(f.done() and valid_block(f.result()) for f in pending):
+                    if any(f.done() and not (f.result().get('status') == 200 and
+                            f.result().get('probe_body') is True) for f in pending):
                         self.sent -= 1
                         continue
                     if time.monotonic() - start >= MAX_SECONDS:
@@ -273,11 +278,14 @@ class Runner:
                         continue
                     pending.add(pool.submit(self.perform, scheduled))
                     count += 1
+                    self.load_sent = count
                 elif pending:
                     concurrent.futures.wait(pending, timeout=INTERVAL,
                                             return_when=concurrent.futures.FIRST_COMPLETED)
                 else:
                     break
+        if invalid_response:
+            raise Incomplete('Probe response changed or failed; new traffic stopped and in-flight requests joined')
         return blocked, count
 
 
@@ -378,6 +386,7 @@ def execute(args):
         result['reason'] = 'Verification environment or response structure could not be confirmed'
     if runner is not None:
         result['total_requests'] = runner.sent
+        result['load_requests'] = runner.load_sent
     result['finished'] = utc()
     if run_metadata is not None:
         run_metadata['finished'] = result['finished']

@@ -193,13 +193,31 @@ class VerificationTests(unittest.TestCase):
             time.sleep(0.12)
             with lock:
                 active -= 1
-            return {'status': 200}
+            return {'status': 200, 'probe_body': True}
         with patch.object(runner, 'perform', side_effect=perform), patch.object(waf, 'MAX_REQUESTS', 6):
             blocked, count = runner.load()
         self.assertIsNone(blocked)
         self.assertEqual(count, 6)
         self.assertLessEqual(maximum, 2)
         self.assertTrue(all(b - a >= waf.INTERVAL - 0.001 for a, b in zip(starts, starts[1:])))
+
+    def test_probe_departure_stops_load_and_joins(self):
+        for response in ({'status': None}, {'status': 401}, {'status': 404},
+                         {'status': 503}, {'status': 429, 'error_body': False},
+                         {'status': 200, 'probe_body': False}):
+            with self.subTest(response=response):
+                stream = io.StringIO()
+                runner = waf.Runner(args(), RUN, stream)
+                active = []
+                def perform(scheduled):
+                    active.append(scheduled)
+                    return response
+                with patch.object(runner, 'perform', side_effect=perform):
+                    with self.assertRaises(waf.Incomplete):
+                        runner.load()
+                self.assertLessEqual(runner.load_sent, 2)
+                self.assertEqual(len(active), runner.load_sent)
+                self.assertEqual(len(stream.getvalue().splitlines()), runner.load_sent)
 
     def test_first_valid_block_stops_load_and_joins(self):
         runner = waf.Runner(args(), RUN, io.StringIO())
@@ -211,7 +229,7 @@ class VerificationTests(unittest.TestCase):
 
     def test_elapsed_limit_stops_load(self):
         runner = waf.Runner(args(), RUN, io.StringIO())
-        with patch.object(runner, 'perform', return_value={'status': 200}), patch.object(waf, 'MAX_SECONDS', 0.25):
+        with patch.object(runner, 'perform', return_value={'status': 200, 'probe_body': True}), patch.object(waf, 'MAX_SECONDS', 0.25):
             _, count = runner.load()
         self.assertLessEqual(count, 3)
 

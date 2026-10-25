@@ -69,6 +69,7 @@ AWS CLI의 바이너리 `SearchString` 출력은 base64를 해석해 대조한�
 | 기준 응답 | HTTP 200과 해당 UUID의 고유 본문 필수 |
 | 높은 요청 | 전체 12회/초 이하, 동시 최대 2개, 최대 1,800회 또는 150초 |
 | 개별 HTTP | timeout 3초, 자동 리다이렉트·재시도 없음 |
+| probe 이탈 | timeout·401·404·5xx·고유 본문 불일치 등은 새 부하 중단 후 진행 요청 합류·미완료 기록 |
 | 차단 관측 | 첫 유효한 429/COMMON-006 뒤 추가 높은 요청 중단, 이미 진행 중인 요청 합류 |
 | 응답 계약 | 고정 JSON, CORS `*`, JSON Content-Type, Retry-After·credentials 헤더 없음 |
 | 헤더 변경 | 같은 IP에서 문서용 X-Forwarded-For 한 번 변경 후 429 유지 확인 |

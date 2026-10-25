@@ -40,7 +40,7 @@ def cloudwatch_dashboard(body):
         previous = []
         for row in props['metrics']:
             ref = chr(65 + len(targets))
-            target = {'refId': ref, 'region': 'ap-northeast-2', 'queryMode': 'Metrics',
+            target = {'refId': ref, 'region': props.get('region', 'ap-northeast-2'), 'queryMode': 'Metrics',
                       'period': str(props.get('period', 60)), 'statistic': props.get('stat', 'Average'),
                       'matchExact': True}
             if isinstance(row[0], dict):

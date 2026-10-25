@@ -82,6 +82,17 @@ class MonitoringTests(unittest.TestCase):
             self.assertIn(namespace, serialized)
         self.assertIn('environment=\\"dev\\"', serialized)
 
+    def test_cloudwatch_widget_regions_are_preserved(self):
+        widgets = []
+        for region in ('us-east-1', 'ap-northeast-2', None):
+            properties = {'title': 'Requests', 'metrics': [['AWS/WAFV2', 'BlockedRequests']]}
+            if region is not None:
+                properties['region'] = region
+            widgets.append({'type': 'metric', 'properties': properties})
+        rendered = targets.cloudwatch_dashboard({'widgets': widgets})
+        self.assertEqual([panel['targets'][0]['region'] for panel in rendered['panels']],
+                         ['us-east-1', 'ap-northeast-2', 'ap-northeast-2'])
+
     def test_mount_guard_blocks_docker_recovery(self):
         script = (ROOT / 'scripts/monitoring-host.sh').read_text()
         guard = script[script.index('guard() {'):script.index('\ncase ${1:-}')]
