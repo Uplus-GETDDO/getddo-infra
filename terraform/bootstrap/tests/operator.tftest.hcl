@@ -199,7 +199,7 @@ run "waf_operator_resource_boundaries" {
         s.Condition.StringEquals["aws:PrincipalAccount"] == "942466928325"
         if contains(["ManageApiWafLogGroup", "TagApiWafLogGroup", "ReadApiWafLogEvents", "ConfigureEdgeWafLogDelivery", "ReadEdgeWafMetrics"], s.Sid)
       ]) &&
-      one([for s in jsondecode(aws_iam_policy.operator["GetddoDevOperatorObservability"].policy).Statement : s if s.Sid == "ManageApiWafLogGroup"]).Resource == "arn:aws:logs:us-east-1:942466928325:log-group:aws-waf-logs-getddo-dev-api:*" &&
+      toset(one([for s in jsondecode(aws_iam_policy.operator["GetddoDevOperatorObservability"].policy).Statement : s if s.Sid == "ManageApiWafLogGroup"]).Resource) == toset(["arn:aws:logs:us-east-1:942466928325:log-group:aws-waf-logs-getddo-dev-api", "arn:aws:logs:us-east-1:942466928325:log-group:aws-waf-logs-getddo-dev-api:*"]) &&
       one([for s in jsondecode(aws_iam_policy.operator["GetddoDevOperatorObservability"].policy).Statement : s if s.Sid == "TagApiWafLogGroup"]).Resource == "arn:aws:logs:us-east-1:942466928325:log-group:aws-waf-logs-getddo-dev-api" &&
       one([for s in jsondecode(aws_iam_policy.operator["GetddoDevOperatorObservability"].policy).Statement : s if s.Sid == "ReadApiWafLogEvents"]).Resource == "arn:aws:logs:us-east-1:942466928325:log-group:aws-waf-logs-getddo-dev-api:log-stream:*" &&
       toset(one([for s in jsondecode(aws_iam_policy.operator["GetddoDevOperatorObservability"].policy).Statement : s if s.Sid == "ConfigureEdgeWafLogDelivery"]).Action) == toset([

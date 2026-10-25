@@ -30,7 +30,8 @@ def args(root='/unused'):
 def fixtures():
     scope = {'AndStatement': {'Statements': [
         {'ByteMatchStatement': {'SearchString': '/api/', 'FieldToMatch': {'UriPath': {}},
-         'TextTransformations': [{'Priority': 0, 'Type': 'NONE'}], 'PositionalConstraint': 'STARTS_WITH'}},
+         'TextTransformations': [{'Priority': 0, 'Type': 'URL_DECODE'},
+                                 {'Priority': 1, 'Type': 'NORMALIZE_PATH'}], 'PositionalConstraint': 'STARTS_WITH'}},
         {'NotStatement': {'Statement': {'ByteMatchStatement': {'SearchString': 'OPTIONS',
          'FieldToMatch': {'Method': {}}, 'TextTransformations': [{'Priority': 0, 'Type': 'NONE'}],
          'PositionalConstraint': 'EXACTLY'}}}}]}}
@@ -101,6 +102,14 @@ class VerificationTests(unittest.TestCase):
         with patch.object(waf, 'aws', side_effect=lambda _, service, op, *rest, **kw: values[op]):
             waf.preflight(args())
 
+    def test_preflight_accepts_reordered_transformations_and_and_terms(self):
+        values = fixtures()
+        terms = values['get-web-acl']['WebACL']['Rules'][0]['Statement']['RateBasedStatement']['ScopeDownStatement']['AndStatement']['Statements']
+        terms[0]['ByteMatchStatement']['TextTransformations'].reverse()
+        terms.reverse()
+        with patch.object(waf, 'aws', side_effect=lambda _, service, op, *rest, **kw: values[op]):
+            waf.preflight(args())
+
     def test_preflight_rejects_drift(self):
         mutations = [
             lambda f: f['get-caller-identity'].update(Account='000000000000'),
@@ -110,6 +119,9 @@ class VerificationTests(unittest.TestCase):
             lambda f: f['get-web-acl']['WebACL']['Rules'][0]['Statement']['RateBasedStatement'].update(EvaluationWindowSec=300),
             lambda f: f['get-web-acl']['WebACL']['Rules'][0]['Statement']['RateBasedStatement'].update(AggregateKeyType='FORWARDED_IP'),
             lambda f: f['get-web-acl']['WebACL']['Rules'][0].update(Action={'Count': {}}),
+            lambda f: f['get-web-acl']['WebACL']['Rules'][0]['Statement']['RateBasedStatement']['ScopeDownStatement']['AndStatement']['Statements'][0]['ByteMatchStatement'].update(TextTransformations=[{'Priority': 0, 'Type': 'NONE'}]),
+            lambda f: f['get-web-acl']['WebACL']['Rules'][0]['Statement']['RateBasedStatement']['ScopeDownStatement']['AndStatement']['Statements'][0]['ByteMatchStatement']['TextTransformations'][1].update(Priority=0),
+            lambda f: f['get-web-acl']['WebACL']['Rules'][0]['Statement']['RateBasedStatement']['ScopeDownStatement']['AndStatement']['Statements'].pop(),
             lambda f: f['get-web-acl']['WebACL']['VisibilityConfig'].update(SampledRequestsEnabled=True),
             lambda f: f['get-web-acl']['WebACL']['CustomResponseBodies']['error'].update(Content='{}'),
             lambda f: f['describe-log-groups']['logGroups'][0].update(retentionInDays=30),
@@ -243,6 +255,42 @@ class VerificationTests(unittest.TestCase):
                 self.assertLessEqual(runner.load_sent, 2)
                 self.assertEqual(len(active), runner.load_sent)
                 self.assertEqual(len(stream.getvalue().splitlines()), runner.load_sent)
+
+    def test_simultaneous_blocks_preserve_contract_failure_in_both_orders(self):
+        bad = {**good_block(), 'cors': False}
+        for responses in ((bad, good_block()), (good_block(), bad)):
+            with self.subTest(bad_first=responses[0]['cors'] is False):
+                futures = []
+                class Future:
+                    def __init__(self, index):
+                        self.index = index
+                    def __hash__(self):
+                        return self.index
+                    def done(self):
+                        return len(futures) == 2
+                    def result(self):
+                        return responses[self.index]
+                class Pool:
+                    def __enter__(self):
+                        return self
+                    def __exit__(self, *unused):
+                        pass
+                    def submit(self, function, scheduled):
+                        future = Future(len(futures))
+                        futures.append(future)
+                        return future
+                values = fixtures()
+                def perform(scheduled):
+                    return good_block() if scheduled[1] == 'contract' else {'status': 200, 'probe_body': True}
+                with tempfile.TemporaryDirectory() as directory, patch.object(waf, 'aws', side_effect=lambda _, service, op, *rest, **kw: values[op]), patch.object(waf.concurrent.futures, 'ThreadPoolExecutor', return_value=Pool()), patch.object(waf.Runner, 'perform', side_effect=perform), patch.object(waf.time, 'sleep'):
+                    root = Path(directory) / 'evidence'
+                    self.assertEqual(waf.execute(args(str(root))), 1)
+                    result = json.loads((root / 'verification.json').read_text())
+                    self.assertEqual(result['checks']['response'], 'FAIL')
+                    self.assertEqual(result['load_requests'], 2)
+                    recorded = [json.loads(line) for line in (root / 'requests.jsonl').read_text().splitlines()]
+                    self.assertEqual([row['cors'] for row in recorded if row.get('status') == 429][:2],
+                                     [row['cors'] for row in responses])
 
     def test_first_valid_block_stops_load_and_joins(self):
         runner = waf.Runner(args(), RUN, io.StringIO())

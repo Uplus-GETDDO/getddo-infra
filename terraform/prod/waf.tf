@@ -57,9 +57,14 @@ resource "aws_wafv2_web_acl" "api" {
                 field_to_match {
                   uri_path {}
                 }
+                # 원본에서 같은 API로 해석되는 인코딩·중복 슬래시 경로를 함께 검사한다.
                 text_transformation {
                   priority = 0
-                  type     = "NONE"
+                  type     = "URL_DECODE"
+                }
+                text_transformation {
+                  priority = 1
+                  type     = "NORMALIZE_PATH"
                 }
               }
             }

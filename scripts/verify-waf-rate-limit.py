@@ -105,6 +105,10 @@ def normalize_search_strings(value):
                     pass
             else:
                 normalize_search_strings(child)
+                if key == 'TextTransformations' and isinstance(child, list):
+                    child.sort(key=lambda item: item['Priority'])
+                elif key == 'Statements' and isinstance(child, list):
+                    child.sort(key=lambda item: json.dumps(item, sort_keys=True))
     elif isinstance(value, list):
         for child in value:
             normalize_search_strings(child)
@@ -132,10 +136,12 @@ def preflight(args):
     normalize_search_strings(actual_scope)
     expected_scope = {'AndStatement': {'Statements': [
         {'ByteMatchStatement': {'SearchString': '/api/', 'FieldToMatch': {'UriPath': {}},
-         'TextTransformations': [{'Priority': 0, 'Type': 'NONE'}], 'PositionalConstraint': 'STARTS_WITH'}},
+         'TextTransformations': [{'Priority': 0, 'Type': 'URL_DECODE'},
+                                 {'Priority': 1, 'Type': 'NORMALIZE_PATH'}], 'PositionalConstraint': 'STARTS_WITH'}},
         {'NotStatement': {'Statement': {'ByteMatchStatement': {'SearchString': 'OPTIONS',
          'FieldToMatch': {'Method': {}}, 'TextTransformations': [{'Priority': 0, 'Type': 'NONE'}],
          'PositionalConstraint': 'EXACTLY'}}}}]}}
+    normalize_search_strings(expected_scope)
     require(rate.get('Limit') == 600 and rate.get('EvaluationWindowSec') == 60 and
             rate.get('AggregateKeyType') == 'IP' and
             actual_scope == expected_scope and
@@ -263,7 +269,8 @@ class Runner:
                 for future in done:
                     record = self.save(future.result())
                     if valid_block(record):
-                        blocked = record
+                        if blocked is None or not block_contract(record):
+                            blocked = record
                     elif not (record.get('status') == 200 and record.get('probe_body') is True):
                         invalid_response = True
                 pending -= done

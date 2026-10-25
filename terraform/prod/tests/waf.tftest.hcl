@@ -132,14 +132,21 @@ run "api_scope_excludes_options" {
       length([for s in one(aws_wafv2_web_acl.api.rule).statement[0].rate_based_statement[0].scope_down_statement[0].and_statement[0].statement : s if try(
         s.byte_match_statement[0].search_string == "/api/" && s.byte_match_statement[0].positional_constraint == "STARTS_WITH" &&
         length(s.byte_match_statement[0].field_to_match[0].uri_path) == 1 &&
-      one(s.byte_match_statement[0].text_transformation).type == "NONE", false)]) == 1 &&
+        toset([for transformation in s.byte_match_statement[0].text_transformation : {
+          priority = transformation.priority
+          type     = transformation.type
+          }]) == toset([
+          { priority = 0, type = "URL_DECODE" },
+          { priority = 1, type = "NORMALIZE_PATH" },
+      ]), false)]) == 1 &&
       length([for s in one(aws_wafv2_web_acl.api.rule).statement[0].rate_based_statement[0].scope_down_statement[0].and_statement[0].statement : s if try(
         s.not_statement[0].statement[0].byte_match_statement[0].search_string == "OPTIONS" &&
         s.not_statement[0].statement[0].byte_match_statement[0].positional_constraint == "EXACTLY" &&
         length(s.not_statement[0].statement[0].byte_match_statement[0].field_to_match[0].method) == 1 &&
-      one(s.not_statement[0].statement[0].byte_match_statement[0].text_transformation).type == "NONE", false)]) == 1
+        one(s.not_statement[0].statement[0].byte_match_statement[0].text_transformation).type == "NONE" &&
+      one(s.not_statement[0].statement[0].byte_match_statement[0].text_transformation).priority == 0, false)]) == 1
     )
-    error_message = "Aggregate only case-preserved /api/ paths with methods other than OPTIONS."
+    error_message = "Decode and normalize URI paths in order, preserve case and aggregate /api/ paths with methods other than OPTIONS."
   }
 }
 

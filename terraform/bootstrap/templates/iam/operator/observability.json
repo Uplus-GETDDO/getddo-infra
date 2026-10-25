@@ -176,7 +176,10 @@
         "logs:StartQuery",
         "logs:GetQueryResults"
       ],
-      "Resource": "arn:aws:logs:us-east-1:942466928325:log-group:aws-waf-logs-getddo-dev-api:*",
+      "Resource": [
+        "arn:aws:logs:us-east-1:942466928325:log-group:aws-waf-logs-getddo-dev-api",
+        "arn:aws:logs:us-east-1:942466928325:log-group:aws-waf-logs-getddo-dev-api:*"
+      ],
       "Condition": {
         "StringEquals": {
           "aws:RequestedRegion": "us-east-1",
