@@ -31,6 +31,7 @@ GETDDO 운영 인프라·공용 모니터링·임시 스테이징 부하 테스�
 
 | 운영 검증 | 핵심 결과 | 상세 |
 | --- | --- | --- |
+| ECR 이미지 배포 | 기존 이미지 이전·동일 digest 순차 배포·준비 실패 시 유지·실제 기동 실패 자동 복구 | [시험 결과](docs/ecr-deployment-test-results.md) · [운영 절차](docs/ecr-deployment.md) |
 | RDS 장애 전환 | 실제 전환·503·앱 재시작 없는 재연결·데이터 보존·동일 요청 중복 방지 | [시험 결과](docs/rds-failover-test-results.md) · [운영 절차](docs/rds-multiaz.md) |
 | Redis 장애 전환 | 실제 전환·A/C 공유 제한·만료 해제·응모 평가·합성 차단 이력 저장 | [시험 결과](docs/redis-failover-test-results.md) · [운영 절차](docs/redis-ha.md) |
 | WAF 요청 제한 | IP별 차단·다른 IP 통과·자동 해제·로그 마스킹·차단 로그 보관 | [시험 결과](docs/waf-rate-limit-test-results.md) · [운영 절차](docs/waf-rate-limit.md) |
