@@ -274,3 +274,25 @@ run "ecr_inline_policy_preserves_attachment_and_size_limits" {
     error_message = "Publisher management must use its exact ARN and must not add PassRole."
   }
 }
+
+run "production_deployment_lock_is_one_object" {
+  command = plan
+  assert {
+    condition = (
+      jsondecode(aws_iam_group_policy.operator_two_api.policy).Statement[0] == {
+        Sid       = "ManageNamedSecondApiWithApprovedDocuments", Effect = "Allow",
+        Action    = ["ssm:SendCommand", "ssm:StartSession"],
+        Resource  = "arn:aws:ec2:ap-northeast-2:942466928325:instance/*",
+        Condition = { StringEquals = { "aws:RequestedRegion" = "ap-northeast-2", "ssm:resourceTag/Name" = "getddo-dev-api-c" } }
+      } &&
+      length(jsondecode(aws_iam_group_policy.operator_two_api.policy).Statement) == 2 &&
+      jsondecode(aws_iam_group_policy.operator_two_api.policy).Statement[1] == {
+        Sid       = "ManageProductionDeploymentLock", Effect = "Allow",
+        Action    = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
+        Resource  = "arn:aws:s3:::getddo-deploy-942466928325-ap-northeast-2/locks/container-deploy.json",
+        Condition = { StringEquals = { "aws:RequestedRegion" = "ap-northeast-2" } }
+      }
+    )
+    error_message = "Preserve existing second-server permissions and scope deployment locking to one production object."
+  }
+}

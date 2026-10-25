@@ -51,6 +51,9 @@ Terraform 출력 `github_repository_variables`의 다음 비밀이 아닌 값을
 production 환경의 기존 CD 역할·버킷·A/C·대상 그룹·rolling 설정은 유지한다.
 운영자는 기존 그룹의 관리형 정책 10개를 보존하고 ECR 권한을 별도 inline 정책으로 관리한다.
 적용 전에 기존의 모든 group inline 정책과 새 정책의 공백 제외 합계가 5,120자 이하인지 확인한다.
+기준 release 전환과 수동 검증은 기존 `locks/container-deploy.json` 한 객체의 운영 배포 잠금을 함께 사용한다.
+운영자는 이 객체에만 Get/Put/Delete를 사용하며 expected bucket owner와 조건부 생성·ETag 기반 해제를 적용한다.
+명령 종료가 불명확하면 잠금을 보존하고 소유권·종료 증거를 확인한 뒤 처리한다.
 인증 토큰·장기 키·앱 env는 출력·GitHub Variables·Artifact·SSM 명령 본문에 넣지 않는다.
 
 ## 이미지 metadata 계약
