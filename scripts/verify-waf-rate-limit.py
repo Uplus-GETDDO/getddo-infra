@@ -4,6 +4,7 @@ import argparse
 import base64
 import concurrent.futures
 import datetime
+import http.client
 import json
 import os
 from pathlib import Path
@@ -237,7 +238,7 @@ class Runner:
                       'retry_after_absent': 'retry-after' not in headers,
                       'credentials_absent': 'access-control-allow-credentials' not in headers,
                       'json_content_type': headers.get('content-type', '').split(';')[0] == 'application/json'}
-        except (OSError, ValueError):
+        except (OSError, ValueError, http.client.HTTPException):
             record = {'number': number, 'time': started, 'phase': phase, 'status': None,
                       'elapsed_seconds': round(time.monotonic() - tick, 3)}
         return record
@@ -384,6 +385,8 @@ def execute(args):
         result['reason'] = str(exc)
     except (OSError, KeyError, ValueError, TypeError, subprocess.SubprocessError):
         result['reason'] = 'Verification environment or response structure could not be confirmed'
+    if 'FAIL' in checks.values():
+        code = 1
     if runner is not None:
         result['total_requests'] = runner.sent
         result['load_requests'] = runner.load_sent

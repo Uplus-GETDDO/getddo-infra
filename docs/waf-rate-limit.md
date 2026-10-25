@@ -39,9 +39,17 @@ x-user-role, x-user-membership 헤더는 마스킹한다. 요청 표본 보기�
 3. `count/all`은 초기 연결과 ALLOW 로그·마스킹 확인에만 짧게 사용한다. 이때도 600/60초는 유지한다.
    CountedRequests는 모든 요청 수가 아니며 한도에 해당해 COUNT 처리된 요청 수다.
 4. 전체 저장 plan으로 `block/blocked`를 적용하고 실제 설정을 재조회한 뒤 아래 도구를 실행한다.
-5. 다른 IP, 실제 브라우저, 정상 업무 읽기, 제외 메서드·이미지, 실제 로그·지표를 따로 검증한다.
+5. 다른 IP, 정상 업무 읽기, 제외 메서드·이미지, 실제 로그·지표를 따로 검증한다.
 6. `waf_probe=null`로 임시 리스너 규칙만 삭제한다. prod와 bootstrap 전체 plan의 실행 변경 0,
    실제 Block·600/60초·IP·blocked 필터·보관 7일, 요청 발생 프로세스 종료를 확인한다.
+
+운영 권한은 기존 CloudFront·observability 정책을 확장한다. WAF는 전용 이름의
+`arn:aws:wafv2:us-east-1:942466928325:global/webacl/getddo-dev-api-waf/*`로,
+로그 접근은 전용 로그 그룹과 그 하위 스트림으로 제한한다. 리소스 단위 제한을 지원하지 않는
+ListWebACLs, CreateLogDelivery, DeleteLogDelivery, PutResourcePolicy,
+DescribeResourcePolicies, DescribeLogGroups 등은 `Resource: *`를 사용하되
+`us-east-1`과 동일 계정 조건을 적용한다. PutLoggingConfiguration의 로그 목적지도
+전용 로그 그룹으로 제한한다. 기존 다른 자원·리전의 권한과 로그 전달 정책은 보존한다.
 
 ## 제한된 probe 검증
 
@@ -83,8 +91,8 @@ AWS CLI의 바이너리 `SearchString` 출력은 base64를 해석해 대조한�
 종료 코드 0은 도구가 수행하는 필수 probe 검사 통과, 1은 응답 계약·자동 해제 실패,
 2는 환경·전파·차단 미관측·로그 미확인 등 검증 미완료다. 0이어도 전체 운영 검증 완료를 뜻하지 않는다.
 `verification.json`의 browser, other_ip, normal_reads, options, image, initial_allow_redaction,
-metrics, cleanup은 별도 증거가 없으므로 NOT_RUN이다. 실제 브라우저에서 기존 오류 안내까지
-확인해야 하며 Origin을 보낸 HTTP 요청만으로 대신하지 않는다.
+metrics, cleanup은 별도 증거가 없으므로 NOT_RUN이다. CORS와 429 JSON 응답 계약은
+실제 Origin을 넣은 HTTP 요청으로 검사한다. 브라우저/UI 동작은 자동 검사 범위에 포함하지 않는다.
 
 ## 증거와 추가 검증
 

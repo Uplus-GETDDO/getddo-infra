@@ -171,6 +171,31 @@ class VerificationTests(unittest.TestCase):
             load.assert_not_called()
             self.assertNotIn('PASS', (root / 'verification.json').read_text())
 
+    def test_http_protocol_errors_become_failed_request_records(self):
+        for error in (waf.http.client.IncompleteRead(b'partial'),
+                      waf.http.client.BadStatusLine('invalid')):
+            with self.subTest(error=type(error).__name__), patch.object(waf.urllib.request, 'build_opener') as opener:
+                opener.return_value.open.side_effect = error
+                runner = waf.Runner(args(), RUN, io.StringIO())
+                record = runner.one('load')
+                self.assertIsNone(record['status'])
+                self.assertNotIn('partial', json.dumps(record))
+
+    def test_confirmed_failure_survives_later_incomplete_log_check(self):
+        values = fixtures()
+        bad_contract = {**good_block(), 'cors': False}
+        def perform(scheduled):
+            if scheduled[1] == 'contract':
+                return good_block()
+            return {'status': 200, 'probe_body': True}
+        with tempfile.TemporaryDirectory() as directory, patch.object(waf, 'aws', side_effect=lambda _, service, op, *rest, **kw: values[op]), patch.object(waf.Runner, 'load', return_value=(bad_contract, 2)), patch.object(waf.Runner, 'perform', side_effect=perform), patch.object(waf, 'block_log', side_effect=waf.Incomplete('Log not confirmed')), patch.object(waf.time, 'sleep'):
+            root = Path(directory) / 'evidence'
+            self.assertEqual(waf.execute(args(str(root))), 1)
+            result = json.loads((root / 'verification.json').read_text())
+            self.assertEqual(result['checks']['response'], 'FAIL')
+            self.assertEqual(result['checks']['block_log'], 'NOT_RUN')
+            self.assertEqual(result['exit_code'], 1)
+
     def test_429_needs_exact_body(self):
         self.assertTrue(waf.valid_block(good_block()))
         self.assertFalse(waf.valid_block({'status': 429, 'error_body': False}))

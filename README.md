@@ -108,7 +108,7 @@ Terraform 검사는 backend를 제거한 임시 복사본과 mock AWS Provider�
 - [서버 접속](terraform/prod/access.tf)
 - [이미지 저장소](terraform/prod/storage.tf) · [CloudFront](terraform/prod/cloudfront.tf)
 - [Redis](terraform/prod/redis.tf)
-- [CloudFront API 요청 제한·검증·로그 운영](docs/waf-rate-limit.md). 도구의 종료 코드 0은 자동 probe 검사 통과를 뜻하며, 전체 완료에는 실제 브라우저·다른 IP·업무 읽기·로그·정리 증거가 추가로 필요합니다.
+- [CloudFront API 요청 제한·검증·로그 운영](docs/waf-rate-limit.md). 도구의 종료 코드 0은 자동 probe 검사 통과를 뜻하며, 전체 완료에는 다른 IP·업무 읽기·로그·정리 증거가 추가로 필요합니다.
 
 ## 운영 Grafana
 
