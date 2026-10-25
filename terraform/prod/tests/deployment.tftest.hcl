@@ -15,9 +15,9 @@ mock_provider "aws" {
     defaults = { account_id = "942466928325" }
   }
 
-  # Dashboard rendering needs the actual single-node shape, not an empty mock set.
+  # Dashboard rendering needs the actual two-node shape, not an empty mock set.
   mock_resource "aws_elasticache_replication_group" {
-    defaults = { member_clusters = ["getddo-dev-redis-001"] }
+    defaults = { member_clusters = ["getddo-dev-redis-001", "getddo-dev-redis-002"] }
   }
 
   # 새 ALB·CloudFront 참조 값도 형식이 유효한 테스트 전용 값으로 제공한다.
@@ -40,7 +40,7 @@ variables {
   redis_auth_token   = "TestOnlyRedisPasswordNotUsed123456"
 }
 
-run "private_single_redis_with_tls_and_auth" {
+run "private_ha_redis_with_tls_and_auth" {
   command = apply
 
   assert {
@@ -48,15 +48,15 @@ run "private_single_redis_with_tls_and_auth" {
       aws_elasticache_replication_group.redis.engine == "redis" &&
       aws_elasticache_replication_group.redis.engine_version == "7.1" &&
       aws_elasticache_replication_group.redis.cluster_mode == "disabled" &&
-      aws_elasticache_replication_group.redis.num_cache_clusters == 1 &&
-      !aws_elasticache_replication_group.redis.automatic_failover_enabled &&
-      !aws_elasticache_replication_group.redis.multi_az_enabled &&
+      aws_elasticache_replication_group.redis.num_cache_clusters == 2 &&
+      aws_elasticache_replication_group.redis.automatic_failover_enabled &&
+      aws_elasticache_replication_group.redis.multi_az_enabled &&
       aws_elasticache_replication_group.redis.at_rest_encryption_enabled &&
       aws_elasticache_replication_group.redis.transit_encryption_enabled &&
       aws_elasticache_replication_group.redis.transit_encryption_mode == "required" &&
       aws_elasticache_replication_group.redis.auth_token_wo_version == 1
     )
-    error_message = "Redis OSS 원본 한 대와 저장 암호화·필수 TLS·write-only 인증 버전을 유지해야 합니다."
+    error_message = "Redis OSS 원본·복제본 두 대와 저장 암호화·필수 TLS·write-only 인증 버전을 유지해야 합니다."
   }
 
   assert {
@@ -429,5 +429,22 @@ run "locust_session_forwarding" {
   assert {
     condition     = length([for behavior in aws_cloudfront_distribution.api.ordered_cache_behavior : behavior if contains(["/locust", "/locust/*"], behavior.path_pattern) && behavior.target_origin_id == "getddo-dev-api-alb" && behavior.cache_policy_id == "4135ea2d-6df8-44a3-9df3-4b5a84be39ad" && behavior.origin_request_policy_id == "216adef6-5c7f-47e4-b989-5492eafa07d3" && behavior.viewer_protocol_policy == "https-only" && contains(behavior.allowed_methods, "POST")]) == 2
     error_message = "Locust must preserve login cookies and viewer Host on existing private origin without caching."
+  }
+}
+
+run "redis_changes_default_to_maintenance_window" {
+  command = plan
+  assert {
+    condition     = !aws_elasticache_replication_group.redis.apply_immediately && aws_elasticache_replication_group.redis.snapshot_retention_limit == 0 && aws_elasticache_replication_group.redis.node_type == "cache.t4g.micro" && aws_elasticache_replication_group.redis.preferred_cache_cluster_azs == tolist(["ap-northeast-2a", "ap-northeast-2c"])
+    error_message = "기본 즉시 적용은 끄고 사양·snapshot·두 AZ 선언을 유지해야 합니다. 실제 배치는 AWS에서 별도 확인합니다."
+  }
+}
+
+run "redis_changes_can_be_applied_immediately" {
+  command = plan
+  variables { redis_apply_immediately = true }
+  assert {
+    condition     = aws_elasticache_replication_group.redis.apply_immediately
+    error_message = "관찰 작업에서 명시한 Redis 즉시 적용 입력을 전달해야 합니다."
   }
 }

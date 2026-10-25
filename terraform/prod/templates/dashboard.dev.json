@@ -408,6 +408,22 @@
             "getddo-dev-redis-001",
             "CacheNodeId",
             "0001"
+          ],
+          [
+            "AWS/ElastiCache",
+            "EngineCPUUtilization",
+            "CacheClusterId",
+            "getddo-dev-redis-002",
+            "CacheNodeId",
+            "0001"
+          ],
+          [
+            "AWS/ElastiCache",
+            "CPUUtilization",
+            "CacheClusterId",
+            "getddo-dev-redis-002",
+            "CacheNodeId",
+            "0001"
           ]
         ]
       }
@@ -431,6 +447,14 @@
             "DatabaseMemoryUsagePercentage",
             "CacheClusterId",
             "getddo-dev-redis-001",
+            "CacheNodeId",
+            "0001"
+          ],
+          [
+            "AWS/ElastiCache",
+            "DatabaseMemoryUsagePercentage",
+            "CacheClusterId",
+            "getddo-dev-redis-002",
             "CacheNodeId",
             "0001"
           ]
@@ -458,6 +482,14 @@
             "getddo-dev-redis-001",
             "CacheNodeId",
             "0001"
+          ],
+          [
+            "AWS/ElastiCache",
+            "Evictions",
+            "CacheClusterId",
+            "getddo-dev-redis-002",
+            "CacheNodeId",
+            "0001"
           ]
         ]
       }
@@ -481,6 +513,47 @@
             "CurrConnections",
             "CacheClusterId",
             "getddo-dev-redis-001",
+            "CacheNodeId",
+            "0001"
+          ],
+          [
+            "AWS/ElastiCache",
+            "CurrConnections",
+            "CacheClusterId",
+            "getddo-dev-redis-002",
+            "CacheNodeId",
+            "0001"
+          ]
+        ]
+      }
+    },
+    {
+      "type": "metric",
+      "x": 12,
+      "y": 48,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "title": "Redis replication lag (seconds; replica only)",
+        "region": "ap-northeast-2",
+        "view": "timeSeries",
+        "stacked": false,
+        "period": 60,
+        "stat": "Maximum",
+        "metrics": [
+          [
+            "AWS/ElastiCache",
+            "ReplicationLag",
+            "CacheClusterId",
+            "getddo-dev-redis-001",
+            "CacheNodeId",
+            "0001"
+          ],
+          [
+            "AWS/ElastiCache",
+            "ReplicationLag",
+            "CacheClusterId",
+            "getddo-dev-redis-002",
             "CacheNodeId",
             "0001"
           ]

@@ -5,7 +5,6 @@ resource "aws_elasticache_subnet_group" "redis" {
   description = "Private data subnets for the shared Redis rate limiter"
 
   # 기존 RDS용 data-a/data-c를 재사용한다. 서브넷 이동·신규 NAT·인터넷 경로는 없다.
-  # 두 AZ를 후보로 제공하지만 아래 Redis 노드는 a AZ에 한 대만 배치한다.
   subnet_ids = [for subnet in aws_subnet.data : subnet.id]
   tags       = { Name = "getddo-dev-redis-subnets" }
 }
@@ -22,13 +21,16 @@ resource "aws_elasticache_replication_group" "redis" {
   node_type            = "cache.t4g.micro"
   port                 = 6379
 
-  # 원본 1대·복제본 0개이므로 자동 장애 전환은 없다. 두 번째 API도 이 주소를 공유한다.
+  # 원본 1대와 복제본 1대가 기존 메인 주소를 공유하며 장애 시 복제본을 승격한다.
   # cluster mode는 끄고, 원본이 쓰기와 읽기를 모두 처리한다.
-  cluster_mode                = "disabled"
-  num_cache_clusters          = 1
-  automatic_failover_enabled  = false
-  multi_az_enabled            = false
-  preferred_cache_cluster_azs = [aws_subnet.data["a"].availability_zone]
+  cluster_mode               = "disabled"
+  num_cache_clusters         = 2
+  automatic_failover_enabled = true
+  multi_az_enabled           = true
+  preferred_cache_cluster_azs = [
+    aws_subnet.data["a"].availability_zone,
+    aws_subnet.data["c"].availability_zone,
+  ]
 
   subnet_group_name  = aws_elasticache_subnet_group.redis.name
   security_group_ids = [aws_security_group.redis.id]
@@ -46,11 +48,11 @@ resource "aws_elasticache_replication_group" "redis" {
   auth_token_wo_version      = var.redis_auth_token_version
   auth_token_update_strategy = "ROTATE"
 
-  # 요청 제한 카운터는 일시 데이터이므로 자동 스냅샷을 보관하지 않는다.
-  # 장애·재시작 시 제한 기록이 사라질 수 있다. 업무 중복 방지는 RDS·담당자 코드의 책임이다.
+  # 비동기 복제이므로 최근 카운터·차단 상태·DB 미반영 저널은 유실될 수 있다.
+  # 자동 스냅샷은 보관하지 않으며, 이미 RDS에 저장된 이력은 별도로 유지한다.
   snapshot_retention_limit   = 0
   auto_minor_version_upgrade = true
-  apply_immediately          = false
+  apply_immediately          = var.redis_apply_immediately
 
   # 실수로 삭제·교체하는 계획을 막는다. 정리나 교체는 보호 해제와 별도 검토가 필요하다.
   lifecycle {
