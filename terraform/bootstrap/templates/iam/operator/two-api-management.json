@@ -15,6 +15,21 @@
           "ssm:resourceTag/Name": "getddo-dev-api-c"
         }
       }
+    },
+    {
+      "Sid": "ManageProductionDeploymentLock",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject"
+      ],
+      "Resource": "arn:aws:s3:::getddo-deploy-942466928325-ap-northeast-2/locks/container-deploy.json",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
     }
   ]
 }
