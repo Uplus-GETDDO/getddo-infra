@@ -114,3 +114,48 @@ variable "api_c_register_in_target_group" {
   default     = false
   description = "Register C in the shared API target group after readiness gates pass"
 }
+
+variable "waf_mode" {
+  description = "API rate-limit action: block or count"
+  type        = string
+  default     = "block"
+
+  validation {
+    condition     = contains(["block", "count"], var.waf_mode)
+    error_message = "WAF mode must be block or count."
+  }
+}
+
+variable "waf_log_mode" {
+  description = "Store blocked requests, or temporarily store all evaluated requests"
+  type        = string
+  default     = "blocked"
+
+  validation {
+    condition     = contains(["blocked", "all"], var.waf_log_mode)
+    error_message = "WAF log mode must be blocked or all."
+  }
+
+  validation {
+    condition     = var.waf_mode != "count" || var.waf_log_mode == "all"
+    error_message = "Count mode requires all-request logging to observe nonterminating matches."
+  }
+}
+
+variable "waf_probe" {
+  description = "Temporary fixed-response probe identified by UUID and an unused listener priority"
+  type = object({
+    run_id   = string
+    priority = number
+  })
+  default = null
+
+  validation {
+    condition = var.waf_probe == null ? true : (
+      can(regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$", var.waf_probe.run_id)) &&
+      var.waf_probe.priority >= 10 && var.waf_probe.priority <= 19 &&
+      floor(var.waf_probe.priority) == var.waf_probe.priority
+    )
+    error_message = "The probe requires a UUID run ID and an integer priority from 10 through 19."
+  }
+}

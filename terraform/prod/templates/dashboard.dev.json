@@ -756,6 +756,57 @@
           ]
         ]
       }
+    },
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 72,
+      "width": 24,
+      "height": 6,
+      "properties": {
+        "title": "CloudFront WAF requests / minute",
+        "region": "us-east-1",
+        "view": "timeSeries",
+        "stacked": false,
+        "period": 60,
+        "stat": "Sum",
+        "metrics": [
+          [
+            "AWS/WAFV2",
+            "AllowedRequests",
+            "WebACL",
+            "getddo-dev-api-waf",
+            "Rule",
+            "ALL"
+          ],
+          [
+            "AWS/WAFV2",
+            "BlockedRequests",
+            "WebACL",
+            "getddo-dev-api-waf",
+            "Rule",
+            "ApiIpRateLimit"
+          ],
+          [
+            "AWS/WAFV2",
+            "CountedRequests",
+            "WebACL",
+            "getddo-dev-api-waf",
+            "Rule",
+            "ApiIpRateLimit"
+          ]
+        ]
+      }
+    },
+    {
+      "type": "text",
+      "x": 0,
+      "y": 78,
+      "width": 24,
+      "height": 2,
+      "properties": {
+        "markdown": "WAF AllowedRequests includes default-allowed traffic such as images and OPTIONS, not only API requests. CountedRequests counts rate-rule matches in Count mode. Missing points do not prove zero requests."
+      }
     }
   ]
 }

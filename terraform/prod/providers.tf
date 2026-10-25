@@ -37,3 +37,9 @@ output "aws_caller_arn" {
   description = "AWS identity used by Terraform"
   value       = data.aws_caller_identity.current.arn
 }
+
+provider "aws" {
+  alias               = "edge"
+  region              = "us-east-1"
+  allowed_account_ids = ["942466928325"]
+}

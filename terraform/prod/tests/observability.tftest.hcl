@@ -1,3 +1,14 @@
+mock_provider "aws" {
+  alias = "edge"
+
+  mock_resource "aws_wafv2_web_acl" {
+    defaults = { arn = "arn:aws:wafv2:us-east-1:942466928325:global/webacl/getddo-dev-api-waf/12345678-1234-1234-1234-123456789abc" }
+  }
+  mock_resource "aws_cloudwatch_log_group" {
+    defaults = { arn = "arn:aws:logs:us-east-1:942466928325:log-group:aws-waf-logs-getddo-dev-api" }
+  }
+}
+
 # 모의 공급자로 plan만 실행한다. AWS 호출·자원 생성은 없다.
 mock_provider "aws" {
   mock_data "aws_caller_identity" {
@@ -57,7 +68,7 @@ run "console_dashboard_matches_terraform" {
     condition = alltrue([
       for widget in jsondecode(aws_cloudwatch_dashboard.dev.dashboard_body).widgets :
       length(widget.properties.metrics) == 2
-      if startswith(widget.properties.title, "EC2")
+      if startswith(try(widget.properties.title, ""), "EC2")
     ])
     error_message = "Each host widget must compare A and C, including Agent memory and root disk."
   }
@@ -85,7 +96,7 @@ run "app_dashboard_matches_exported_meter_names" {
         "jvm.memory.used.value", "jvm.memory.max.value", "jvm.gc.pause.max"
         ] : [for server in ["a", "c"] : anytrue(flatten([
           for widget in jsondecode(aws_cloudwatch_dashboard.dev.dashboard_body).widgets : [
-            for metric in widget.properties.metrics :
+            for metric in try(widget.properties.metrics, []) :
             try(strcontains(metric[0].expression, "Namespace=\"GETDDO/API\"") &&
               strcontains(metric[0].expression, "MetricName=\"${name}\"") &&
               strcontains(metric[0].expression, "environment=\"dev\"") &&
