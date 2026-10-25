@@ -190,6 +190,21 @@
         240,
         88
       ]
+    },
+    {
+      "id": "ecr",
+      "type": "cloud",
+      "label": "ECR · 운영 이미지",
+      "sublabel": "main push · A/C digest pull",
+      "tag": "불변 태그 · 복구 이미지 보존",
+      "pos": [
+        550,
+        20
+      ],
+      "size": [
+        180,
+        88
+      ]
     }
   ],
   "boundaries": [
@@ -345,9 +360,9 @@
       "dot": "slate",
       "title": "배포 · 설정 · 관측",
       "items": [
-        "GitHub Actions → S3 배포 파일 → SSM 순차 배포",
-        "A/C 설정은 Parameter Store · 지표와 로그는 CloudWatch",
-        "S3·Parameter Store·CloudWatch는 VPC 외부 서비스"
+        "GitHub main → ECR 불변 이미지 → A/C digest pull",
+        "S3 배포 파일 → SSM 순차 교체 · 이전 ECR 이미지 복구",
+        "Parameter Store 설정 · CloudWatch 지표·로그"
       ]
     }
   ]
