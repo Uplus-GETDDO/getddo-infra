@@ -24,7 +24,7 @@ GETDDO 운영 인프라·공용 모니터링·임시 스테이징 부하 테스�
 - 실선: 서비스 요청 / 점선: 설정·배포·모니터링
 - 외부 HTTPS는 CloudFront에서 종료. ALB·API 구간은 사설망 HTTP
 - DB 관리 접속은 EC2 Instance Connect Endpoint·SSH 터널로 API 서버 경유
-- RDS는 2026-10-25 Multi-AZ 적용과 저장 장치 초기화를 확인했다. [적용·검증·복구 절차와 실제 결과](docs/rds-multiaz.md)를 참고한다. Redis는 복제본·자동 장애 전환 없는 단일 노드
+- RDS는 2026-10-25 Multi-AZ 적용과 실제 장애 전환 시험을 완료했다. [적용·복구 절차](docs/rds-multiaz.md) · [전환 시간·503 응답·데이터 검증 결과](docs/rds-failover-test-results.md). Redis는 복제본·자동 장애 전환 없는 단일 노드
 
 ## 레포 구조
 
