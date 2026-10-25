@@ -162,6 +162,91 @@
           "cloudwatch:namespace": "Getddo/AlarmTest"
         }
       }
+    },
+    {
+      "Sid": "ManageApiWafLogGroup",
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:PutRetentionPolicy",
+        "logs:DescribeLogStreams",
+        "logs:FilterLogEvents",
+        "logs:GetLogGroupFields",
+        "logs:GetLogRecord",
+        "logs:StartQuery",
+        "logs:GetQueryResults"
+      ],
+      "Resource": "arn:aws:logs:us-east-1:942466928325:log-group:aws-waf-logs-getddo-dev-api:*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "us-east-1",
+          "aws:PrincipalAccount": "942466928325"
+        }
+      }
+    },
+    {
+      "Sid": "TagApiWafLogGroup",
+      "Effect": "Allow",
+      "Action": [
+        "logs:ListTagsForResource",
+        "logs:TagResource",
+        "logs:UntagResource"
+      ],
+      "Resource": "arn:aws:logs:us-east-1:942466928325:log-group:aws-waf-logs-getddo-dev-api",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "us-east-1",
+          "aws:PrincipalAccount": "942466928325"
+        }
+      }
+    },
+    {
+      "Sid": "ReadApiWafLogEvents",
+      "Effect": "Allow",
+      "Action": [
+        "logs:GetLogEvents"
+      ],
+      "Resource": "arn:aws:logs:us-east-1:942466928325:log-group:aws-waf-logs-getddo-dev-api:log-stream:*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "us-east-1",
+          "aws:PrincipalAccount": "942466928325"
+        }
+      }
+    },
+    {
+      "Sid": "ConfigureEdgeWafLogDelivery",
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogDelivery",
+        "logs:DeleteLogDelivery",
+        "logs:PutResourcePolicy",
+        "logs:DescribeResourcePolicies",
+        "logs:DescribeLogGroups"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "us-east-1",
+          "aws:PrincipalAccount": "942466928325"
+        }
+      }
+    },
+    {
+      "Sid": "ReadEdgeWafMetrics",
+      "Effect": "Allow",
+      "Action": [
+        "cloudwatch:GetMetricData",
+        "cloudwatch:GetMetricStatistics",
+        "cloudwatch:ListMetrics"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "us-east-1",
+          "aws:PrincipalAccount": "942466928325"
+        }
+      }
     }
   ]
 }
