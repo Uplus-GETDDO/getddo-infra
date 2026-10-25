@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ko" data-theme="dark">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -527,12 +527,12 @@
         <div class="pulse-dot"></div>
         <h1>GETDDO 운영 아키텍처</h1>
       </div>
-      <p class="subtitle">운영 구성 · Redis HA 적용 2026-10-25</p>
+      <p class="subtitle">CloudFront WAF · API 두 대 · RDS 동기 복제 · Redis 비동기 복제</p>
     </div>
 
     <!-- Main Diagram -->
     <div class="diagram-container">
-      <svg viewBox="0 0 1340 680" role="img" aria-label="GETDDO 운영 아키텍처 — 운영 구성 · Redis HA 적용 2026-10-25 (architecture diagram)">
+      <svg viewBox="0 0 1720 920" role="img" aria-label="GETDDO 운영 아키텍처 — CloudFront WAF · API 두 대 · RDS 동기 복제 · Redis 비동기 복제 (architecture diagram)">
         <!-- Definitions -->
         <defs>
           <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
@@ -556,114 +556,137 @@
         <rect width="100%" height="100%" fill="url(#grid)" />
 
         <!-- Boundaries (behind everything) -->
-        <rect x="500" y="220" width="830" height="128" rx="12" class="c-region" stroke-width="1"/>
-        <text x="508" y="238" class="t-cloud" font-size="9" font-weight="600">운영 VPC · 서울 ap-northeast-2</text>
+        <rect x="520" y="130" width="1180" height="698" rx="12" class="c-region" stroke-width="1"/>
+        <text x="528" y="148" class="t-cloud" font-size="9" font-weight="600">서울 VPC · ap-northeast-2</text>
 
         <!-- Connection paths (before components for correct z-order) -->
-        <path d="M 200 289 L 270 289" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path d="M 440 289 L 530 289" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path d="M 710 289 L 790 289" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path d="M 990 289 L 1080 289" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path d="M 355 250 L 355 148" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        <path d="M 890 250 L 890 148" class="a-security" stroke-width="1.5" marker-end="url(#arrowhead-security)"/>
-        <path d="M 440 539 L 530 539" class="a-dashed" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
-        <path d="M 890 500 L 890 328" class="a-dashed" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
-        <path d="M 890 328 L 890 357 Q 890 365 898 365 L 1022 365 Q 1030 365 1030 373 L 1030 531 Q 1030 539 1038 539 L 1080 539" class="a-dashed" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
-        <path d="M 355 578 L 355 617 Q 355 625 363 625 L 882 625 Q 890 625 890 617 L 890 578" class="a-dashed" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
+        <path d="M 190 384 L 245 384" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path d="M 485 384 L 550 384" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path d="M 730 384 L 762 384 Q 770 384 770 376 L 770 292 Q 770 284 778 284 L 810 284" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path d="M 730 384 L 762 384 Q 770 384 770 392 L 770 476 Q 770 484 778 484 L 810 484" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path d="M 1010 284 L 1042 284 Q 1050 284 1050 276 L 1050 212 Q 1050 204 1058 204 L 1110 204" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path d="M 1010 484 L 1067 484 Q 1075 484 1075 476 L 1075 212 Q 1075 204 1083 204 L 1110 204" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path d="M 1010 284 L 1022 284 Q 1030 284 1030 292 L 1030 506 Q 1030 514 1038 514 L 1110 514" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path d="M 1010 484 L 1042 484 Q 1050 484 1050 492 L 1050 506 Q 1050 514 1058 514 L 1110 514" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path d="M 1340 204 L 1440 204" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path d="M 1340 514 L 1440 514" class="a-dashed" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
+        <path d="M 365 340 L 365 188" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <path d="M 910 240 L 910 108" class="a-security" stroke-width="1.5" marker-end="url(#arrowhead-security)"/>
+        <path d="M 640 428 L 640 756 Q 640 764 648 764 L 1110 764" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <path d="M 365 428 L 363.75 428 Q 362.5 428 362.5 429.25 L 362.5 718.75 Q 362.5 720 361.25 720 L 360 720" class="a-dashed" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
 
         <!-- Components -->
-        <rect x="40" y="250" width="160" height="78" rx="6" class="c-mask"/>
-        <rect x="40" y="250" width="160" height="78" rx="6" class="c-external" stroke-width="1.5"/>
-        <text x="120" y="287" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">사용자 / 프론트엔드</text>
-        <text x="120" y="303" class="t-muted" font-size="9" text-anchor="middle">브라우저 · HTTPS</text>
+        <rect x="40" y="340" width="150" height="88" rx="6" class="c-mask"/>
+        <rect x="40" y="340" width="150" height="88" rx="6" class="c-external" stroke-width="1.5"/>
+        <text x="115" y="382" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">사용자 / 프론트</text>
+        <text x="115" y="398" class="t-muted" font-size="9" text-anchor="middle">브라우저 · HTTPS</text>
+        <text x="115" y="420" class="t-external" font-size="7" text-anchor="middle">공개 진입</text>
 
-        <rect x="270" y="250" width="170" height="78" rx="6" class="c-mask"/>
-        <rect x="270" y="250" width="170" height="78" rx="6" class="c-cloud" stroke-width="1.5"/>
-        <text x="355" y="287" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">CloudFront</text>
-        <text x="355" y="303" class="t-muted" font-size="9" text-anchor="middle">공개 HTTPS 진입점</text>
-        <text x="355" y="320" class="t-cloud" font-size="7" text-anchor="middle">API 캐시 비활성화</text>
+        <rect x="245" y="340" width="240" height="88" rx="6" class="c-mask"/>
+        <rect x="245" y="340" width="240" height="88" rx="6" class="c-cloud" stroke-width="1.5"/>
+        <text x="365" y="382" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">CloudFront + WAF</text>
+        <text x="365" y="398" class="t-muted" font-size="9" text-anchor="middle">API: IP별 600회 / 60초</text>
+        <text x="365" y="420" class="t-cloud" font-size="7" text-anchor="middle">초과 429 · OPTIONS 제외</text>
 
-        <rect x="530" y="250" width="180" height="78" rx="6" class="c-mask"/>
-        <rect x="530" y="250" width="180" height="78" rx="6" class="c-cloud" stroke-width="1.5"/>
-        <text x="620" y="287" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">내부 ALB</text>
-        <text x="620" y="303" class="t-muted" font-size="9" text-anchor="middle">VPC origin · HTTP :80</text>
-        <text x="620" y="320" class="t-cloud" font-size="7" text-anchor="middle">2a / 2c · 사설 서브넷</text>
+        <rect x="550" y="340" width="180" height="88" rx="6" class="c-mask"/>
+        <rect x="550" y="340" width="180" height="88" rx="6" class="c-cloud" stroke-width="1.5"/>
+        <text x="640" y="382" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">내부 ALB</text>
+        <text x="640" y="398" class="t-muted" font-size="9" text-anchor="middle">사설 서브넷 · HTTP :80</text>
+        <text x="640" y="420" class="t-cloud" font-size="7" text-anchor="middle">정상 API로 요청 분산</text>
 
-        <rect x="790" y="250" width="200" height="78" rx="6" class="c-mask"/>
-        <rect x="790" y="250" width="200" height="78" rx="6" class="c-backend" stroke-width="1.5"/>
-        <text x="890" y="287" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">API A / C</text>
-        <text x="890" y="303" class="t-muted" font-size="9" text-anchor="middle">EC2 2대 · Docker :8080</text>
-        <text x="890" y="320" class="t-backend" font-size="7" text-anchor="middle">2a / 2c · 두 대상 healthy</text>
+        <rect x="810" y="240" width="200" height="88" rx="6" class="c-mask"/>
+        <rect x="810" y="240" width="200" height="88" rx="6" class="c-backend" stroke-width="1.5"/>
+        <text x="910" y="282" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">API A · AZ 2a</text>
+        <text x="910" y="298" class="t-muted" font-size="9" text-anchor="middle">EC2 t3.small · Docker :8080</text>
+        <text x="910" y="320" class="t-backend" font-size="7" text-anchor="middle">DB·Redis 메인 공유</text>
 
-        <rect x="1080" y="250" width="220" height="78" rx="6" class="c-mask"/>
-        <rect x="1080" y="250" width="220" height="78" rx="6" class="c-database" stroke-width="1.5"/>
-        <text x="1190" y="287" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">RDS + Redis</text>
-        <text x="1190" y="303" class="t-muted" font-size="9" text-anchor="middle">MySQL :3306 / Redis :6379</text>
-        <text x="1190" y="320" class="t-database" font-size="7" text-anchor="middle">비공개 · 두 AZ 이중화</text>
+        <rect x="810" y="440" width="200" height="88" rx="6" class="c-mask"/>
+        <rect x="810" y="440" width="200" height="88" rx="6" class="c-backend" stroke-width="1.5"/>
+        <text x="910" y="482" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">API C · AZ 2c</text>
+        <text x="910" y="498" class="t-muted" font-size="9" text-anchor="middle">EC2 t3.small · Docker :8080</text>
+        <text x="910" y="520" class="t-backend" font-size="7" text-anchor="middle">DB·Redis 메인 공유</text>
 
-        <rect x="270" y="70" width="170" height="78" rx="6" class="c-mask"/>
-        <rect x="270" y="70" width="170" height="78" rx="6" class="c-cloud" stroke-width="1.5"/>
-        <text x="355" y="107" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">S3 이미지 저장소</text>
-        <text x="355" y="123" class="t-muted" font-size="9" text-anchor="middle">/images/* · OAC 읽기</text>
-        <text x="355" y="140" class="t-cloud" font-size="7" text-anchor="middle">공개 접근 차단</text>
+        <rect x="1110" y="160" width="230" height="88" rx="6" class="c-mask"/>
+        <rect x="1110" y="160" width="230" height="88" rx="6" class="c-database" stroke-width="1.5"/>
+        <text x="1225" y="202" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">RDS MySQL · 메인</text>
+        <text x="1225" y="218" class="t-muted" font-size="9" text-anchor="middle">업무 데이터 읽기·쓰기 :3306</text>
+        <text x="1225" y="240" class="t-database" font-size="7" text-anchor="middle">비공개 · Multi-AZ</text>
 
-        <rect x="790" y="70" width="200" height="78" rx="6" class="c-mask"/>
-        <rect x="790" y="70" width="200" height="78" rx="6" class="c-security" stroke-width="1.5"/>
-        <text x="890" y="107" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Parameter Store</text>
-        <text x="890" y="123" class="t-muted" font-size="9" text-anchor="middle">앱 설정 · SecureString</text>
-        <text x="890" y="140" class="t-security" font-size="7" text-anchor="middle">서버 역할로 조회</text>
+        <rect x="1440" y="160" width="230" height="88" rx="6" class="c-mask"/>
+        <rect x="1440" y="160" width="230" height="88" rx="6" class="c-database" stroke-width="1.5"/>
+        <text x="1555" y="202" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">RDS · 대기 DB</text>
+        <text x="1555" y="218" class="t-muted" font-size="9" text-anchor="middle">다른 AZ · 장애 시 자동 승격</text>
+        <text x="1555" y="240" class="t-database" font-size="7" text-anchor="middle">평소 조회 요청 처리 안 함</text>
 
-        <rect x="270" y="500" width="170" height="78" rx="6" class="c-mask"/>
-        <rect x="270" y="500" width="170" height="78" rx="6" class="c-external" stroke-width="1.5"/>
-        <text x="355" y="537" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">GitHub Actions</text>
-        <text x="355" y="553" class="t-muted" font-size="9" text-anchor="middle">백엔드 빌드 · 배포</text>
-        <text x="355" y="570" class="t-external" font-size="7" text-anchor="middle">OIDC 임시 자격 증명</text>
+        <rect x="1110" y="470" width="230" height="88" rx="6" class="c-mask"/>
+        <rect x="1110" y="470" width="230" height="88" rx="6" class="c-database" stroke-width="1.5"/>
+        <text x="1225" y="512" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Redis · 메인</text>
+        <text x="1225" y="528" class="t-muted" font-size="9" text-anchor="middle">공유 요청 제한 · TLS :6379</text>
+        <text x="1225" y="550" class="t-database" font-size="7" text-anchor="middle">비공개 · cluster mode disabled</text>
 
-        <rect x="530" y="500" width="180" height="78" rx="6" class="c-mask"/>
-        <rect x="530" y="500" width="180" height="78" rx="6" class="c-cloud" stroke-width="1.5"/>
-        <text x="620" y="537" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">S3 배포 저장소</text>
-        <text x="620" y="553" class="t-muted" font-size="9" text-anchor="middle">이미지 · 배포 파일 전달</text>
+        <rect x="1440" y="470" width="230" height="88" rx="6" class="c-mask"/>
+        <rect x="1440" y="470" width="230" height="88" rx="6" class="c-database" stroke-width="1.5"/>
+        <text x="1555" y="512" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Redis · 복제본</text>
+        <text x="1555" y="528" class="t-muted" font-size="9" text-anchor="middle">다른 AZ · 장애 시 자동 승격</text>
+        <text x="1555" y="550" class="t-database" font-size="7" text-anchor="middle">최근 제한 값 일부 유실 가능</text>
 
-        <rect x="790" y="500" width="200" height="78" rx="6" class="c-mask"/>
-        <rect x="790" y="500" width="200" height="78" rx="6" class="c-cloud" stroke-width="1.5"/>
-        <text x="890" y="537" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">SSM Run Command</text>
-        <text x="890" y="553" class="t-muted" font-size="9" text-anchor="middle">서버 배포 명령 실행</text>
+        <rect x="245" y="100" width="240" height="88" rx="6" class="c-mask"/>
+        <rect x="245" y="100" width="240" height="88" rx="6" class="c-cloud" stroke-width="1.5"/>
+        <text x="365" y="142" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">S3 이미지 저장소</text>
+        <text x="365" y="158" class="t-muted" font-size="9" text-anchor="middle">/images/* · OAC 읽기</text>
+        <text x="365" y="180" class="t-cloud" font-size="7" text-anchor="middle">공개 접근 차단</text>
 
-        <rect x="1080" y="500" width="220" height="78" rx="6" class="c-mask"/>
-        <rect x="1080" y="500" width="220" height="78" rx="6" class="c-cloud" stroke-width="1.5"/>
-        <text x="1190" y="537" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">CloudWatch</text>
-        <text x="1190" y="553" class="t-muted" font-size="9" text-anchor="middle">지표 · 앱 로그 · 대시보드</text>
+        <rect x="810" y="20" width="200" height="88" rx="6" class="c-mask"/>
+        <rect x="810" y="20" width="200" height="88" rx="6" class="c-security" stroke-width="1.5"/>
+        <text x="910" y="62" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Parameter Store</text>
+        <text x="910" y="78" class="t-muted" font-size="9" text-anchor="middle">앱 설정 · SecureString</text>
+        <text x="910" y="100" class="t-security" font-size="7" text-anchor="middle">A/C 서버 역할로 조회</text>
+
+        <rect x="1110" y="720" width="230" height="88" rx="6" class="c-mask"/>
+        <rect x="1110" y="720" width="230" height="88" rx="6" class="c-backend" stroke-width="1.5"/>
+        <text x="1225" y="762" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Prometheus + Grafana</text>
+        <text x="1225" y="778" class="t-muted" font-size="9" text-anchor="middle">상시 모니터링 EC2</text>
+        <text x="1225" y="800" class="t-backend" font-size="7" text-anchor="middle">/grafana/ · 로그인 필요</text>
+
+        <rect x="245" y="720" width="230" height="88" rx="6" class="c-mask"/>
+        <rect x="245" y="720" width="230" height="88" rx="6" class="c-cloud" stroke-width="1.5"/>
+        <text x="360" y="762" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">CloudWatch</text>
+        <text x="360" y="778" class="t-muted" font-size="9" text-anchor="middle">서비스 지표 · 앱 로그</text>
+        <text x="360" y="800" class="t-cloud" font-size="7" text-anchor="middle">WAF 차단 로그: 7일 보관</text>
 
         <!-- Connection labels -->
 
 
 
 
-        <rect x="340" y="185" width="30" height="14" rx="3" class="c-mask"/>
-        <text x="355" y="195" class="t-muted" font-size="8" text-anchor="middle">OAC</text>
-        <rect x="863.4" y="185" width="53.199999999999996" height="14" rx="3" class="c-mask"/>
-        <text x="890" y="195" class="t-security" font-size="8" text-anchor="middle">설정 조회</text>
-        <rect x="465.6" y="529" width="38.8" height="14" rx="3" class="c-mask"/>
-        <text x="485" y="539" class="t-messagebus" font-size="8" text-anchor="middle">업로드</text>
-        <rect x="863.4" y="415" width="53.199999999999996" height="14" rx="3" class="c-mask"/>
-        <text x="890" y="425" class="t-messagebus" font-size="8" text-anchor="middle">배포 실행</text>
-        <rect x="1078.6" y="415" width="62.8" height="14" rx="3" class="c-mask"/>
-        <text x="1110" y="425" class="t-messagebus" font-size="8" text-anchor="middle">로그 / 지표</text>
-        <rect x="593.4" y="615" width="53.199999999999996" height="14" rx="3" class="c-mask"/>
-        <text x="620" y="625" class="t-messagebus" font-size="8" text-anchor="middle">배포 명령</text>
+
+
+
+
+        <rect x="1363.4" y="194" width="53.199999999999996" height="14" rx="3" class="c-mask"/>
+        <text x="1390" y="204" class="t-backend" font-size="8" text-anchor="middle">동기 복제</text>
+        <rect x="1358.6" y="504" width="62.8" height="14" rx="3" class="c-mask"/>
+        <text x="1390" y="514" class="t-messagebus" font-size="8" text-anchor="middle">비동기 복제</text>
+        <rect x="333.6" y="250" width="62.8" height="14" rx="3" class="c-mask"/>
+        <text x="365" y="260" class="t-muted" font-size="8" text-anchor="middle">이미지 조회</text>
+
+        <rect x="773.4" y="754" width="53.199999999999996" height="14" rx="3" class="c-mask"/>
+        <text x="800" y="764" class="t-muted" font-size="8" text-anchor="middle">/grafana/</text>
+        <rect x="338.4" y="600" width="53.199999999999996" height="14" rx="3" class="c-mask"/>
+        <text x="365" y="610" class="t-messagebus" font-size="8" text-anchor="middle">차단 로그</text>
 
         <!-- Legend -->
-        <text x="40" y="651" class="t-primary" font-size="9" font-weight="600">Legend</text>
-        <rect x="40" y="656" width="14" height="9" rx="2" class="c-external" stroke-width="1"/>
-        <text x="60" y="664" class="t-muted" font-size="8">External</text>
-        <rect x="138" y="656" width="14" height="9" rx="2" class="c-cloud" stroke-width="1"/>
-        <text x="158" y="664" class="t-muted" font-size="8">Cloud</text>
-        <rect x="221" y="656" width="14" height="9" rx="2" class="c-backend" stroke-width="1"/>
-        <text x="241" y="664" class="t-muted" font-size="8">Backend</text>
-        <rect x="314" y="656" width="14" height="9" rx="2" class="c-database" stroke-width="1"/>
-        <text x="334" y="664" class="t-muted" font-size="8">Database</text>
-        <rect x="412" y="656" width="14" height="9" rx="2" class="c-security" stroke-width="1"/>
-        <text x="432" y="664" class="t-muted" font-size="8">Security</text>
+        <text x="40" y="891" class="t-primary" font-size="9" font-weight="600">Legend</text>
+        <rect x="40" y="896" width="14" height="9" rx="2" class="c-external" stroke-width="1"/>
+        <text x="60" y="904" class="t-muted" font-size="8">External</text>
+        <rect x="138" y="896" width="14" height="9" rx="2" class="c-cloud" stroke-width="1"/>
+        <text x="158" y="904" class="t-muted" font-size="8">Cloud</text>
+        <rect x="221" y="896" width="14" height="9" rx="2" class="c-backend" stroke-width="1"/>
+        <text x="241" y="904" class="t-muted" font-size="8">Backend</text>
+        <rect x="314" y="896" width="14" height="9" rx="2" class="c-database" stroke-width="1"/>
+        <text x="334" y="904" class="t-muted" font-size="8">Database</text>
+        <rect x="412" y="896" width="14" height="9" rx="2" class="c-security" stroke-width="1"/>
+        <text x="432" y="904" class="t-muted" font-size="8">Security</text>
       </svg>
     </div>
 
@@ -672,36 +695,36 @@
       <div class="card">
         <div class="card-header">
           <div class="card-dot emerald"></div>
-          <h3>요청 경로</h3>
+          <h3>서비스 요청과 장애 대응</h3>
         </div>
         <ul>
-          <li>&bull; CloudFront → VPC origin → 내부 ALB → API A/C</li>
-          <li>&bull; A는 2a, C는 2c에 배치된 t3.small 서버</li>
-          <li>&bull; 앱은 두 AZ의 RDS·Redis HA를 공유</li>
+          <li>&bull; CloudFront WAF → 내부 ALB → API A/C</li>
+          <li>&bull; 두 API는 같은 DB·Redis 메인을 사용</li>
+          <li>&bull; DB 연결 실패: 503 · Redis 판정 실패: 업무 검증 계속</li>
         </ul>
       </div>
 
       <div class="card">
         <div class="card-header">
           <div class="card-dot amber"></div>
-          <h3>저장 · 배포 · 관측</h3>
+          <h3>복제와 자동 전환</h3>
         </div>
         <ul>
-          <li>&bull; 이미지 조회는 CloudFront OAC → S3</li>
-          <li>&bull; 이미지 업로드는 API 역할 → S3</li>
-          <li>&bull; GitHub → SSM 명령 · 서버가 S3 배포 파일 조회</li>
+          <li>&bull; RDS: 동기 복제 · 대기 DB 자동 승격</li>
+          <li>&bull; Redis: 비동기 복제 · 복제본 자동 승격</li>
+          <li>&bull; 접속 DNS 유지 · 전환 중 재연결 필요</li>
         </ul>
       </div>
 
       <div class="card">
         <div class="card-header">
           <div class="card-dot slate"></div>
-          <h3>표시 범위</h3>
+          <h3>배포 · 설정 · 관측</h3>
         </div>
         <ul>
-          <li>&bull; 2026-10-25 RDS Multi-AZ·초기화·ALB healthy 확인</li>
-          <li>&bull; 실선: 서비스 요청 · 점선: 설정/배포/관측</li>
-          <li>&bull; S3·Parameter Store·CloudWatch는 VPC 내부 자원이 아님</li>
+          <li>&bull; GitHub Actions → S3 배포 파일 → SSM 순차 배포</li>
+          <li>&bull; A/C 설정은 Parameter Store · 지표와 로그는 CloudWatch</li>
+          <li>&bull; S3·Parameter Store·CloudWatch는 VPC 외부 서비스</li>
         </ul>
       </div>
     </div>
