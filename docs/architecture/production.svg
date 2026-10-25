@@ -73,18 +73,15 @@ rect.c-bg-rect { fill: var(--bg); }
         <!-- Connection paths (before components for correct z-order) -->
         <path d="M 190 384 L 245 384" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
         <path d="M 485 384 L 550 384" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path d="M 730 384 L 762 384 Q 770 384 770 376 L 770 292 Q 770 284 778 284 L 810 284" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path d="M 730 384 L 762 384 Q 770 384 770 392 L 770 476 Q 770 484 778 484 L 810 484" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path d="M 1010 284 L 1042 284 Q 1050 284 1050 276 L 1050 212 Q 1050 204 1058 204 L 1110 204" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path d="M 1010 484 L 1067 484 Q 1075 484 1075 476 L 1075 212 Q 1075 204 1083 204 L 1110 204" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path d="M 1010 284 L 1022 284 Q 1030 284 1030 292 L 1030 506 Q 1030 514 1038 514 L 1110 514" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path d="M 1010 484 L 1042 484 Q 1050 484 1050 492 L 1050 506 Q 1050 514 1058 514 L 1110 514" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path d="M 730 384 L 810 384" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path d="M 1010 384 L 1052 384 Q 1060 384 1060 376 L 1060 212 Q 1060 204 1068 204 L 1110 204" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path d="M 910 428 L 910 506 Q 910 514 918 514 L 1110 514" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path d="M 910 340 L 910 108" class="a-security" stroke-width="1.5" marker-end="url(#arrowhead-security)"/>
         <path d="M 1340 204 L 1440 204" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
         <path d="M 1340 514 L 1440 514" class="a-dashed" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
         <path d="M 365 340 L 365 188" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        <path d="M 910 240 L 910 108" class="a-security" stroke-width="1.5" marker-end="url(#arrowhead-security)"/>
         <path d="M 640 428 L 640 756 Q 640 764 648 764 L 1110 764" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        <path d="M 365 428 L 363.75 428 Q 362.5 428 362.5 429.25 L 362.5 718.75 Q 362.5 720 361.25 720 L 360 720" class="a-dashed" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
+        <path d="M 365 428 L 365 720" class="a-dashed" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
 
         <!-- Components -->
         <rect x="40" y="340" width="150" height="88" rx="6" class="c-mask"/>
@@ -105,17 +102,11 @@ rect.c-bg-rect { fill: var(--bg); }
         <text x="640" y="398" class="t-muted" font-size="9" text-anchor="middle">사설 서브넷 · HTTP :80</text>
         <text x="640" y="420" class="t-cloud" font-size="7" text-anchor="middle">정상 API로 요청 분산</text>
 
-        <rect x="810" y="240" width="200" height="88" rx="6" class="c-mask"/>
-        <rect x="810" y="240" width="200" height="88" rx="6" class="c-backend" stroke-width="1.5"/>
-        <text x="910" y="282" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">API A · AZ 2a</text>
-        <text x="910" y="298" class="t-muted" font-size="9" text-anchor="middle">EC2 t3.small · Docker :8080</text>
-        <text x="910" y="320" class="t-backend" font-size="7" text-anchor="middle">DB·Redis 메인 공유</text>
-
-        <rect x="810" y="440" width="200" height="88" rx="6" class="c-mask"/>
-        <rect x="810" y="440" width="200" height="88" rx="6" class="c-backend" stroke-width="1.5"/>
-        <text x="910" y="482" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">API C · AZ 2c</text>
-        <text x="910" y="498" class="t-muted" font-size="9" text-anchor="middle">EC2 t3.small · Docker :8080</text>
-        <text x="910" y="520" class="t-backend" font-size="7" text-anchor="middle">DB·Redis 메인 공유</text>
+        <rect x="810" y="340" width="200" height="88" rx="6" class="c-mask"/>
+        <rect x="810" y="340" width="200" height="88" rx="6" class="c-backend" stroke-width="1.5"/>
+        <text x="910" y="382" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">API A / C · EC2 두 대</text>
+        <text x="910" y="398" class="t-muted" font-size="9" text-anchor="middle">AZ 2a / 2c · Docker :8080</text>
+        <text x="910" y="420" class="t-backend" font-size="7" text-anchor="middle">두 서버가 DB·Redis 메인 공유</text>
 
         <rect x="1110" y="160" width="230" height="88" rx="6" class="c-mask"/>
         <rect x="1110" y="160" width="230" height="88" rx="6" class="c-database" stroke-width="1.5"/>
@@ -159,15 +150,13 @@ rect.c-bg-rect { fill: var(--bg); }
         <text x="1225" y="778" class="t-muted" font-size="9" text-anchor="middle">상시 모니터링 EC2</text>
         <text x="1225" y="800" class="t-backend" font-size="7" text-anchor="middle">/grafana/ · 로그인 필요</text>
 
-        <rect x="245" y="720" width="230" height="88" rx="6" class="c-mask"/>
-        <rect x="245" y="720" width="230" height="88" rx="6" class="c-cloud" stroke-width="1.5"/>
-        <text x="360" y="762" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">CloudWatch</text>
-        <text x="360" y="778" class="t-muted" font-size="9" text-anchor="middle">서비스 지표 · 앱 로그</text>
-        <text x="360" y="800" class="t-cloud" font-size="7" text-anchor="middle">WAF 차단 로그: 7일 보관</text>
+        <rect x="245" y="720" width="240" height="88" rx="6" class="c-mask"/>
+        <rect x="245" y="720" width="240" height="88" rx="6" class="c-cloud" stroke-width="1.5"/>
+        <text x="365" y="762" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">CloudWatch</text>
+        <text x="365" y="778" class="t-muted" font-size="9" text-anchor="middle">서비스 지표 · 앱 로그</text>
+        <text x="365" y="800" class="t-cloud" font-size="7" text-anchor="middle">WAF 차단 로그: 7일 보관</text>
 
         <!-- Connection labels -->
-
-
 
 
 
@@ -180,7 +169,6 @@ rect.c-bg-rect { fill: var(--bg); }
         <text x="1390" y="514" class="t-messagebus" font-size="8" text-anchor="middle">비동기 복제</text>
         <rect x="333.6" y="250" width="62.8" height="14" rx="3" class="c-mask"/>
         <text x="365" y="260" class="t-muted" font-size="8" text-anchor="middle">이미지 조회</text>
-
         <rect x="773.4" y="754" width="53.199999999999996" height="14" rx="3" class="c-mask"/>
         <text x="800" y="764" class="t-muted" font-size="8" text-anchor="middle">/grafana/</text>
         <rect x="338.4" y="600" width="53.199999999999996" height="14" rx="3" class="c-mask"/>

@@ -57,29 +57,14 @@
       ]
     },
     {
-      "id": "api-a",
+      "id": "api",
       "type": "backend",
-      "label": "API A · AZ 2a",
-      "sublabel": "EC2 t3.small · Docker :8080",
-      "tag": "DB·Redis 메인 공유",
+      "label": "API A / C · EC2 두 대",
+      "sublabel": "AZ 2a / 2c · Docker :8080",
+      "tag": "두 서버가 DB·Redis 메인 공유",
       "pos": [
         810,
-        240
-      ],
-      "size": [
-        200,
-        88
-      ]
-    },
-    {
-      "id": "api-c",
-      "type": "backend",
-      "label": "API C · AZ 2c",
-      "sublabel": "EC2 t3.small · Docker :8080",
-      "tag": "DB·Redis 메인 공유",
-      "pos": [
-        810,
-        440
+        340
       ],
       "size": [
         200,
@@ -202,7 +187,7 @@
         720
       ],
       "size": [
-        230,
+        240,
         88
       ]
     }
@@ -213,8 +198,7 @@
       "label": "서울 VPC · ap-northeast-2",
       "wraps": [
         "alb",
-        "api-a",
-        "api-c",
+        "api",
         "rds",
         "rds-standby",
         "redis",
@@ -237,105 +221,45 @@
     },
     {
       "from": "alb",
-      "to": "api-a",
-      "variant": "emphasis",
-      "fromSide": "right",
-      "toSide": "left",
-      "via": [
-        [
-          770,
-          384
-        ],
-        [
-          770,
-          284
-        ]
-      ]
+      "to": "api",
+      "variant": "emphasis"
     },
     {
-      "from": "alb",
-      "to": "api-c",
-      "variant": "emphasis",
-      "fromSide": "right",
-      "toSide": "left",
-      "via": [
-        [
-          770,
-          384
-        ],
-        [
-          770,
-          484
-        ]
-      ]
-    },
-    {
-      "from": "api-a",
+      "from": "api",
       "to": "rds",
       "variant": "emphasis",
       "fromSide": "right",
       "toSide": "left",
       "via": [
         [
-          1050,
-          284
+          1060,
+          384
         ],
         [
-          1050,
+          1060,
           204
         ]
       ]
     },
     {
-      "from": "api-c",
-      "to": "rds",
-      "variant": "emphasis",
-      "fromSide": "right",
-      "toSide": "left",
-      "via": [
-        [
-          1075,
-          484
-        ],
-        [
-          1075,
-          204
-        ]
-      ]
-    },
-    {
-      "from": "api-a",
+      "from": "api",
       "to": "redis",
       "variant": "emphasis",
-      "fromSide": "right",
+      "fromSide": "bottom",
       "toSide": "left",
       "via": [
         [
-          1030,
-          284
-        ],
-        [
-          1030,
+          910,
           514
         ]
       ]
     },
     {
-      "from": "api-c",
-      "to": "redis",
-      "variant": "emphasis",
-      "fromSide": "right",
-      "toSide": "left",
-      "via": [
-        [
-          1050,
-          484
-        ],
-        [
-          1050,
-          514
-        ]
-      ]
+      "from": "api",
+      "to": "parameters",
+      "variant": "security",
+      "fromSide": "top",
+      "toSide": "bottom"
     },
     {
       "from": "rds",
@@ -367,13 +291,6 @@
         365,
         260
       ]
-    },
-    {
-      "from": "api-a",
-      "to": "parameters",
-      "variant": "security",
-      "fromSide": "top",
-      "toSide": "bottom"
     },
     {
       "from": "alb",
