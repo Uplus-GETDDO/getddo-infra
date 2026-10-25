@@ -161,3 +161,76 @@ run "production_pre_multiaz_snapshot_boundary" {
     error_message = "자동 복사 태그 권한은 전용 사전 snapshot 접두사와 서울로만 제한해야 합니다."
   }
 }
+
+run "waf_operator_resource_boundaries" {
+  command = plan
+
+  assert {
+    condition = alltrue([for s in jsondecode(aws_iam_policy.operator["GetddoDevOperatorCloudFront"].policy).Statement :
+      s.Resource == "arn:aws:wafv2:us-east-1:942466928325:global/webacl/getddo-dev-api-waf/*" &&
+      s.Condition.StringEquals["aws:RequestedRegion"] == "us-east-1" &&
+      s.Condition.StringEquals["aws:PrincipalAccount"] == "942466928325"
+      if contains(["ManageApiWebAcl", "ConfigureApiWebAclLogDestination"], s.Sid)
+      ]) && (
+      one([for s in jsondecode(aws_iam_policy.operator["GetddoDevOperatorCloudFront"].policy).Statement : s if s.Sid == "ListEdgeWebAcls"]).Action == ["wafv2:ListWebACLs"] &&
+      one([for s in jsondecode(aws_iam_policy.operator["GetddoDevOperatorCloudFront"].policy).Statement : s if s.Sid == "ListEdgeWebAcls"]).Resource == "*" &&
+      one([for s in jsondecode(aws_iam_policy.operator["GetddoDevOperatorCloudFront"].policy).Statement : s if s.Sid == "ListEdgeWebAcls"]).Condition.StringEquals["aws:RequestedRegion"] == "us-east-1" &&
+      one([for s in jsondecode(aws_iam_policy.operator["GetddoDevOperatorCloudFront"].policy).Statement : s if s.Sid == "ConfigureApiWebAclLogDestination"]).Condition.ArnEquals["wafv2:LogDestinationResource"] == "arn:aws:logs:us-east-1:942466928325:log-group:aws-waf-logs-getddo-dev-api"
+    )
+    error_message = "WAF changes must exclude other names, accounts, regional ACLs and logging destinations; only list requires a wildcard resource."
+  }
+
+  assert {
+    condition = (
+      toset(one([for s in jsondecode(aws_iam_policy.operator["GetddoDevOperatorCloudFront"].policy).Statement : s if s.Sid == "ManageApiWebAcl"]).Action) == toset([
+        "wafv2:CreateWebACL", "wafv2:GetWebACL", "wafv2:UpdateWebACL", "wafv2:DeleteWebACL",
+        "wafv2:TagResource", "wafv2:UntagResource", "wafv2:ListTagsForResource",
+        "wafv2:GetLoggingConfiguration", "wafv2:DeleteLoggingConfiguration", "wafv2:GetRateBasedStatementManagedKeys"
+      ]) &&
+      one([for s in jsondecode(aws_iam_policy.operator["GetddoDevOperatorCloudFront"].policy).Statement : s if s.Sid == "ConfigureApiWebAclLogDestination"]).Action == ["wafv2:PutLoggingConfiguration"]
+    )
+    error_message = "Grant only Web ACL lifecycle, tagging, logging and managed-IP inspection actions."
+  }
+
+  assert {
+    condition = (
+      alltrue([for s in jsondecode(aws_iam_policy.operator["GetddoDevOperatorObservability"].policy).Statement :
+        s.Condition.StringEquals["aws:RequestedRegion"] == "us-east-1" &&
+        s.Condition.StringEquals["aws:PrincipalAccount"] == "942466928325"
+        if contains(["ManageApiWafLogGroup", "TagApiWafLogGroup", "ReadApiWafLogEvents", "ConfigureEdgeWafLogDelivery", "ReadEdgeWafMetrics"], s.Sid)
+      ]) &&
+      toset(one([for s in jsondecode(aws_iam_policy.operator["GetddoDevOperatorObservability"].policy).Statement : s if s.Sid == "ManageApiWafLogGroup"]).Resource) == toset(["arn:aws:logs:us-east-1:942466928325:log-group:aws-waf-logs-getddo-dev-api", "arn:aws:logs:us-east-1:942466928325:log-group:aws-waf-logs-getddo-dev-api:*"]) &&
+      one([for s in jsondecode(aws_iam_policy.operator["GetddoDevOperatorObservability"].policy).Statement : s if s.Sid == "TagApiWafLogGroup"]).Resource == "arn:aws:logs:us-east-1:942466928325:log-group:aws-waf-logs-getddo-dev-api" &&
+      one([for s in jsondecode(aws_iam_policy.operator["GetddoDevOperatorObservability"].policy).Statement : s if s.Sid == "ReadApiWafLogEvents"]).Resource == "arn:aws:logs:us-east-1:942466928325:log-group:aws-waf-logs-getddo-dev-api:log-stream:*" &&
+      toset(one([for s in jsondecode(aws_iam_policy.operator["GetddoDevOperatorObservability"].policy).Statement : s if s.Sid == "ConfigureEdgeWafLogDelivery"]).Action) == toset([
+        "logs:CreateLogDelivery", "logs:DeleteLogDelivery", "logs:PutResourcePolicy", "logs:DescribeResourcePolicies", "logs:DescribeLogGroups"
+      ]) &&
+      one([for s in jsondecode(aws_iam_policy.operator["GetddoDevOperatorObservability"].policy).Statement : s if s.Sid == "ConfigureEdgeWafLogDelivery"]).Resource == "*" &&
+      one([for s in jsondecode(aws_iam_policy.operator["GetddoDevOperatorObservability"].policy).Statement : s if s.Sid == "ReadEdgeWafMetrics"]).Resource == "*" &&
+      toset(one([for s in jsondecode(aws_iam_policy.operator["GetddoDevOperatorObservability"].policy).Statement : s if s.Sid == "ReadEdgeWafMetrics"]).Action) == toset(["cloudwatch:GetMetricData", "cloudwatch:GetMetricStatistics", "cloudwatch:ListMetrics"])
+    )
+    error_message = "Log access must exclude other groups and regions; legacy delivery APIs and metric reads require region-constrained wildcard resources."
+  }
+}
+
+run "preserve_cloudfront_statements" {
+  command = plan
+  assert {
+    condition = sha256(jsonencode([
+      for s in jsondecode(aws_iam_policy.operator["GetddoDevOperatorCloudFront"].policy).Statement : s
+      if !contains(["ManageApiWebAcl", "ConfigureApiWebAclLogDestination", "ListEdgeWebAcls"], s.Sid)
+    ])) == "b771004aae0ae2887e006d79cf9b5146d7ebf54b3f021e392eb286da9bfcfdb2"
+    error_message = "Preserve all existing cloudfront statements when adding WAF permissions."
+  }
+}
+
+run "preserve_observability_statements" {
+  command = plan
+  assert {
+    condition = sha256(jsonencode([
+      for s in jsondecode(aws_iam_policy.operator["GetddoDevOperatorObservability"].policy).Statement : s
+      if !contains(["ManageApiWafLogGroup", "TagApiWafLogGroup", "ReadApiWafLogEvents", "ConfigureEdgeWafLogDelivery", "ReadEdgeWafMetrics"], s.Sid)
+    ])) == "fd60460f28f0851d3b649e865828e8b8327b4bf71eee2f65afb6d961ef23b57f"
+    error_message = "Preserve all existing observability statements when adding WAF permissions."
+  }
+}

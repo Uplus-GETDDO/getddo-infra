@@ -12,7 +12,7 @@ data "aws_cloudfront_origin_request_policy" "api" {
 }
 
 # AWS 관리형 보안 응답 헤더를 사용한다. CORS 허용 주소는 앱 설정이 결정한다.
-# CORS 정책을 *로 덮어쓰지 않으며, WAF·요청 제한·접근 로그는 이 범위에 추가하지 않는다.
+# 정상 API의 CORS 허용 주소는 앱 설정을 유지한다.
 data "aws_cloudfront_response_headers_policy" "api" {
   id = "67f7725c-6f97-4210-82d7-5512b31e9d03" # Managed-SecurityHeadersPolicy
 }
@@ -67,6 +67,7 @@ resource "aws_cloudfront_vpc_origin" "api" {
 # 비공개 ALB는 원본 직접 접근을 막지만 공개 API의 인증을 대신하지 않는다.
 # 실제 적용 전 시연용 사용자 헤더·Swagger 공개 범위와 예산을 검토한다.
 resource "aws_cloudfront_distribution" "api" {
+  web_acl_id          = aws_wafv2_web_acl.api.arn
   enabled             = true
   is_ipv6_enabled     = true
   comment             = "GETDDO development API through a private ALB"

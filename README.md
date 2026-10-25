@@ -108,6 +108,7 @@ Terraform 검사는 backend를 제거한 임시 복사본과 mock AWS Provider�
 - [서버 접속](terraform/prod/access.tf)
 - [이미지 저장소](terraform/prod/storage.tf) · [CloudFront](terraform/prod/cloudfront.tf)
 - [Redis](terraform/prod/redis.tf)
+- CloudFront API 요청은 IP별 최근 60초에 600회 기준으로 차단하고, 차단 로그는 7일 보관합니다. [구성·운영 절차](docs/waf-rate-limit.md) · [실제 차단·자동 해제·로그 검증 결과](docs/waf-rate-limit-test-results.md)
 
 ## 운영 Grafana
 

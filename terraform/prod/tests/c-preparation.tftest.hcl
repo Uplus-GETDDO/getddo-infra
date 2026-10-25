@@ -1,4 +1,15 @@
 mock_provider "aws" {
+  alias = "edge"
+
+  mock_resource "aws_wafv2_web_acl" {
+    defaults = { arn = "arn:aws:wafv2:us-east-1:942466928325:global/webacl/getddo-dev-api-waf/12345678-1234-1234-1234-123456789abc" }
+  }
+  mock_resource "aws_cloudwatch_log_group" {
+    defaults = { arn = "arn:aws:logs:us-east-1:942466928325:log-group:aws-waf-logs-getddo-dev-api" }
+  }
+}
+
+mock_provider "aws" {
   mock_resource "aws_lb" {
     defaults = {
       arn      = "arn:aws:elasticloadbalancing:ap-northeast-2:942466928325:loadbalancer/app/getddo-dev-api-alb/0123456789abcdef"

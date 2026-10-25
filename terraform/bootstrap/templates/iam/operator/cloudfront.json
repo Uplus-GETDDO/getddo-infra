@@ -105,6 +105,60 @@
         "iam:GetRole"
       ],
       "Resource": "arn:aws:iam::942466928325:role/aws-service-role/vpcorigin.cloudfront.amazonaws.com/AWSServiceRoleForCloudFrontVPCOrigin"
+    },
+    {
+      "Sid": "ManageApiWebAcl",
+      "Effect": "Allow",
+      "Action": [
+        "wafv2:CreateWebACL",
+        "wafv2:GetWebACL",
+        "wafv2:UpdateWebACL",
+        "wafv2:DeleteWebACL",
+        "wafv2:TagResource",
+        "wafv2:UntagResource",
+        "wafv2:ListTagsForResource",
+        "wafv2:GetLoggingConfiguration",
+        "wafv2:DeleteLoggingConfiguration",
+        "wafv2:GetRateBasedStatementManagedKeys"
+      ],
+      "Resource": "arn:aws:wafv2:us-east-1:942466928325:global/webacl/getddo-dev-api-waf/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "us-east-1",
+          "aws:PrincipalAccount": "942466928325"
+        }
+      }
+    },
+    {
+      "Sid": "ConfigureApiWebAclLogDestination",
+      "Effect": "Allow",
+      "Action": [
+        "wafv2:PutLoggingConfiguration"
+      ],
+      "Resource": "arn:aws:wafv2:us-east-1:942466928325:global/webacl/getddo-dev-api-waf/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "us-east-1",
+          "aws:PrincipalAccount": "942466928325"
+        },
+        "ArnEquals": {
+          "wafv2:LogDestinationResource": "arn:aws:logs:us-east-1:942466928325:log-group:aws-waf-logs-getddo-dev-api"
+        }
+      }
+    },
+    {
+      "Sid": "ListEdgeWebAcls",
+      "Effect": "Allow",
+      "Action": [
+        "wafv2:ListWebACLs"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "us-east-1",
+          "aws:PrincipalAccount": "942466928325"
+        }
+      }
     }
   ]
 }

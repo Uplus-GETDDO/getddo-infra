@@ -124,3 +124,39 @@ output "api_deployment_metadata" {
     }
   }
 }
+
+output "waf_web_acl_id" {
+  value = aws_wafv2_web_acl.api.id
+}
+
+output "waf_web_acl_arn" {
+  value = aws_wafv2_web_acl.api.arn
+}
+
+output "waf_rule_name" {
+  value = "ApiIpRateLimit"
+}
+
+output "waf_mode" {
+  value = var.waf_mode
+}
+
+output "waf_log_mode" {
+  value = var.waf_log_mode
+}
+
+output "waf_log_group_name" {
+  value = aws_cloudwatch_log_group.waf.name
+}
+
+output "waf_probe_path" {
+  value = var.waf_probe == null ? null : "/api/__waf_probe/${var.waf_probe.run_id}"
+}
+
+output "waf_rate_limit_settings" {
+  value = {
+    limit          = 600
+    window_seconds = 60
+    aggregation    = "IP"
+  }
+}

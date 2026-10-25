@@ -1,3 +1,14 @@
+mock_provider "aws" {
+  alias = "edge"
+
+  mock_resource "aws_wafv2_web_acl" {
+    defaults = { arn = "arn:aws:wafv2:us-east-1:942466928325:global/webacl/getddo-dev-api-waf/12345678-1234-1234-1234-123456789abc" }
+  }
+  mock_resource "aws_cloudwatch_log_group" {
+    defaults = { arn = "arn:aws:logs:us-east-1:942466928325:log-group:aws-waf-logs-getddo-dev-api" }
+  }
+}
+
 # AWS에 자원을 만들지 않고 외부 노출 방지·비밀번호 처리 계약을 확인한다.
 mock_provider "aws" {
   mock_data "aws_caller_identity" {
