@@ -70,6 +70,12 @@ variable "redis_auth_token" {
   }
 }
 
+variable "redis_apply_immediately" {
+  type        = bool
+  default     = false
+  description = "Apply Redis settings immediately during an observed operation; replica addition is immediate independently"
+}
+
 # write-only 비밀번호의 변경 감지용 숫자다. 내용만 바꾸면 회전되지 않으므로 함께 올린다.
 variable "redis_auth_token_version" {
   type        = number

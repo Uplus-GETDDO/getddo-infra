@@ -73,14 +73,25 @@ class MonitoringTests(unittest.TestCase):
             targets.targets({'A': '203.0.113.1', 'C': '10.20.1.10'}, '10.20.0.20')
 
     def test_cloudwatch_actual_dimensions(self):
-        # Render the existing source dashboard; use placeholder strings only as a unit fixture.
-        source = (ROOT / 'terraform/prod/templates/cloudwatch-dashboard.json.tftpl').read_text()
+        # Terraform tests verify template rendering; exercise the console export here.
+        source = (ROOT / 'terraform/prod/templates/dashboard.dev.json').read_text()
         dashboard = targets.cloudwatch_dashboard(json.loads(source))
         self.assertGreater(len(dashboard['panels']), 10)
         serialized = json.dumps(dashboard)
         for namespace in ['AWS/ApplicationELB', 'AWS/RDS', 'AWS/ElastiCache', 'GETDDO/API', 'CWAgent']:
             self.assertIn(namespace, serialized)
         self.assertIn('environment=\\"dev\\"', serialized)
+
+    def test_redis_export_has_explicit_dimensions_for_both_nodes(self):
+        body = json.loads((ROOT / 'terraform/prod/templates/dashboard.dev.json').read_text())
+        metrics = [m for w in body['widgets'] for m in w.get('properties', {}).get('metrics', [])
+                   if m[0] == 'AWS/ElastiCache']
+        for name in ['EngineCPUUtilization', 'CPUUtilization', 'DatabaseMemoryUsagePercentage',
+                     'Evictions', 'CurrConnections', 'ReplicationLag']:
+            self.assertEqual({m[3] for m in metrics if m[1] == name},
+                             {'getddo-dev-redis-001', 'getddo-dev-redis-002'})
+        self.assertTrue(all(m[2] == 'CacheClusterId' and m[4:6] == ['CacheNodeId', '0001']
+                            for m in metrics))
 
     def test_cloudwatch_widget_regions_are_preserved(self):
         widgets = []

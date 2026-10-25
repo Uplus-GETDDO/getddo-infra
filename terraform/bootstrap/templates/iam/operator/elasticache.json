@@ -47,6 +47,21 @@
       }
     },
     {
+      "Sid": "IncreaseProductionRedisReplicaCount",
+      "Effect": "Allow",
+      "Action": [
+        "elasticache:IncreaseReplicaCount"
+      ],
+      "Resource": [
+        "arn:aws:elasticache:ap-northeast-2:942466928325:replicationgroup:getddo-dev-redis"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
+    },
+    {
       "Sid": "CreateAndUpdateNamedCacheConfiguration",
       "Effect": "Allow",
       "Action": [

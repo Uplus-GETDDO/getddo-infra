@@ -20,7 +20,7 @@ mock_provider "aws" {
     defaults = { arn = "arn:aws:elasticloadbalancing:ap-northeast-2:942466928325:targetgroup/getddo-dev-api-tg/0123456789abcdef" }
   }
   mock_resource "aws_elasticache_replication_group" {
-    defaults = { member_clusters = ["getddo-dev-redis-001"] }
+    defaults = { member_clusters = ["getddo-dev-redis-001", "getddo-dev-redis-002"] }
   }
   mock_data "aws_ami" { defaults = { id = "ami-0870825cefcaafcc8" } }
   mock_data "aws_caller_identity" { defaults = { account_id = "942466928325" } }

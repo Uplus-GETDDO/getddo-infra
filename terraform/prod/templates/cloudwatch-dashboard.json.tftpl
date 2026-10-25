@@ -392,24 +392,7 @@
         "stacked": false,
         "period": 300,
         "stat": "Average",
-        "metrics": [
-          [
-            "AWS/ElastiCache",
-            "EngineCPUUtilization",
-            "CacheClusterId",
-            "${redis_cluster_id}",
-            "CacheNodeId",
-            "0001"
-          ],
-          [
-            "AWS/ElastiCache",
-            "CPUUtilization",
-            "CacheClusterId",
-            "${redis_cluster_id}",
-            "CacheNodeId",
-            "0001"
-          ]
-        ]
+        "metrics": ${jsonencode([for pair in setproduct(redis_cluster_ids, ["EngineCPUUtilization", "CPUUtilization"]) : ["AWS/ElastiCache", pair[1], "CacheClusterId", pair[0], "CacheNodeId", "0001"]])}
       }
     },
     {
@@ -425,16 +408,7 @@
         "stacked": false,
         "period": 300,
         "stat": "Average",
-        "metrics": [
-          [
-            "AWS/ElastiCache",
-            "DatabaseMemoryUsagePercentage",
-            "CacheClusterId",
-            "${redis_cluster_id}",
-            "CacheNodeId",
-            "0001"
-          ]
-        ]
+        "metrics": ${jsonencode([for pair in setproduct(redis_cluster_ids, ["DatabaseMemoryUsagePercentage"]) : ["AWS/ElastiCache", pair[1], "CacheClusterId", pair[0], "CacheNodeId", "0001"]])}
       }
     },
     {
@@ -450,16 +424,7 @@
         "stacked": false,
         "period": 300,
         "stat": "Sum",
-        "metrics": [
-          [
-            "AWS/ElastiCache",
-            "Evictions",
-            "CacheClusterId",
-            "${redis_cluster_id}",
-            "CacheNodeId",
-            "0001"
-          ]
-        ]
+        "metrics": ${jsonencode([for pair in setproduct(redis_cluster_ids, ["Evictions"]) : ["AWS/ElastiCache", pair[1], "CacheClusterId", pair[0], "CacheNodeId", "0001"]])}
       }
     },
     {
@@ -475,16 +440,23 @@
         "stacked": false,
         "period": 300,
         "stat": "Maximum",
-        "metrics": [
-          [
-            "AWS/ElastiCache",
-            "CurrConnections",
-            "CacheClusterId",
-            "${redis_cluster_id}",
-            "CacheNodeId",
-            "0001"
-          ]
-        ]
+        "metrics": ${jsonencode([for pair in setproduct(redis_cluster_ids, ["CurrConnections"]) : ["AWS/ElastiCache", pair[1], "CacheClusterId", pair[0], "CacheNodeId", "0001"]])}
+      }
+    },
+    {
+      "type": "metric",
+      "x": 12,
+      "y": 48,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "title": "Redis replication lag (seconds; replica only)",
+        "region": "${region}",
+        "view": "timeSeries",
+        "stacked": false,
+        "period": 60,
+        "stat": "Maximum",
+        "metrics": ${jsonencode([for pair in setproduct(redis_cluster_ids, ["ReplicationLag"]) : ["AWS/ElastiCache", pair[1], "CacheClusterId", pair[0], "CacheNodeId", "0001"]])}
       }
     },
     {

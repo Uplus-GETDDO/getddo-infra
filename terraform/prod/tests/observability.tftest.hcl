@@ -54,7 +54,7 @@ override_resource {
 override_resource {
   override_during = plan
   target          = aws_elasticache_replication_group.redis
-  values          = { member_clusters = ["getddo-dev-redis-001"] }
+  values          = { member_clusters = ["getddo-dev-redis-001", "getddo-dev-redis-002"] }
 }
 
 run "console_dashboard_matches_terraform" {
@@ -105,5 +105,34 @@ run "app_dashboard_matches_exported_meter_names" {
       ]))]
     ]))
     error_message = "Exported Hikari, Tomcat and JVM meters must be queried separately for dev A/C."
+  }
+}
+
+run "redis_metrics_include_both_nodes" {
+  command = plan
+  assert {
+    condition = alltrue(flatten([
+      for name in ["EngineCPUUtilization", "CPUUtilization", "DatabaseMemoryUsagePercentage", "Evictions", "CurrConnections", "ReplicationLag"] : [
+        for id in ["getddo-dev-redis-001", "getddo-dev-redis-002"] : anytrue(flatten([
+          for w in jsondecode(aws_cloudwatch_dashboard.dev.dashboard_body).widgets : [
+            for m in try(w.properties.metrics, []) : try(m[0] == "AWS/ElastiCache" && m[1] == name && m[2] == "CacheClusterId" && m[3] == id && m[4] == "CacheNodeId" && m[5] == "0001", false)
+          ]
+        ]))
+      ]
+    ]))
+    error_message = "각 Redis 지표는 두 노드의 명시적 차원을 포함해야 합니다."
+  }
+}
+
+run "redis_member_order_does_not_change_dashboard" {
+  command = plan
+  override_resource {
+    override_during = plan
+    target          = aws_elasticache_replication_group.redis
+    values          = { member_clusters = ["getddo-dev-redis-002", "getddo-dev-redis-001"] }
+  }
+  assert {
+    condition     = jsondecode(aws_cloudwatch_dashboard.dev.dashboard_body) == jsondecode(file("${path.module}/templates/dashboard.dev.json"))
+    error_message = "멤버 순서가 바뀌어도 대시보드 출력은 동일해야 합니다."
   }
 }

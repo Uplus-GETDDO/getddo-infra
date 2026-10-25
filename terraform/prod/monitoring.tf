@@ -20,8 +20,8 @@ resource "aws_cloudwatch_dashboard" "dev" {
     alb_suffix          = aws_lb.api.arn_suffix
     target_group_suffix = aws_lb_target_group.api.arn_suffix
     db_identifier       = aws_db_instance.main.identifier
-    # 현재 확정된 단일 노드 구성이다. 복제본 추가 시 대시보드도 변경한다.
-    redis_cluster_id = one(aws_elasticache_replication_group.redis.member_clusters)
+    # ID 순서는 역할을 뜻하지 않으며, 멤버 집합의 순서 변화가 대시보드를 바꾸지 않게 한다.
+    redis_cluster_ids = sort(tolist(aws_elasticache_replication_group.redis.member_clusters))
   })
 }
 

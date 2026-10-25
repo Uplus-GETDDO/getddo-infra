@@ -17,7 +17,7 @@ mock_provider "aws" {
 
   # Dashboard rendering needs the actual single-node shape, not an empty mock set.
   mock_resource "aws_elasticache_replication_group" {
-    defaults = { member_clusters = ["getddo-dev-redis-001"] }
+    defaults = { member_clusters = ["getddo-dev-redis-001", "getddo-dev-redis-002"] }
   }
 
   # 새 ALB·CloudFront 참조 값도 형식이 유효한 테스트 전용 값으로 제공한다.

@@ -234,3 +234,16 @@ run "preserve_observability_statements" {
     error_message = "Preserve all existing observability statements when adding WAF permissions."
   }
 }
+
+run "redis_replica_permission_boundary" {
+  command = plan
+  assert {
+    condition = (
+      one([for s in jsondecode(aws_iam_policy.operator["GetddoDevOperatorElastiCache"].policy).Statement : s if s.Sid == "IncreaseProductionRedisReplicaCount"]).Action == ["elasticache:IncreaseReplicaCount"] &&
+      one([for s in jsondecode(aws_iam_policy.operator["GetddoDevOperatorElastiCache"].policy).Statement : s if s.Sid == "IncreaseProductionRedisReplicaCount"]).Resource == ["arn:aws:elasticache:ap-northeast-2:942466928325:replicationgroup:getddo-dev-redis"] &&
+      one([for s in jsondecode(aws_iam_policy.operator["GetddoDevOperatorElastiCache"].policy).Statement : s if s.Sid == "IncreaseProductionRedisReplicaCount"]).Condition.StringEquals["aws:RequestedRegion"] == "ap-northeast-2" &&
+      alltrue([for p in values(aws_iam_policy.operator) : !strcontains(p.policy, "elasticache:TestFailover") && !strcontains(p.policy, "elasticache:DecreaseReplicaCount")])
+    )
+    error_message = "복제본 증가만 정확한 운영 그룹과 서울에 허용하고 상시 전환·감소 권한을 추가하지 않아야 합니다."
+  }
+}
