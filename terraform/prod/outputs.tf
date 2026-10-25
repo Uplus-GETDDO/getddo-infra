@@ -160,3 +160,25 @@ output "waf_rate_limit_settings" {
     aggregation    = "IP"
   }
 }
+
+output "ecr_repository_uri" {
+  description = "Private registry URI; deployment pins a manifest digest within this repository"
+  value       = aws_ecr_repository.backend.repository_url
+}
+
+output "ecr_repository_arn" {
+  value = aws_ecr_repository.backend.arn
+}
+
+output "ecr_publish_role_arn" {
+  value = aws_iam_role.github_image_publish.arn
+}
+
+output "github_repository_variables" {
+  description = "Non-secret backend repository variables for the main image publisher"
+  value = {
+    ECR_REPOSITORY_URI   = aws_ecr_repository.backend.repository_url
+    ECR_PUBLISH_ROLE_ARN = aws_iam_role.github_image_publish.arn
+    ECR_AWS_REGION       = var.aws_region
+  }
+}
