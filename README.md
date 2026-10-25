@@ -11,20 +11,28 @@ GETDDO 운영 인프라·공용 모니터링·임시 스테이징 부하 테스�
 
 | 구성 | 역할 |
 | --- | --- |
-| CloudFront | 공개 HTTPS 진입점. API는 캐시 없이 내부 ALB로 전달하고, `/images/*`는 OAC로 비공개 S3에서 조회 |
+| CloudFront · WAF | 공개 HTTPS 진입점. `/api/`는 접속 IP별 600회/60초 기준으로 초과 요청에 429 반환(OPTIONS 제외). 통과한 API는 캐시 없이 내부 ALB로 전달하고, `/images/*`는 OAC로 비공개 S3에서 조회 |
 | 내부 ALB | 두 AZ의 사설 서브넷에 배치. HTTP 80 → API 서버 8080으로 요청 분산 |
 | API A / C | `ap-northeast-2a` / `ap-northeast-2c`의 `t3.small` EC2. Docker 앱 실행, 공인 IPv4·IGW로 외부 통신, 보안 그룹으로 인바운드 제한 |
-| RDS | 비공개 MySQL 8.4, `db.t4g.micro`, Multi-AZ 동기 대기 구성. API 보안 그룹에서만 3306 접속 허용 |
-| Redis | 두 AZ의 Redis OSS primary/replica와 자동 장애 전환. TLS·AUTH 공유 요청 제한 저장소 |
+| RDS | 비공개 MySQL 8.4, `db.t4g.micro`. 메인·대기 DB를 다른 AZ에 배치해 동기 복제·자동 전환. API 보안 그룹에서만 3306 접속 허용 |
+| Redis | 다른 AZ의 메인·복제본에 비동기 복제·자동 전환 적용. TLS·AUTH 공유 요청 제한 저장소. 최근 제한 값 일부 유실 가능 |
 | S3 | 이미지·배포 파일 저장소 분리. API 역할로 이미지 업로드, CloudFront OAC로 조회 |
 | Parameter Store | 앱 설정·비밀값 저장. 서버 역할로 조회 |
 | GitHub Actions · SSM | 백엔드 빌드·배포. OIDC 임시 권한, S3 파일 전달, SSM Run Command로 서버 배포 |
-| CloudWatch | API·ALB·RDS·Redis 지표, 앱 로그, 대시보드 |
+| CloudWatch | API·ALB·RDS·Redis 지표, 앱 로그, 대시보드. WAF 차단 로그는 7일 보관 |
+| Prometheus · Grafana | 상시 모니터링 EC2. 기존 CloudFront → 내부 ALB → `/grafana/`로 접속하며 로그인 필요 |
 
 - 실선: 서비스 요청 / 점선: 설정·배포·모니터링
 - 외부 HTTPS는 CloudFront에서 종료. ALB·API 구간은 사설망 HTTP
 - DB 관리 접속은 EC2 Instance Connect Endpoint·SSH 터널로 API 서버 경유
-- RDS는 2026-10-25 Multi-AZ 적용과 실제 장애 전환 시험을 완료했다. [적용·복구 절차](docs/rds-multiaz.md) · [전환 시간·503 응답·데이터 검증 결과](docs/rds-failover-test-results.md). Redis는 2026-10-25 두 AZ의 primary/replica와 자동 장애 전환 적용을 완료했다. [운영 절차](docs/redis-ha.md) · [시험 결과](docs/redis-failover-test-results.md)
+- RDS 대기 DB와 Redis 복제본은 조회 분산용이 아니라 장애 대비용이다. 두 API 서버는 같은 DB·Redis 메인을 사용하며, 전환 후에도 기존 접속 주소를 유지한다.
+- DB 연결 실패는 앱에서 `503 / COMMON-007`로 응답한다. Redis 판정 실패는 기존 앱의 요청 제한을 건너뛰고 업무 검증을 계속한다.
+
+| 운영 검증 | 핵심 결과 | 상세 |
+| --- | --- | --- |
+| RDS 장애 전환 | 실제 전환·503·앱 재시작 없는 재연결·데이터 보존·동일 요청 중복 방지 | [시험 결과](docs/rds-failover-test-results.md) · [운영 절차](docs/rds-multiaz.md) |
+| Redis 장애 전환 | 실제 전환·A/C 공유 제한·만료 해제·응모 평가·합성 차단 이력 저장 | [시험 결과](docs/redis-failover-test-results.md) · [운영 절차](docs/redis-ha.md) |
+| WAF 요청 제한 | IP별 차단·다른 IP 통과·자동 해제·로그 마스킹·차단 로그 보관 | [시험 결과](docs/waf-rate-limit-test-results.md) · [운영 절차](docs/waf-rate-limit.md) |
 
 ## 레포 구조
 

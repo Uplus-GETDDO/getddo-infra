@@ -3,86 +3,132 @@
   "diagram_type": "architecture",
   "meta": {
     "title": "GETDDO 운영 아키텍처",
-    "subtitle": "운영 구성 · Redis HA 적용 2026-10-25",
+    "subtitle": "CloudFront WAF · API 두 대 · RDS 동기 복제 · Redis 비동기 복제",
     "output": "production.html",
     "viewBox": [
-      1340,
-      680
+      1720,
+      920
     ]
   },
   "components": [
     {
       "id": "users",
       "type": "external",
-      "label": "사용자 / 프론트엔드",
+      "label": "사용자 / 프론트",
       "sublabel": "브라우저 · HTTPS",
+      "tag": "공개 진입",
       "pos": [
         40,
-        250
+        340
       ],
       "size": [
-        160,
-        78
+        150,
+        88
       ]
     },
     {
-      "id": "cloudfront",
+      "id": "edge",
       "type": "cloud",
-      "label": "CloudFront",
-      "sublabel": "공개 HTTPS 진입점",
-      "tag": "API 캐시 비활성화",
+      "label": "CloudFront + WAF",
+      "sublabel": "API: IP별 600회 / 60초",
+      "tag": "초과 429 · OPTIONS 제외",
       "pos": [
-        270,
-        250
+        245,
+        340
       ],
       "size": [
-        170,
-        78
+        240,
+        88
       ]
     },
     {
       "id": "alb",
       "type": "cloud",
       "label": "내부 ALB",
-      "sublabel": "VPC origin · HTTP :80",
-      "tag": "2a / 2c · 사설 서브넷",
+      "sublabel": "사설 서브넷 · HTTP :80",
+      "tag": "정상 API로 요청 분산",
       "pos": [
-        530,
-        250
+        550,
+        340
       ],
       "size": [
         180,
-        78
+        88
       ]
     },
     {
       "id": "api",
       "type": "backend",
-      "label": "API A / C",
-      "sublabel": "EC2 2대 · Docker :8080",
-      "tag": "2a / 2c · 두 대상 healthy",
+      "label": "API A / C · EC2 두 대",
+      "sublabel": "AZ 2a / 2c · Docker :8080",
+      "tag": "두 서버가 DB·Redis 메인 공유",
       "pos": [
-        790,
-        250
+        810,
+        340
       ],
       "size": [
         200,
-        78
+        88
       ]
     },
     {
-      "id": "data",
+      "id": "rds",
       "type": "database",
-      "label": "RDS + Redis",
-      "sublabel": "MySQL :3306 / Redis :6379",
-      "tag": "비공개 · 두 AZ 이중화",
+      "label": "RDS MySQL · 메인",
+      "sublabel": "업무 데이터 읽기·쓰기 :3306",
+      "tag": "비공개 · Multi-AZ",
       "pos": [
-        1080,
-        250
+        1110,
+        160
       ],
       "size": [
-        220,
-        78
+        230,
+        88
+      ]
+    },
+    {
+      "id": "rds-standby",
+      "type": "database",
+      "label": "RDS · 대기 DB",
+      "sublabel": "다른 AZ · 장애 시 자동 승격",
+      "tag": "평소 조회 요청 처리 안 함",
+      "pos": [
+        1440,
+        160
+      ],
+      "size": [
+        230,
+        88
+      ]
+    },
+    {
+      "id": "redis",
+      "type": "database",
+      "label": "Redis · 메인",
+      "sublabel": "공유 요청 제한 · TLS :6379",
+      "tag": "비공개 · cluster mode disabled",
+      "pos": [
+        1110,
+        470
+      ],
+      "size": [
+        230,
+        88
+      ]
+    },
+    {
+      "id": "redis-replica",
+      "type": "database",
+      "label": "Redis · 복제본",
+      "sublabel": "다른 AZ · 장애 시 자동 승격",
+      "tag": "최근 제한 값 일부 유실 가능",
+      "pos": [
+        1440,
+        470
+      ],
+      "size": [
+        230,
+        88
       ]
     },
     {
@@ -92,12 +138,12 @@
       "sublabel": "/images/* · OAC 읽기",
       "tag": "공개 접근 차단",
       "pos": [
-        270,
-        70
+        245,
+        100
       ],
       "size": [
-        170,
-        78
+        240,
+        88
       ]
     },
     {
@@ -105,82 +151,59 @@
       "type": "security",
       "label": "Parameter Store",
       "sublabel": "앱 설정 · SecureString",
-      "tag": "서버 역할로 조회",
+      "tag": "A/C 서버 역할로 조회",
       "pos": [
-        790,
-        70
+        810,
+        20
       ],
       "size": [
         200,
-        78
+        88
       ]
     },
     {
-      "id": "github",
-      "type": "external",
-      "label": "GitHub Actions",
-      "sublabel": "백엔드 빌드 · 배포",
-      "tag": "OIDC 임시 자격 증명",
+      "id": "monitor",
+      "type": "backend",
+      "label": "Prometheus + Grafana",
+      "sublabel": "상시 모니터링 EC2",
+      "tag": "/grafana/ · 로그인 필요",
       "pos": [
-        270,
-        500
+        1110,
+        720
       ],
       "size": [
-        170,
-        78
-      ]
-    },
-    {
-      "id": "releases",
-      "type": "cloud",
-      "label": "S3 배포 저장소",
-      "sublabel": "이미지 · 배포 파일 전달",
-      "pos": [
-        530,
-        500
-      ],
-      "size": [
-        180,
-        78
-      ]
-    },
-    {
-      "id": "ssm",
-      "type": "cloud",
-      "label": "SSM Run Command",
-      "sublabel": "서버 배포 명령 실행",
-      "pos": [
-        790,
-        500
-      ],
-      "size": [
-        200,
-        78
+        230,
+        88
       ]
     },
     {
       "id": "cloudwatch",
       "type": "cloud",
       "label": "CloudWatch",
-      "sublabel": "지표 · 앱 로그 · 대시보드",
+      "sublabel": "서비스 지표 · 앱 로그",
+      "tag": "WAF 차단 로그: 7일 보관",
       "pos": [
-        1080,
-        500
+        245,
+        720
       ],
       "size": [
-        220,
-        78
+        240,
+        88
       ]
     }
   ],
   "boundaries": [
     {
       "kind": "region",
-      "label": "운영 VPC · 서울 ap-northeast-2",
+      "label": "서울 VPC · ap-northeast-2",
       "wraps": [
         "alb",
         "api",
-        "data"
+        "rds",
+        "rds-standby",
+        "redis",
+        "redis-replica",
+        "monitor"
       ],
       "pad": 30
     }
@@ -188,11 +211,11 @@
   "connections": [
     {
       "from": "users",
-      "to": "cloudfront",
+      "to": "edge",
       "variant": "emphasis"
     },
     {
-      "from": "cloudfront",
+      "from": "edge",
       "to": "alb",
       "variant": "emphasis"
     },
@@ -203,18 +226,32 @@
     },
     {
       "from": "api",
-      "to": "data",
-      "variant": "emphasis"
+      "to": "rds",
+      "variant": "emphasis",
+      "fromSide": "right",
+      "toSide": "left",
+      "via": [
+        [
+          1060,
+          384
+        ],
+        [
+          1060,
+          204
+        ]
+      ]
     },
     {
-      "from": "cloudfront",
-      "to": "images",
-      "fromSide": "top",
-      "toSide": "bottom",
-      "label": "OAC",
-      "labelAt": [
-        355,
-        195
+      "from": "api",
+      "to": "redis",
+      "variant": "emphasis",
+      "fromSide": "bottom",
+      "toSide": "left",
+      "via": [
+        [
+          910,
+          514
+        ]
       ]
     },
     {
@@ -222,110 +259,95 @@
       "to": "parameters",
       "variant": "security",
       "fromSide": "top",
-      "toSide": "bottom",
-      "label": "설정 조회",
+      "toSide": "bottom"
+    },
+    {
+      "from": "rds",
+      "to": "rds-standby",
+      "variant": "emphasis",
+      "label": "동기 복제",
       "labelAt": [
-        890,
-        195
+        1390,
+        204
       ]
     },
     {
-      "from": "github",
-      "to": "releases",
+      "from": "redis",
+      "to": "redis-replica",
       "variant": "dashed",
-      "label": "업로드",
+      "label": "비동기 복제",
       "labelAt": [
-        485,
-        539
+        1390,
+        514
       ]
     },
     {
-      "from": "ssm",
-      "to": "api",
-      "variant": "dashed",
+      "from": "edge",
+      "to": "images",
       "fromSide": "top",
       "toSide": "bottom",
-      "label": "배포 실행",
+      "label": "이미지 조회",
       "labelAt": [
-        890,
-        425
+        365,
+        260
       ]
     },
     {
-      "from": "api",
-      "to": "cloudwatch",
-      "variant": "dashed",
+      "from": "alb",
+      "to": "monitor",
       "fromSide": "bottom",
       "toSide": "left",
       "via": [
         [
-          890,
-          365
-        ],
-        [
-          1030,
-          365
-        ],
-        [
-          1030,
-          539
+          640,
+          764
         ]
       ],
-      "label": "로그 / 지표",
+      "label": "/grafana/",
       "labelAt": [
-        1110,
-        425
+        800,
+        764
       ]
     },
     {
-      "from": "github",
-      "to": "ssm",
+      "from": "edge",
+      "to": "cloudwatch",
       "variant": "dashed",
       "fromSide": "bottom",
-      "toSide": "bottom",
-      "via": [
-        [
-          355,
-          625
-        ],
-        [
-          890,
-          625
-        ]
-      ],
-      "label": "배포 명령",
+      "toSide": "top",
+      "label": "차단 로그",
       "labelAt": [
-        620,
-        625
+        365,
+        610
       ]
     }
   ],
   "cards": [
     {
       "dot": "emerald",
-      "title": "요청 경로",
+      "title": "서비스 요청과 장애 대응",
       "items": [
-        "CloudFront → VPC origin → 내부 ALB → API A/C",
-        "A는 2a, C는 2c에 배치된 t3.small 서버",
-        "앱은 두 AZ의 RDS·Redis HA를 공유"
+        "CloudFront WAF → 내부 ALB → API A/C",
+        "두 API는 같은 DB·Redis 메인을 사용",
+        "DB 연결 실패: 503 · Redis 판정 실패: 업무 검증 계속"
       ]
     },
     {
       "dot": "amber",
-      "title": "저장 · 배포 · 관측",
+      "title": "복제와 자동 전환",
       "items": [
-        "이미지 조회는 CloudFront OAC → S3",
-        "이미지 업로드는 API 역할 → S3",
-        "GitHub → SSM 명령 · 서버가 S3 배포 파일 조회"
+        "RDS: 동기 복제 · 대기 DB 자동 승격",
+        "Redis: 비동기 복제 · 복제본 자동 승격",
+        "접속 DNS 유지 · 전환 중 재연결 필요"
       ]
     },
     {
       "dot": "slate",
-      "title": "표시 범위",
+      "title": "배포 · 설정 · 관측",
       "items": [
-        "2026-10-25 RDS Multi-AZ·초기화·ALB healthy 확인",
-        "실선: 서비스 요청 · 점선: 설정/배포/관측",
-        "S3·Parameter Store·CloudWatch는 VPC 내부 자원이 아님"
+        "GitHub Actions → S3 배포 파일 → SSM 순차 배포",
+        "A/C 설정은 Parameter Store · 지표와 로그는 CloudWatch",
+        "S3·Parameter Store·CloudWatch는 VPC 외부 서비스"
       ]
     }
   ]
