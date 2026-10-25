@@ -1,7 +1,7 @@
 # GETDDO 인프라
 
 GETDDO 운영 인프라·공용 모니터링·임시 스테이징 부하 테스트 환경을 관리하는 Terraform 저장소.
-서울 리전(`ap-northeast-2`)에서 CloudFront·ALB·EC2·RDS·Redis·S3를 사용합니다.
+서울 리전(`ap-northeast-2`)에서 CloudFront·ALB·EC2·RDS·Redis·S3·ECR을 사용합니다.
 
 ## 운영 아키텍처
 
@@ -18,7 +18,8 @@ GETDDO 운영 인프라·공용 모니터링·임시 스테이징 부하 테스�
 | Redis | 다른 AZ의 메인·복제본에 비동기 복제·자동 전환 적용. TLS·AUTH 공유 요청 제한 저장소. 최근 제한 값 일부 유실 가능 |
 | S3 | 이미지·배포 파일 저장소 분리. API 역할로 이미지 업로드, CloudFront OAC로 조회 |
 | Parameter Store | 앱 설정·비밀값 저장. 서버 역할로 조회 |
-| GitHub Actions · SSM | 백엔드 빌드·배포. OIDC 임시 권한, S3 파일 전달, SSM Run Command로 서버 배포 |
+| ECR | 비공개 운영 컨테이너 이미지. 불변 태그, digest 고정 배포, 태그 있는 복구 이미지 보존 |
+| GitHub Actions · SSM | main 전용 OIDC로 ECR 업로드, S3 배포 파일 전달, SSM으로 A/C 사전 pull·순차 배포 |
 | CloudWatch | API·ALB·RDS·Redis 지표, 앱 로그, 대시보드. WAF 차단 로그는 7일 보관 |
 | Prometheus · Grafana | 상시 모니터링 EC2. 기존 CloudFront → 내부 ALB → `/grafana/`로 접속하며 로그인 필요 |
 
@@ -52,7 +53,8 @@ getddo-infra/
 │       ├── compute.tf              # API A/C EC2·초기 설치
 │       ├── alb.tf, cloudfront.tf   # 요청 분산·HTTPS·이미지 조회
 │       ├── database.tf, redis.tf   # RDS·Redis
-│       ├── storage.tf              # 이미지·배포 파일 S3
+│       ├── storage.tf              # 사용자 이미지·배포 파일 S3
+│       ├── ecr.tf                  # 운영 컨테이너 이미지·publisher/pull 권한
 │       ├── iam.tf, parameters.tf   # 서버·배포 역할·앱 설정 조회 권한
 │       ├── monitoring.tf           # CloudWatch 로그 그룹·대시보드
 │       ├── outputs.tf              # 배포·접속 출력값
@@ -112,6 +114,7 @@ Terraform 검사는 backend를 제거한 임시 복사본과 mock AWS Provider�
 
 ## 관련 코드
 
+- [운영 이미지 ECR·권한·배포 절차](docs/ecr-deployment.md)
 - [운영자 IAM](terraform/bootstrap/iam.tf)
 - [서버 접속](terraform/prod/access.tf)
 - [이미지 저장소](terraform/prod/storage.tf) · [CloudFront](terraform/prod/cloudfront.tf)

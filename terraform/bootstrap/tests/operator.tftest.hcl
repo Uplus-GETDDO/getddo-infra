@@ -247,3 +247,30 @@ run "redis_replica_permission_boundary" {
     error_message = "복제본 증가만 정확한 운영 그룹과 서울에 허용하고 상시 전환·감소 권한을 추가하지 않아야 합니다."
   }
 }
+
+run "ecr_inline_policy_preserves_attachment_and_size_limits" {
+  command = plan
+  assert {
+    condition = (
+      length(aws_iam_group_policy_attachment.operator) == 10 &&
+      aws_iam_group_policy.operator_ecr.group == aws_iam_group.operator.name &&
+      aws_iam_group_policy.operator_ecr.name == "ecr-management" &&
+      length(jsonencode(jsondecode(aws_iam_group_policy.operator_ecr.policy))) + length(jsonencode(jsondecode(aws_iam_group_policy.operator_two_api.policy))) <= 5120 &&
+      jsondecode(aws_iam_group_policy.operator_ecr.policy).Statement[0].Resource == "arn:aws:ecr:ap-northeast-2:942466928325:repository/getddo-be" &&
+      jsondecode(aws_iam_group_policy.operator_ecr.policy).Statement[1].Resource == "*" &&
+      toset(jsondecode(aws_iam_group_policy.operator_ecr.policy).Statement[1].Action) == toset(["ecr:GetAuthorizationToken", "ecr:GetRegistryScanningConfiguration"]) &&
+      alltrue([for s in jsondecode(aws_iam_group_policy.operator_ecr.policy).Statement :
+        s.Condition == { StringEquals = { "aws:RequestedRegion" = "ap-northeast-2" } } &&
+        alltrue([for a in s.Action : !contains(["ecr:DeleteRepository", "ecr:BatchDeleteImage", "ecr:SetRepositoryPolicy", "ecr:PutRegistryScanningConfiguration"], a)])
+      ])
+    )
+    error_message = "ECR must not exceed managed attachments, inline size, repository or region boundaries."
+  }
+  assert {
+    condition = (
+      one([for s in jsondecode(aws_iam_policy.operator["GetddoDevOperatorIdentity"].policy).Statement : s if s.Sid == "ManageImagePublisherRoleOnly"]).Resource == "arn:aws:iam::942466928325:role/getddo-dev-github-image-publish" &&
+      !contains(one([for s in jsondecode(aws_iam_policy.operator["GetddoDevOperatorIdentity"].policy).Statement : s if s.Sid == "ManageImagePublisherRoleOnly"]).Action, "iam:PassRole")
+    )
+    error_message = "Publisher management must use its exact ARN and must not add PassRole."
+  }
+}
