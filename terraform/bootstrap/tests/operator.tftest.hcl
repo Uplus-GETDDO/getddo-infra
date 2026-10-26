@@ -296,3 +296,18 @@ run "production_deployment_lock_is_one_object" {
     error_message = "Preserve existing second-server permissions and scope deployment locking to one production object."
   }
 }
+
+run "database_configuration_policy_limits" {
+  command = plan
+  assert {
+    condition     = alltrue([for policy in concat(values(aws_iam_policy.operator), values(aws_iam_policy.staging), [aws_iam_policy.staging_control_runtime]) : length(jsonencode(jsondecode(policy.policy))) <= 6144])
+    error_message = "모든 관리형 정책은 IAM 문서 크기 제한을 지켜야 합니다."
+  }
+  assert {
+    condition = (
+      one([for s in jsondecode(aws_iam_policy.operator["GetddoDevOperatorOperations"].policy).Statement : s if s.Sid == "ManageNamedDatabaseParameters"]).Resource == "arn:aws:rds:ap-northeast-2:942466928325:pg:getddo-dev-mysql84" &&
+      one([for s in jsondecode(aws_iam_policy.staging["data"].policy).Statement : s if s.Sid == "ManageStageDatabaseParameters"]).Resource == "arn:aws:rds:ap-northeast-2:942466928325:pg:getddo-staging-mysql84"
+    )
+    error_message = "DB 설정 그룹 변경은 두 환경의 지정한 그룹 이름으로 제한해야 합니다."
+  }
+}

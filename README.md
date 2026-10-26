@@ -154,3 +154,5 @@ API a/c `t3.small`, 전용 RDS/Redis·내부 ALB와 Locust `t3.medium` 한 대(m
 - Grafana S3 내보내기는 유효한 24시간 이내 등록을 지원합니다. 수명24시간 초과·등록 만료 후 수집은 모니터링 export를 `partial`로 표시하고 필수 Locust/소스 보관은 검증합니다. [제한과 사유](docs/staging-loadtest.md#grafana-이력과-수집-제한)를 확인합니다.
 - 공용 Prometheus 이력은 14일 또는20GB 한도이며 먼저 도달하는 제한이 적용됩니다. S3 결과의 장기 보관 기간은 미정입니다.
 - SSH·개인 시나리오·DB TLS/CRUD·소규모 부하·Grafana 대조·S3 재조회와 별도 환경의 TTL 자동 삭제·독립 잔여0을 실환경에서 확인했습니다. 이는 한계 성능·SLO 합격 검증이 아닙니다.
+
+- [DB 연결 수 설정과 적용](docs/database-connections.md)

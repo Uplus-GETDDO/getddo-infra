@@ -221,7 +221,7 @@ class CleanupTests(CleanupFixture):
 
     def test_dependency_order_retry_absence_and_timeout(self):
         resources = [("sg", "sg-owned", {}), ("instance", "i-owned", {}), ("rule", "sgr-owned", {}),
-                     ("profile", "profile", {}), ("role", "role", {}), ("db_subnet", "subnet", {}), ("db", "db", {})]
+                     ("profile", "profile", {}), ("role", "role", {}), ("db_subnet", "subnet", {}), ("db_parameter", "parameters", {}), ("db", "db", {})]
         self.cleaner.inventory = Mock(side_effect=[resources, resources, []])
         calls = []
         def delete(kind, identity, item):
@@ -232,7 +232,7 @@ class CleanupTests(CleanupFixture):
         with patch("staging_cleanup.time.sleep"):
             self.cleaner.sweep()
         first = calls[:len(resources)]
-        for before, after in (("instance", "sg"), ("rule", "sg"), ("db", "db_subnet"), ("profile", "role")):
+        for before, after in (("instance", "sg"), ("rule", "sg"), ("db", "db_subnet"), ("db", "db_parameter"), ("profile", "role")):
             self.assertLess(first.index(before), first.index(after))
         self.cleaner.inventory = Mock(side_effect=[resources, []])
         self.cleaner.delete.side_effect = error("InvalidGroup.NotFound")
@@ -341,6 +341,7 @@ class ServiceContractTests(CleanupFixture):
         cases = (
             ("rds", "describe_db_instances", "DBInstances", "db", {"DBInstanceIdentifier": "getddo-staging-mysql", "DBInstanceArn": "db-arn"}),
             ("rds", "describe_db_subnet_groups", "DBSubnetGroups", "db_subnet", {"DBSubnetGroupName": "getddo-staging-db", "DBSubnetGroupArn": "subnet-arn"}),
+            ("rds", "describe_db_parameter_groups", "DBParameterGroups", "db_parameter", {"DBParameterGroupName": "getddo-staging-mysql84", "DBParameterGroupArn": "parameter-arn"}),
             ("elasticache", "describe_replication_groups", "ReplicationGroups", "redis", {"ReplicationGroupId": "getddo-staging-redis", "ARN": "redis-arn"}),
             ("elasticache", "describe_cache_clusters", "CacheClusters", "cache", {"CacheClusterId": "getddo-staging-redis-001", "ARN": "cache-arn"}),
             ("elasticache", "describe_cache_subnet_groups", "CacheSubnetGroups", "cache_subnet", {"CacheSubnetGroupName": "getddo-staging-redis"}),
@@ -378,6 +379,7 @@ class ServiceContractTests(CleanupFixture):
             ("tg", "tg-arn", {}, "elbv2", "delete_target_group"),
             ("db", "getddo-staging-mysql", {"DBInstanceStatus": "available"}, "rds", "delete_db_instance"),
             ("db_subnet", "getddo-staging-db", {}, "rds", "delete_db_subnet_group"),
+            ("db_parameter", "getddo-staging-mysql84", {}, "rds", "delete_db_parameter_group"),
             ("redis", "getddo-staging-redis", {"Status": "available"}, "elasticache", "delete_replication_group"),
             ("cache", "getddo-staging-redis-001", {"CacheClusterStatus": "available"}, "elasticache", "delete_cache_cluster"),
             ("cache_subnet", "getddo-staging-redis", {}, "elasticache", "delete_cache_subnet_group"),

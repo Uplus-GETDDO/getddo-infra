@@ -448,3 +448,17 @@ run "redis_changes_can_be_applied_immediately" {
     error_message = "관찰 작업에서 명시한 Redis 즉시 적용 입력을 전달해야 합니다."
   }
 }
+
+run "database_connection_parameter_group" {
+  command = plan
+  assert {
+    condition = (
+      aws_db_parameter_group.main.family == "mysql8.4" &&
+      aws_db_instance.main.parameter_group_name == aws_db_parameter_group.main.name &&
+      one([for p in aws_db_parameter_group.main.parameter : p if p.name == "max_connections"]).value == "100" &&
+      one([for p in aws_db_parameter_group.main.parameter : p if p.name == "max_connections"]).apply_method == "immediate" &&
+      aws_db_instance.main.multi_az && aws_db_instance.main.deletion_protection && !aws_db_instance.main.publicly_accessible
+    )
+    error_message = "DB 연결 한도는 전용 MySQL 설정 그룹으로 관리하고 기존 보호 설정을 유지해야 합니다."
+  }
+}

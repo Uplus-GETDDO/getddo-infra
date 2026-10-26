@@ -1,3 +1,18 @@
+# 앱 연결과 관리 접속의 전체 한도를 재생성 가능한 설정으로 관리한다.
+resource "aws_db_parameter_group" "stage" {
+  name        = "getddo-staging-mysql84"
+  family      = "mysql8.4"
+  description = "MySQL connection capacity for staging applications"
+
+  parameter {
+    name         = "max_connections"
+    value        = "100"
+    apply_method = "immediate"
+  }
+
+  tags = { Name = "getddo-staging-mysql84" }
+}
+
 resource "aws_db_subnet_group" "stage" {
   name       = "getddo-staging-db"
   subnet_ids = [for s in data.aws_subnet.data : s.id]
@@ -7,6 +22,7 @@ resource "aws_db_instance" "stage" {
   identifier                 = "getddo-staging-mysql"
   engine                     = "mysql"
   engine_version             = "8.4.11"
+  parameter_group_name       = aws_db_parameter_group.stage.name
   instance_class             = "db.t4g.micro"
   db_name                    = "getddo"
   username                   = "getddoadmin"
@@ -16,6 +32,7 @@ resource "aws_db_instance" "stage" {
   storage_type               = "gp3"
   storage_encrypted          = true
   multi_az                   = false
+  apply_immediately          = var.db_apply_immediately
   publicly_accessible        = false
   db_subnet_group_name       = aws_db_subnet_group.stage.name
   vpc_security_group_ids     = [aws_security_group.stage["db"].id]

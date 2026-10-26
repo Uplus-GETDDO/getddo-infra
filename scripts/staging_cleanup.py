@@ -12,12 +12,12 @@ ROLES = ("getddo-staging-api", "getddo-staging-locust")
 # Only these service responses mean a concurrent/idempotent delete succeeded.
 ABSENT = {"InvalidInstanceID.NotFound", "InvalidVolume.NotFound", "InvalidGroup.NotFound",
           "InvalidSecurityGroupRuleId.NotFound", "InvalidPermission.NotFound", "DBInstanceNotFound",
-          "DBSubnetGroupNotFoundFault", "ReplicationGroupNotFoundFault", "CacheClusterNotFound",
+          "DBSubnetGroupNotFoundFault", "DBParameterGroupNotFound", "DBParameterGroupNotFoundFault", "ReplicationGroupNotFoundFault", "CacheClusterNotFound",
           "CacheClusterNotFoundFault", "CacheSubnetGroupNotFoundFault", "LoadBalancerNotFound",
           "ListenerNotFound", "RuleNotFound", "TargetGroupNotFound", "NoSuchEntity",
           "ResourceNotFoundException", "ParameterNotFound"}
 TRANSITIONAL = {"DependencyViolation", "VolumeInUse", "ResourceInUse", "ResourceInUseException",
-                "InvalidDBInstanceState", "InvalidDBInstanceStateFault", "InvalidDBSubnetGroupStateFault",
+                "InvalidDBParameterGroupState", "InvalidDBParameterGroupStateFault", "InvalidDBInstanceState", "InvalidDBInstanceStateFault", "InvalidDBSubnetGroupStateFault",
                 "InvalidReplicationGroupState", "InvalidReplicationGroupStateFault", "InvalidCacheClusterState",
                 "InvalidCacheClusterStateFault", "CacheSubnetGroupInUse", "CacheSubnetGroupInUseFault",
                 "DeleteConflict"}
@@ -76,6 +76,7 @@ class Orphans:
         for service, operation, key, kind, field, arnfield, arntype in (
                 ("rds", "describe_db_instances", "DBInstances", "db", "DBInstanceIdentifier", "DBInstanceArn", ""),
                 ("rds", "describe_db_subnet_groups", "DBSubnetGroups", "db_subnet", "DBSubnetGroupName", "DBSubnetGroupArn", ""),
+                ("rds", "describe_db_parameter_groups", "DBParameterGroups", "db_parameter", "DBParameterGroupName", "DBParameterGroupArn", ""),
                 ("elasticache", "describe_replication_groups", "ReplicationGroups", "redis", "ReplicationGroupId", "ARN", "replicationgroup"),
                 ("elasticache", "describe_cache_clusters", "CacheClusters", "cache", "CacheClusterId", "ARN", "cluster"),
                 ("elasticache", "describe_cache_subnet_groups", "CacheSubnetGroups", "cache_subnet", "CacheSubnetGroupName", "ARN", "subnetgroup"),
@@ -172,6 +173,8 @@ class Orphans:
         elif kind == "db":
             if item["DBInstanceStatus"] != "deleting":
                 self.clients["rds"].delete_db_instance(DBInstanceIdentifier=identity, SkipFinalSnapshot=True, DeleteAutomatedBackups=True)
+        elif kind == "db_parameter":
+            self.clients["rds"].delete_db_parameter_group(DBParameterGroupName=identity)
         elif kind == "db_subnet":
             self.clients["rds"].delete_db_subnet_group(DBSubnetGroupName=identity)
         elif kind == "redis":
@@ -206,7 +209,7 @@ class Orphans:
     def sweep(self, timeout=1800):
         deadline = time.monotonic() + timeout
         order = {kind: n for n, kind in enumerate(("ui_rule", "listener", "alb", "tg", "instance", "db", "redis", "cache",
-                                                  "volume", "rule", "sg", "db_subnet", "cache_subnet", "profile", "role", "log", "parameter"))}
+                                                  "volume", "rule", "sg", "db_subnet", "db_parameter", "cache_subnet", "profile", "role", "log", "parameter"))}
         while True:
             inventory = self.inventory()  # Complete ownership preflight before any deletion.
             if not inventory:

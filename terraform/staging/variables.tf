@@ -18,3 +18,10 @@ variable "redis_auth_token" {
   sensitive = true
   ephemeral = true
 }
+
+# 기존 환경의 변경 작업에서만 관찰하면서 즉시 적용을 선택한다.
+variable "db_apply_immediately" {
+  type        = bool
+  default     = false
+  description = "Apply staging database changes immediately only during an observed operation"
+}
