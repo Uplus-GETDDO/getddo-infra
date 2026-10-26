@@ -1,5 +1,7 @@
 # GD-302: 운영 Grafana HTTPS 접속
 
+이 문서의 접속 경로와 실시간 대시보드는 모니터링 서버·CloudFront·ALB가 실행 중일 때만 유효합니다. 서버 종료 후에도 [구축·지표 수집 검증 기록](monitoring-runtime-verification.md)과 [대시보드 구성](grafana-dashboard-guide.md)은 저장소에서 확인할 수 있습니다.
+
 기존 CloudFront 주소의 `/grafana/`를 브라우저에서 열고 기존 `admin` 계정으로 로그인한다. 비밀번호는 서울 Parameter Store의 `/getddo/monitoring/grafana/admin-password` SecureString에서 본인이 확인한다. 값을 Git·PR·채팅에 붙이지 않는다. 이 설정은 기존 Grafana DB와 admin 비밀번호를 초기화하지 않는다.
 
 ## 구성과 소유권
