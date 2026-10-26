@@ -3,7 +3,7 @@
 2026-10-25 운영 DB의 Multi-AZ 적용과 실제 장애 전환 시험을 완료했다.
 시험 후 주 DB는 `ap-northeast-2a`, 대기 DB는 `ap-northeast-2c`에 위치했다.
 [실제 전환 시간·응답·데이터 검증 결과](rds-failover-test-results.md)를 참고한다.
-[운영 아키텍처 그림](architecture/production.html)은 현재 관측 구성을 표시한다.
+[운영 아키텍처 그림](architecture/production.svg)은 현재 관측 구성을 표시한다.
 이번 변경은 기존 `getddo-dev-mysql`의 Multi-AZ DB 인스턴스 활성화이며,
 클러스터나 읽기 복제본을 만들지 않는다. 다른 AZ의 대기 DB는 읽기 요청을 받지 않는다.
 기존 DNS·비밀번호 버전·20 GiB gp3·암호화·비공개·삭제 보호·백업 1일을 유지한다.

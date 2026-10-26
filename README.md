@@ -5,12 +5,13 @@ GETDDO 운영 인프라·공용 모니터링·임시 스테이징 부하 테스�
 
 ## 운영 아키텍처
 
-![GETDDO 운영 아키텍처](docs/architecture/production.svg)
+![GETDDO 운영 아키텍처](docs/architecture/production.png)
 
-[크게 보기 · 이미지 내보내기](docs/architecture/production.html) · [편집 원본](docs/architecture/production.architecture.json)
+[SVG 크게 보기](docs/architecture/production.svg) · [PNG](docs/architecture/production.png) · [draw.io 편집 원본](docs/architecture/production.drawio) · [편집 안내](docs/architecture/README.md)
 
 | 구성 | 역할 |
 | --- | --- |
+| GitHub 프론트 · Vercel | React·Vite 프론트 배포와 사용자 HTTPS 진입 |
 | CloudFront · WAF | 공개 HTTPS 진입점. `/api/`는 접속 IP별 600회/60초 기준으로 초과 요청에 429 반환(OPTIONS 제외). 통과한 API는 캐시 없이 내부 ALB로 전달하고, `/images/*`는 OAC로 비공개 S3에서 조회 |
 | 내부 ALB | 두 AZ의 사설 서브넷에 배치. HTTP 80 → API 서버 8080으로 요청 분산 |
 | API A / C | `ap-northeast-2a` / `ap-northeast-2c`의 `t3.medium` EC2. Docker 앱 실행, 공인 IPv4·IGW로 외부 통신, 보안 그룹으로 인바운드 제한 |
