@@ -167,35 +167,6 @@
           "aws:RequestedRegion": "ap-northeast-2"
         }
       }
-    },
-    {
-      "Sid": "CreateProductionConnectionSnapshot",
-      "Effect": "Allow",
-      "Action": [
-        "rds:CreateDBSnapshot"
-      ],
-      "Resource": [
-        "arn:aws:rds:ap-northeast-2:942466928325:db:getddo-dev-mysql",
-        "arn:aws:rds:ap-northeast-2:942466928325:snapshot:getddo-dev-mysql-pre-connections-*"
-      ],
-      "Condition": {
-        "StringEquals": {
-          "aws:RequestedRegion": "ap-northeast-2"
-        }
-      }
-    },
-    {
-      "Sid": "TagProductionConnectionSnapshot",
-      "Effect": "Allow",
-      "Action": [
-        "rds:AddTagsToResource"
-      ],
-      "Resource": "arn:aws:rds:ap-northeast-2:942466928325:snapshot:getddo-dev-mysql-pre-connections-*",
-      "Condition": {
-        "StringEquals": {
-          "aws:RequestedRegion": "ap-northeast-2"
-        }
-      }
     }
   ]
 }

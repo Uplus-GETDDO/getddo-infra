@@ -34,7 +34,12 @@ run "temporary_configuration_permission_boundary" {
       jsondecode(aws_iam_user_policy.rds_configuration[0].policy).Statement[0].Condition.StringEquals["aws:RequestedRegion"] == "ap-northeast-2" &&
       jsondecode(aws_iam_user_policy.rds_configuration[0].policy).Statement[0].Condition.DateLessThan["aws:CurrentTime"] == var.rds_configuration_expires_at &&
       jsondecode(aws_iam_user_policy.rds_configuration[0].policy).Statement[1].Action == ["rds:ModifyDBInstance"] &&
-      jsondecode(aws_iam_user_policy.rds_configuration[0].policy).Statement[1].Resource == ["arn:aws:rds:ap-northeast-2:942466928325:db:getddo-staging-mysql"] &&
+      toset(jsondecode(aws_iam_user_policy.rds_configuration[0].policy).Statement[1].Resource) == toset([
+        "arn:aws:rds:ap-northeast-2:942466928325:db:getddo-dev-mysql",
+        "arn:aws:rds:ap-northeast-2:942466928325:pg:getddo-dev-mysql84",
+        "arn:aws:rds:ap-northeast-2:942466928325:db:getddo-staging-mysql",
+        "arn:aws:rds:ap-northeast-2:942466928325:pg:getddo-staging-mysql84"
+      ]) &&
       jsondecode(aws_iam_user_policy.rds_configuration[0].policy).Statement[1].Condition.DateLessThan["aws:CurrentTime"] == var.rds_configuration_expires_at
     )
     error_message = "임시 정책은 기존 운영 DB 재부팅과 스테이징 DB 그룹 연결·서울·명시 UTC 만료로 제한해야 합니다."

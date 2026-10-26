@@ -35,10 +35,15 @@ resource "aws_iam_user_policy" "rds_configuration" {
         DateLessThan = { "aws:CurrentTime" = var.rds_configuration_expires_at }
       }
       }, {
-      Sid      = "TemporaryStageParameterGroupAssociation"
-      Effect   = "Allow"
-      Action   = ["rds:ModifyDBInstance"]
-      Resource = ["arn:aws:rds:ap-northeast-2:942466928325:db:getddo-staging-mysql"]
+      Sid    = "TemporaryParameterGroupAssociation"
+      Effect = "Allow"
+      Action = ["rds:ModifyDBInstance"]
+      Resource = [
+        "arn:aws:rds:ap-northeast-2:942466928325:db:getddo-dev-mysql",
+        "arn:aws:rds:ap-northeast-2:942466928325:pg:getddo-dev-mysql84",
+        "arn:aws:rds:ap-northeast-2:942466928325:db:getddo-staging-mysql",
+        "arn:aws:rds:ap-northeast-2:942466928325:pg:getddo-staging-mysql84"
+      ]
       Condition = {
         StringEquals = { "aws:RequestedRegion" = "ap-northeast-2" }
         DateLessThan = { "aws:CurrentTime" = var.rds_configuration_expires_at }
