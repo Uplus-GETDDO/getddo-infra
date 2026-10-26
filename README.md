@@ -6,20 +6,16 @@ GETDDO의 AWS 인프라, 모니터링, 임시 부하 테스트 환경을 관리�
 
 ![GETDDO 시스템 아키텍처](docs/architecture/production.png)
 
-[SVG](docs/architecture/production.svg) · [draw.io 편집 원본](docs/architecture/production.drawio)
+## 주요 설계
 
-| 영역 | 구성과 역할 |
-| --- | --- |
-| 프론트엔드 | Vercel · React · Vite |
-| API 진입 | CloudFront · WAF → 내부 ALB, 공개 HTTPS와 요청 제한 |
-| 애플리케이션 | 두 AZ의 EC2에서 Spring Boot·Docker 실행 |
-| 데이터 | RDS MySQL Multi-AZ · ElastiCache Redis 복제본과 자동 장애 전환 |
-| 저장소·설정 | S3 이미지·배포 파일, Parameter Store 앱 설정·비밀값 |
-| 배포 | GitHub Actions OIDC · ECR 이미지 · SSM 순차 배포 |
-| 모니터링 | Prometheus·Grafana 지표, CloudWatch 앱 로그·AWS 지표 |
-| 부하 테스트 | 필요할 때 생성·삭제하는 스테이징과 Locust |
+| 선택 | 이유 | 고려한 점 |
+| --- | --- | --- |
+| 두 AZ의 API 서버와 ALB | 한 서버를 제외해도 다른 서버로 요청을 보내고 순차 배포 | 서버 두 대의 비용과 배포·상태 관리 필요 |
+| RDS Multi-AZ 동기 복제 | 주 DB 장애 시 다른 AZ의 대기 DB로 자동 전환 | 대기 DB 비용이 추가되고 전환 중 요청이 일시 실패할 수 있음 |
+| Redis 복제본과 자동 장애 전환 | 두 API가 요청 제한 카운터를 공유하고 장애 후 기능 복구 | 비동기 복제로 최근 카운터가 일부 유실될 수 있음 |
+| ECR 이미지와 SSM 순차 배포 | 같은 이미지로 배포하고 앱 기동 실패 시 이전 버전 복구 | 이미지 보관과 서버별 준비·검증·복구 절차 필요 |
 
-RDS 대기 DB와 Redis 복제본은 장애 대비용이며 두 API는 같은 주 DB·Redis에 연결합니다.
+두 API는 같은 주 DB와 Redis에 연결합니다. RDS 대기 DB와 Redis 복제본은 장애 시 주 역할을 이어받습니다.
 
 ## 저장소 구조
 
@@ -36,17 +32,17 @@ scripts/              # 검증·환경 관리 도구
 docs/                 # 구성·운영 절차·검증 기록
 ```
 
-## 검증 기록
+## 실제 테스트 결과
 
-서버 접속 없이 읽을 수 있는 저장소 내 시험 기록입니다. 각 문서에 시험 조건·결과·한계를 정리했습니다.
+| 테스트 케이스 | 확인한 결과 | 상세 기록 |
+| --- | --- | --- |
+| RDS 강제 장애 전환 | 일시 장애 응답 후 앱 재시작 없이 재연결. 전환 전 데이터와 잔액·원장 유지 | [RDS 장애 전환](docs/rds-failover-test-results.md) |
+| Redis 강제 장애 전환 | 복제본 승격 후 앱 재시작 없이 A/C 공유 요청 제한과 만료 해제 복구 | [Redis 장애 전환](docs/redis-failover-test-results.md) |
+| 배포 이미지 준비·앱 기동 실패 | 이미지 준비 실패 시 기존 앱 유지. A 서버 기동 실패 시 이전 이미지·설정으로 자동 복구하고 C 배포 중단 | [ECR 배포·복구](docs/ecr-deployment-test-results.md) |
+| WAF 요청 제한 | 초과 요청 429, 요청 감소 후 자동 해제, 다른 IP·제외 경로 통과와 차단 로그 확인 | [WAF 차단·해제](docs/waf-rate-limit-test-results.md) |
+| 모니터링 수집·복구 | A/C의 API·JVM·호스트 지표와 AWS 지표 조회. 모니터링 서버 재부팅·백업 복원 후 데이터 확인 | [모니터링 검증](docs/monitoring-runtime-verification.md) |
 
-| 항목 | 기록 |
-| --- | --- |
-| 이미지 배포·롤백 | [ECR 순차 배포와 실패 복구](docs/ecr-deployment-test-results.md) |
-| 데이터베이스 | [RDS 장애 전환·재연결·데이터 보존](docs/rds-failover-test-results.md) |
-| 공유 요청 제한 | [Redis 장애 전환과 A/C 공유 제한](docs/redis-failover-test-results.md) |
-| 진입점 요청 제한 | [WAF 차단·자동 해제·로그 검증](docs/waf-rate-limit-test-results.md) |
-| 모니터링 | [구축·지표 수집 검증](docs/monitoring-runtime-verification.md) · [대시보드 구성](docs/grafana-dashboard-guide.md) |
+각 기록에는 시험 구성·방법·케이스별 결과와 재현하지 않은 상황을 구분했습니다.
 
 ## 로컬 검증
 
@@ -69,5 +65,3 @@ Terraform 검사는 mock AWS Provider를 사용하며 실제 AWS·원격 State�
 | 모니터링 | [Grafana 구성·접속·복구](docs/grafana-https-access.md) |
 | 부하 테스트 | [스테이징·Locust 사용과 결과 수집](docs/staging-loadtest.md) |
 | 서버·DB 사양 | [사양 변경](docs/capacity-resize.md) · [DB 연결 수](docs/database-connections.md) |
-
-접속 주소와 실시간 대시보드는 해당 서버·네트워크가 실행 중일 때만 유효합니다. 서버 종료 후에는 위 검증 기록과 저장소에 정의된 구성으로 구현 내용을 확인할 수 있습니다.

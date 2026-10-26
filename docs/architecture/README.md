@@ -2,8 +2,9 @@
 
 ![GETDDO 운영 아키텍처](production.png)
 
-- [SVG](production.svg): 확대용 벡터 이미지
-- [PNG](production.png): README·발표 자료용 이미지
-- [draw.io 편집 원본](production.drawio): 서비스 아이콘·이름·연결선 개별 편집
+- 사용자 요청: Vercel → CloudFront·WAF → 내부 ALB → API A/C
+- 데이터 저장: RDS 주 DB·동기 대기 DB, Redis 주 노드·비동기 복제본
+- 배포: GitHub Actions에서 ECR 이미지 게시와 SSM 배포 명령을 분리하고, API 서버가 이미지를 내려받아 순차 교체
+- 모니터링: Prometheus·Grafana와 CloudWatch로 앱·서버·AWS 지표 조회
 
-최종 확정한 그림의 파일명을 `production`으로 통일했습니다. draw.io에서 원본을 수정한 뒤 SVG·PNG도 함께 내보내 갱신합니다.
+[설계 선택과 실제 테스트 결과](../../README.md)
