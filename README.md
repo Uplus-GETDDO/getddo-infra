@@ -44,16 +44,36 @@ docs/                 # 구성·운영 절차·검증 기록
 
 각 기록에는 시험 구성·방법·케이스별 결과와 재현하지 않은 상황을 구분했습니다.
 
-## 로컬 검증
+## 시작하기
 
-Terraform 1.16.x, Python 3.12, Bash, Node.js를 사용합니다. [검증 환경 준비·Terraform 작업 안내](docs/infrastructure-development.md)에 따라 실행 환경을 준비한 뒤 저장소 루트에서 실행합니다.
+### 1. 실행 환경 준비
+
+Linux/WSL에서 Terraform 1.16.x, Python 3.12, Bash, Node.js, `uv`를 사용합니다. 실제 AWS 구성에는 AWS CLI v2와 해당 계정의 실행 권한이 필요합니다.
+
+```bash
+git clone https://github.com/Uplus-GETDDO/getddo-infra.git
+cd getddo-infra
+uv venv --python 3.12 /tmp/getddo-infra-venv
+uv pip install --python /tmp/getddo-infra-venv/bin/python \
+  PyYAML==6.0.3 boto3==1.40.59 Werkzeug==3.1.3 \
+  PyMySQL==1.1.2 requests==2.34.2
+source /tmp/getddo-infra-venv/bin/activate
+```
+
+### 2. 로컬 검증
 
 ```bash
 python scripts/validate.py            # Terraform·스크립트 검사
 python scripts/validate.py documents  # 문서 링크·회귀 검사
 ```
 
-Terraform 검사는 mock AWS Provider를 사용하며 실제 AWS·원격 State에 접근하지 않습니다. 전체 CI 검사는 [검증 workflow](.github/workflows/validate.yml)에 정의되어 있습니다.
+Terraform 검사는 mock AWS Provider를 사용하므로 AWS 로그인이나 실제 자원 생성 없이 실행할 수 있습니다. Docker·브라우저를 사용하는 추가 CI 검사는 [검증 workflow](.github/workflows/validate.yml)에 정의되어 있습니다.
+
+### 3. AWS 인프라 구성
+
+인증된 AWS 프로필, 원격 State 접근 권한, 환경별 입력값을 준비합니다. 기본 구성 순서는 `bootstrap` → `prod` → `monitoring`입니다. 임시 부하 테스트 환경은 `staging-control` 준비 후 생성합니다.
+
+[인프라 실행 안내](docs/infrastructure-development.md#실제-aws-환경에서-실행)에 AWS 인증, 필수 입력값과 `init` → `plan` → `apply` 명령을 정리했습니다. 현재 코드는 기존 AWS 계정과 자원을 참조하므로, 새 계정에서 재현할 때는 계정 제한·State 저장소·기존 자원 참조를 먼저 맞춰야 합니다.
 
 ## 구성·운영 문서
 
