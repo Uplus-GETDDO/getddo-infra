@@ -1,6 +1,6 @@
 # GETDDO 인프라
 
-GETDDO의 AWS 인프라, 모니터링, 임시 부하 테스트 환경을 관리하는 Terraform 저장소입니다. 애플리케이션 코드와 컨테이너 배포 스크립트는 백엔드 저장소에서 관리합니다.
+GETDDO의 AWS 인프라, 모니터링, 임시 부하 테스트 환경을 관리하는 Terraform 저장소입니다. 애플리케이션 코드와 컨테이너 배포 스크립트는 [백엔드 저장소](https://github.com/Uplus-GETDDO/getddo-be)에서 관리합니다.
 
 ## 시스템 아키텍처
 
