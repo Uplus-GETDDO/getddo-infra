@@ -87,7 +87,7 @@
       }
     },
     {
-      "Sid": "LaunchNamedSmallInstance",
+      "Sid": "LaunchNamedApiInstance",
       "Effect": "Allow",
       "Action": [
         "ec2:RunInstances"
@@ -100,7 +100,7 @@
             "getddo-dev-api",
             "getddo-dev-api-c"
           ],
-          "ec2:InstanceType": "t3.small",
+          "ec2:InstanceType": "t3.medium",
           "ec2:MetadataHttpTokens": "required"
         }
       }

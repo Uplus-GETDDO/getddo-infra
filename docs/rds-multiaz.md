@@ -15,6 +15,8 @@
 - 00:32:11 KST `available / MultiAZ=true / pending={}`와 서로 다른 주/대기 AZ를 확인했고, 원본 응답에서 두 `StorageOperation` 필드가 사라져 초기화 완료를 확인했다.
 - 00:35:00 KST `apply_immediately=false` 복구 apply 성공. 이후 전체 prod·bootstrap plan의 실행 변경이 없고, 00:35:42~00:51:01 KST 15분 안정 관찰을 완료했다. LatestRestorableTime 갱신 같은 조회값 변화는 실행 변경과 구분한다.
 
+현재 서버·DB 사양과 변경 절차는 [사양 변경 안내](capacity-resize.md)를 참고한다. 아래 비용은 최초 Multi-AZ 적용 당시 사양의 기록이다.
+
 ## 비용과 지원 사양
 
 2026-10-24 서울 RDS API에서 MySQL 8.4.11 / db.t4g.micro / gp3의 MultiAZCapable=true,
@@ -63,7 +65,7 @@ aws rds describe-pending-maintenance-actions --profile getddo-gyeongju \
   --resource-identifier arn:aws:rds:ap-northeast-2:942466928325:db:getddo-dev-mysql --no-cli-pager
 aws rds describe-orderable-db-instance-options --profile getddo-gyeongju \
   --region ap-northeast-2 --engine mysql --engine-version 8.4.11 \
-  --db-instance-class db.t4g.micro --no-cli-pager
+  --db-instance-class db.t4g.medium --no-cli-pager
 aws ec2 describe-subnets --profile getddo-gyeongju --region ap-northeast-2 \
   --subnet-ids subnet-091ff1d3c2f446741 subnet-0ebda11b6bbe5f275 \
   --query 'Subnets[].{Id:SubnetId,AZ:AvailabilityZone,FreeIPs:AvailableIpAddressCount}' --no-cli-pager

@@ -13,8 +13,8 @@ GETDDO 운영 인프라·공용 모니터링·임시 스테이징 부하 테스�
 | --- | --- |
 | CloudFront · WAF | 공개 HTTPS 진입점. `/api/`는 접속 IP별 600회/60초 기준으로 초과 요청에 429 반환(OPTIONS 제외). 통과한 API는 캐시 없이 내부 ALB로 전달하고, `/images/*`는 OAC로 비공개 S3에서 조회 |
 | 내부 ALB | 두 AZ의 사설 서브넷에 배치. HTTP 80 → API 서버 8080으로 요청 분산 |
-| API A / C | `ap-northeast-2a` / `ap-northeast-2c`의 `t3.small` EC2. Docker 앱 실행, 공인 IPv4·IGW로 외부 통신, 보안 그룹으로 인바운드 제한 |
-| RDS | 비공개 MySQL 8.4, `db.t4g.micro`. 메인·대기 DB를 다른 AZ에 배치해 동기 복제·자동 전환. API 보안 그룹에서만 3306 접속 허용 |
+| API A / C | `ap-northeast-2a` / `ap-northeast-2c`의 `t3.medium` EC2. Docker 앱 실행, 공인 IPv4·IGW로 외부 통신, 보안 그룹으로 인바운드 제한 |
+| RDS | 비공개 MySQL 8.4, `db.t4g.medium`. 메인·대기 DB를 다른 AZ에 배치해 동기 복제·자동 전환. API 보안 그룹에서만 3306 접속 허용 |
 | Redis | 다른 AZ의 메인·복제본에 비동기 복제·자동 전환 적용. TLS·AUTH 공유 요청 제한 저장소. 최근 제한 값 일부 유실 가능 |
 | S3 | 이미지·배포 파일 저장소 분리. API 역할로 이미지 업로드, CloudFront OAC로 조회 |
 | Parameter Store | 앱 설정·비밀값 저장. 서버 역할로 조회 |
@@ -128,7 +128,7 @@ Terraform 검사는 backend를 제거한 임시 복사본과 mock AWS Provider�
 
 ## 임시 스테이징 부하 테스트
 
-API a/c `t3.small`, 전용 RDS/Redis·내부 ALB와 Locust `t3.medium` 한 대(master+worker2개)를 시험할 때만 생성합니다. 기존 Prod·상시 Grafana는 유지합니다. 환경 생성·수집·삭제는 AWS 작업으로 실행하고, 부하는 Locust UI에서 제어합니다. 실행 중 서버에 SSH로 접속해 개인 Python 시나리오를 적용하고 시험 DB 데이터를 준비할 수 있습니다.
+API a/c `t3.medium`, 전용 RDS/Redis·내부 ALB와 Locust `t3.medium` 한 대(master+worker2개)를 시험할 때만 생성합니다. 기존 Prod·상시 Grafana는 유지합니다. 환경 생성·수집·삭제는 AWS 작업으로 실행하고, 부하는 Locust UI에서 제어합니다. 실행 중 서버에 SSH로 접속해 개인 Python 시나리오를 적용하고 시험 DB 데이터를 준비할 수 있습니다.
 
 - **이미 서버를 사용하는 팀원:** [SSH 접속·개인 시나리오·더미 SQL·결과 수집](docs/staging-loadtest.md#이미-열린-환경을-사용하는-팀원)
 - **환경 생성 담당자:** [AWS 인증·소스/이미지 준비·bundle/config·생성과 만료](docs/staging-loadtest.md#팀원이-처음-실행할-때)
@@ -156,3 +156,5 @@ API a/c `t3.small`, 전용 RDS/Redis·내부 ALB와 Locust `t3.medium` 한 대(m
 - SSH·개인 시나리오·DB TLS/CRUD·소규모 부하·Grafana 대조·S3 재조회와 별도 환경의 TTL 자동 삭제·독립 잔여0을 실환경에서 확인했습니다. 이는 한계 성능·SLO 합격 검증이 아닙니다.
 
 - [DB 연결 수 설정과 적용](docs/database-connections.md)
+
+API·DB 사양과 변경·검증 방법은 [사양 변경 안내](docs/capacity-resize.md)를 참고합니다.

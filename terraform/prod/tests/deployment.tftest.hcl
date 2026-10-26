@@ -462,3 +462,17 @@ run "database_connection_parameter_group" {
     error_message = "DB 연결 한도는 전용 MySQL 설정 그룹으로 관리하고 기존 보호 설정을 유지해야 합니다."
   }
 }
+
+run "medium_application_and_database_capacity" {
+  command = plan
+  assert {
+    condition = (
+      aws_instance.api.instance_type == "t3.medium" &&
+      aws_instance.api_c.instance_type == "t3.medium" &&
+      aws_db_instance.main.instance_class == "db.t4g.medium" &&
+      aws_db_instance.main.multi_az &&
+      !aws_db_instance.main.apply_immediately
+    )
+    error_message = "API 두 대와 Multi-AZ DB는 medium 사양과 기본 유지보수 창 적용을 유지해야 합니다."
+  }
+}

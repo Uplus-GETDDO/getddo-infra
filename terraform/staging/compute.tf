@@ -21,7 +21,7 @@ resource "aws_cloudwatch_log_group" "api" {
 resource "aws_instance" "api" {
   for_each                    = toset(["a", "c"])
   ami                         = data.aws_ami.stage.id
-  instance_type               = "t3.small"
+  instance_type               = "t3.medium"
   subnet_id                   = data.aws_subnet.public[each.key].id
   associate_public_ip_address = true
   vpc_security_group_ids      = [aws_security_group.stage["api"].id]

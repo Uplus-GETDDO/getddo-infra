@@ -75,21 +75,21 @@ variables {
   db_master_password           = "TestOnlyPasswordNotUsedInAWS123456"
   redis_auth_token             = "TestOnlyRedisTokenNotUsedInAWS123456"
 }
-run "dedicated_small_workload" {
+run "dedicated_medium_workload" {
   command = apply
   assert {
     condition = (
       length(aws_instance.api) == 2 &&
-      alltrue([for i in aws_instance.api : i.instance_type == "t3.small" && i.metadata_options[0].http_tokens == "required" && i.root_block_device[0].encrypted]) &&
+      alltrue([for i in aws_instance.api : i.instance_type == "t3.medium" && i.metadata_options[0].http_tokens == "required" && i.root_block_device[0].encrypted]) &&
       aws_instance.locust.instance_type == "t3.medium" && aws_instance.locust.metadata_options[0].http_tokens == "required" &&
-      aws_db_instance.stage.engine_version == "8.4.11" && aws_db_instance.stage.instance_class == "db.t4g.micro" &&
+      aws_db_instance.stage.engine_version == "8.4.11" && aws_db_instance.stage.instance_class == "db.t4g.medium" &&
       aws_db_instance.stage.allocated_storage == 20 && aws_db_instance.stage.storage_type == "gp3" &&
       !aws_db_instance.stage.publicly_accessible && !aws_db_instance.stage.multi_az && aws_db_instance.stage.skip_final_snapshot &&
       aws_elasticache_replication_group.stage.node_type == "cache.t4g.micro" && aws_elasticache_replication_group.stage.engine_version == "7.1" &&
       aws_elasticache_replication_group.stage.num_cache_clusters == 1 && aws_elasticache_replication_group.stage.transit_encryption_enabled &&
       aws_elasticache_replication_group.stage.auth_token_wo_version == 1
     )
-    error_message = "Keep Stage dedicated, small, encrypted, private for data, and disposable."
+    error_message = "Stage API와 DB는 medium을 사용하고 기존 암호화와 데이터 접근 설정을 유지합니다."
   }
   assert {
     condition = (

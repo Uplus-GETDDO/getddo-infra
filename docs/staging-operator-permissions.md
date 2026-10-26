@@ -7,7 +7,7 @@
 | 대상 | 추가 권한 범위 |
 | --- | --- |
 | 모니터링 | 기존 bootstrap의 State/잠금·EC2/EBS·IAM·SSM·전용 비밀번호 등록 권한을 실제 적용. 사용자에게 Grafana 전용 SecureString 1개의 읽기도 허용 |
-| API 2대 | 서울, `getddo-staging-api-a/c`, t3.small, IMDSv2 필수 |
+| API 2대 | 서울, `getddo-staging-api-a/c`, t3.medium, IMDSv2 필수 |
 | Locust | 서울, `getddo-staging-locust`, t3.medium/t3.large, IMDSv2 필수 |
 | 디스크·정리 | 암호화 gp3 생성, `Environment=staging` 디스크/인스턴스/SG의 운영·정리. 기존 VPC·서브넷은 재사용하며 삭제 권한을 추가하지 않음 |
 | DB | `getddo-staging-*` RDS·서브넷 그룹·테스트 스냅샷, MySQL 8.4 기본 파라미터/옵션, private DB 생성·복원·삭제. 기존 DB 수정은 별도 검토 필요 |

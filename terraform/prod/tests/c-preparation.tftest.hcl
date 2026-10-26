@@ -35,7 +35,7 @@ variables {
 run "c_bootstrap_same_as_console_artifact" {
   command = plan
   assert {
-    condition     = aws_subnet.public_c.availability_zone == "ap-northeast-2c" && aws_subnet.public_c.cidr_block == "10.20.1.0/24" && !aws_subnet.public_c.map_public_ip_on_launch && aws_instance.api_c.instance_type == "t3.small" && aws_instance.api_c.metadata_options[0].http_tokens == "required"
+    condition     = aws_subnet.public_c.availability_zone == "ap-northeast-2c" && aws_subnet.public_c.cidr_block == "10.20.1.0/24" && !aws_subnet.public_c.map_public_ip_on_launch && aws_instance.api_c.instance_type == "t3.medium" && aws_instance.api_c.metadata_options[0].http_tokens == "required"
     error_message = "Preserve the previously prepared C subnet, size and IMDSv2."
   }
   assert {
