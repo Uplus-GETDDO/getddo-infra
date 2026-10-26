@@ -7,7 +7,7 @@ resource "aws_key_pair" "api" {
 
 resource "aws_instance" "api" {
   ami                         = var.ami_id
-  instance_type               = "t3.small"
+  instance_type               = "t3.medium"
   subnet_id                   = aws_subnet.public_a.id
   associate_public_ip_address = true
   vpc_security_group_ids      = [aws_security_group.api.id]
@@ -105,7 +105,7 @@ data "aws_ami" "api_c" {
 }
 resource "aws_instance" "api_c" {
   ami                         = data.aws_ami.api_c.id
-  instance_type               = "t3.small"
+  instance_type               = "t3.medium"
   subnet_id                   = aws_subnet.public_c.id
   associate_public_ip_address = true
   vpc_security_group_ids      = [aws_security_group.api.id]

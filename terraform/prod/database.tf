@@ -24,7 +24,7 @@ resource "aws_db_instance" "main" {
   engine               = "mysql"
   engine_version       = "8.4"
   parameter_group_name = aws_db_parameter_group.main.name
-  instance_class       = "db.t4g.micro"
+  instance_class       = "db.t4g.medium"
 
   db_name             = "getddo"
   username            = "getddoadmin"

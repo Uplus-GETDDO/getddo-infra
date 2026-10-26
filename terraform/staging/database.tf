@@ -23,7 +23,7 @@ resource "aws_db_instance" "stage" {
   engine                     = "mysql"
   engine_version             = "8.4.11"
   parameter_group_name       = aws_db_parameter_group.stage.name
-  instance_class             = "db.t4g.micro"
+  instance_class             = "db.t4g.medium"
   db_name                    = "getddo"
   username                   = "getddoadmin"
   password_wo                = var.db_master_password
