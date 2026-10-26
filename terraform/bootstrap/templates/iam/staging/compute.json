@@ -16,7 +16,7 @@
             "getddo-staging-api-c"
           ],
           "ec2:InstanceType": [
-            "t3.small"
+            "t3.medium"
           ],
           "ec2:MetadataHttpTokens": "required",
           "aws:RequestedRegion": "ap-northeast-2"
