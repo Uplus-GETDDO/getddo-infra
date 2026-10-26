@@ -188,3 +188,17 @@ run "terminal_access_is_limited_to_endpoint_and_staging_database" {
     error_message = "Only the fixed Stage Locust IP accepts endpoint SSH; terminal SQL reaches only the dedicated Stage DB."
   }
 }
+
+run "database_connection_parameter_group" {
+  command = plan
+  assert {
+    condition = (
+      aws_db_parameter_group.stage.family == "mysql8.4" &&
+      aws_db_parameter_group.stage.name == "getddo-staging-mysql84" &&
+      aws_db_instance.stage.parameter_group_name == aws_db_parameter_group.stage.name &&
+      one([for p in aws_db_parameter_group.stage.parameter : p if p.name == "max_connections"]).value == "100" &&
+      !aws_db_instance.stage.apply_immediately && !aws_db_instance.stage.publicly_accessible
+    )
+    error_message = "임시 환경도 전용 연결 설정을 사용하고 기본 변경 적용은 유지보수 창을 따라야 합니다."
+  }
+}

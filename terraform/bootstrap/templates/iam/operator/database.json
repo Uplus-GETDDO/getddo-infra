@@ -53,7 +53,8 @@
         "arn:aws:rds:ap-northeast-2:942466928325:db:getddo-dev-mysql",
         "arn:aws:rds:ap-northeast-2:942466928325:subgrp:getddo-dev-db",
         "arn:aws:rds:ap-northeast-2:942466928325:pg:default.mysql8.4",
-        "arn:aws:rds:ap-northeast-2:942466928325:og:default:mysql-8-4"
+        "arn:aws:rds:ap-northeast-2:942466928325:og:default:mysql-8-4",
+        "arn:aws:rds:ap-northeast-2:942466928325:pg:getddo-dev-mysql84"
       ],
       "Condition": {
         "StringEquals": {
@@ -135,7 +136,8 @@
         "arn:aws:rds:ap-northeast-2:942466928325:auto-backup:ab-74i2ncldhlgnazuiq7axkr3fyhxlol7klh3bz7sdmtaq5s5wibvljsquvxrkxqnb",
         "arn:aws:rds:ap-northeast-2:942466928325:subgrp:getddo-dev-db",
         "arn:aws:rds:ap-northeast-2:942466928325:pg:default.mysql8.4",
-        "arn:aws:rds:ap-northeast-2:942466928325:og:default:mysql-8-4"
+        "arn:aws:rds:ap-northeast-2:942466928325:og:default:mysql-8-4",
+        "arn:aws:rds:ap-northeast-2:942466928325:pg:getddo-dev-mysql84"
       ],
       "Condition": {
         "StringEquals": {

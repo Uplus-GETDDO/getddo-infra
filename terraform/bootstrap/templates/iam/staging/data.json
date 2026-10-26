@@ -30,7 +30,8 @@
       "Resource": [
         "arn:aws:rds:ap-northeast-2:942466928325:subgrp:getddo-staging-*",
         "arn:aws:rds:ap-northeast-2:942466928325:pg:default.mysql8.4",
-        "arn:aws:rds:ap-northeast-2:942466928325:og:default:mysql-8-4"
+        "arn:aws:rds:ap-northeast-2:942466928325:og:default:mysql-8-4",
+        "arn:aws:rds:ap-northeast-2:942466928325:pg:getddo-staging-mysql84"
       ],
       "Condition": {
         "StringEquals": {
@@ -165,6 +166,38 @@
         "StringEquals": {
           "aws:RequestedRegion": "ap-northeast-2",
           "aws:ResourceTag/Environment": "staging"
+        }
+      }
+    },
+    {
+      "Sid": "ManageStageDatabaseParameters",
+      "Effect": "Allow",
+      "Action": [
+        "rds:CreateDBParameterGroup",
+        "rds:ModifyDBParameterGroup",
+        "rds:DeleteDBParameterGroup",
+        "rds:AddTagsToResource",
+        "rds:RemoveTagsFromResource",
+        "rds:ListTagsForResource"
+      ],
+      "Resource": "arn:aws:rds:ap-northeast-2:942466928325:pg:getddo-staging-mysql84",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
+        }
+      }
+    },
+    {
+      "Sid": "ReadSeoulDatabaseParameters",
+      "Effect": "Allow",
+      "Action": [
+        "rds:DescribeDBParameterGroups",
+        "rds:DescribeDBParameters"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-northeast-2"
         }
       }
     }

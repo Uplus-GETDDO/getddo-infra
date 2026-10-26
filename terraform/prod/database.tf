@@ -1,3 +1,18 @@
+# 앱 연결과 관리 접속의 전체 한도를 재생성 가능한 설정으로 관리한다.
+resource "aws_db_parameter_group" "main" {
+  name        = "getddo-dev-mysql84"
+  family      = "mysql8.4"
+  description = "MySQL connection capacity for prod applications"
+
+  parameter {
+    name         = "max_connections"
+    value        = "100"
+    apply_method = "immediate"
+  }
+
+  tags = { Name = "getddo-dev-mysql84" }
+}
+
 resource "aws_db_subnet_group" "main" {
   name       = "getddo-dev-db"
   subnet_ids = [for subnet in aws_subnet.data : subnet.id]
@@ -5,10 +20,11 @@ resource "aws_db_subnet_group" "main" {
 }
 
 resource "aws_db_instance" "main" {
-  identifier     = "getddo-dev-mysql"
-  engine         = "mysql"
-  engine_version = "8.4"
-  instance_class = "db.t4g.micro"
+  identifier           = "getddo-dev-mysql"
+  engine               = "mysql"
+  engine_version       = "8.4"
+  parameter_group_name = aws_db_parameter_group.main.name
+  instance_class       = "db.t4g.micro"
 
   db_name             = "getddo"
   username            = "getddoadmin"
