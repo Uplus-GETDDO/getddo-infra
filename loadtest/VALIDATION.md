@@ -1,78 +1,47 @@
-# GD-309 / GD-310 runtime handoff
+# 부하 시험 도구 검증 기록
 
-Validated locally on 2026-10-23 KST, Python 3.14.6, official Locust 2.47.0,
-Playwright 1.64.1 and existing Chromium 1243. No AWS calls, platform secret reads,
-pushes, PRs, merges, Java/Gradle or Docker daemon were used.
+2026-10-23 로컬에서 Locust 런타임과 실행·중단·결과 수집 기능을 검증했다.
 
-Result: **23 passed in 11.00 seconds**, with seven upstream deprecation warnings
-from gevent's subprocess fork and TLS fixture handling. Dependency compatibility:
-`uv pip check` checked 40 packages successfully. Final command:
+## 시험 구성
+
+| 구성 | 당시 사용 버전·범위 |
+| --- | --- |
+| Python | 3.14.6 |
+| Locust | 2.47.0, master 한 개와 worker 두 개 |
+| 브라우저 | Playwright 1.64.1·Chromium |
+| 요청 대상 | 로컬 HTTP·HTTPS 합성 응답 서버 |
+| 검사 결과 | 테스트 23개 통과, 의존 패키지 40개 호환성 검사 통과 |
+
+## 케이스별 결과
+
+| 테스트 케이스 | 확인 방법 | 실제 결과 |
+| --- | --- | --- |
+| 로그인·웹 실행 | Chromium에서 로그인·세션 쿠키·기본 UI 실행 | 로그인과 Origin·CSRF 검증 후 실행 성공 |
+| 권한 없는 조작 | 미인증·잘못된 CSRF·다른 Origin으로 실행·중단·수집 요청 | 요청 거절 |
+| 대상·설정 변경 제한 | 임의 대상·프로필·사용자 변경과 중복 시작 요청 | 허용하지 않은 변경과 동시 시작 거절 |
+| 분산 실행 | 실제 로컬 master·worker 두 개 실행 | 초기 요청 없음, 지정한 사용자 실행과 시간 만료 후 중단 |
+| 집계 일치 | HTTP·실패·429·업무 판정과 CSV 대조 | 최종 worker 보고를 반영한 집계 일치 |
+| 지연 계산 | 서로 다른 지연 분포의 worker 결과 합산 | 전체 분포로 p95·p99 계산, 밀리초를 초로 변환 |
+| 데이터 없음 | worker 이탈·오래된 보고·요청 없음 | 정상 0으로 바꾸지 않고 데이터 없음으로 처리 |
+| 결과 수집 | 실행·중단·수집 클라이언트와 파일 대조 | 여섯 보고서·체크섬 확인, 수집 전 재실행 제한 |
+| 입력 파일 보호 | 권한·소유권·심볼릭 링크·회원 등급 누락 입력 | 잘못된 입력 거절 |
+
+시험 중 실행 시간 만료 콜백이 최종 통계 반영 전에 중단되는 문제를 수정했다. 중단 완료와 worker의 새 보고를 확인한 뒤 최종 이력 행을 기록하고 결과 파일을 복사하도록 검증했다.
+
+## 다시 실행하기
 
 ```sh
-LOCUST_TEST_CHROMIUM=<installed-Chromium-path> python -m pytest -q loadtest/tests
+python -m pip install -r loadtest/requirements-test.txt
+python -m playwright install --with-deps chromium
+python -m pytest -q loadtest/tests
 ```
 
-Evidence exercised by actual application/native library tests:
+이미 설치한 브라우저를 사용하려면 `LOCUST_TEST_CHROMIUM`에 경로를 지정한다. 로컬 소켓·브라우저 실행·openssl이 필요하다.
 
-- Real local HTTPS + Chromium: login redirect, native assets under `/locust/`,
-  secure HttpOnly SameSite Strict session cookie, immutable UI host input,
-  native React form AJAX carrying Origin/CSRF and accepted empty profile.
-- Actual Flask routes: unauthenticated start/stop/reset/collect refusal, missing
-  or foreign CSRF/Origin rejection, five-failure login lockout, unknown Unicode
-  username handling, arbitrary host/profile/user editing rejection, concurrent
-  start refusal and private-only metrics URL.
-- Automation client against the same Flask master: login with CSRF rotation,
-  run/stop/collect, all six report downloads and private file checksums.
-- Real native Locust master + two workers over loopback RPC, and read-only local
-  HTTP fixture: no startup requests, explicit two-user run, duration stop,
-  post-stop worker reports, exact request/failure/429/business reconciliation,
-  CSV agreement, full-history + HTML collection, worker loss/NoData and verified
-  server/user/runner shutdown.
-- Native imbalanced global histograms: p95/p99 use the merged distribution,
-  not worker percentile averages, with millisecond-to-second conversion.
-  Missing/stale/zero-request/transport-only latency yields NaN.
-- Duplicate/invalid custom outcome reports do not recount.
-  Bounded business classification distinguishes success, explicit expected
-  rejection, HTTP429, server/HTTP/envelope/transport failures.
-- Protected manifest/secret/actor modes, ownership rejection, no symlinks,
-  missing membership rejection, exact internal ALB configuration and HTTPS-only
-  automation origin. Root ownership alone is simulated for user-owned fixtures.
+## 검증 범위
 
-The integration test found and fixed a duration callback cancelling its own stop
-greenlet before final stats. Collection now requires a completed stop and a new
-report from every expected worker after its checkpoint, then appends/flushes the
-final full-history row and snapshots into `reports/collected`. This also avoids
-truncating files held open by native background CSV writers. Untouched idle
-master collection is supported.
+- 실제 AWS 호출·부하 발생·운영 데이터 변경 없이 로컬 합성 서버로 시험했다.
+- 소유권 검사의 root 조건 일부는 사용자 소유 fixture로 대체했다.
+- 당시 도구 시험에 포함하지 않은 AWS 환경의 작은 부하·결과 보관·만료 정리는 [스테이징 검증 범위](../docs/staging-loadtest.md#검증-범위)에 기록돼 있다.
 
-The backend source contract was checked in EventController, CurrentUser,
-CurrentUserArgumentResolver, ResponseEnvelope and PageResult: the seeded USER
-needs matching ID, role **and membership** headers. Actor JSON therefore has
-required `membership` (`excellent`, `vip`, `vvip`), chosen from the actual seed.
-No performance acceptance threshold or rejection policy was invented.
-
-Stable interfaces: [CONTRACT.md](CONTRACT.md), operator steps:
-[README.md](README.md). Metrics names/types/labels remain exactly as announced.
-UI 8089, exporter 9646 and bridge-only RPC 5557 retain separate access scopes;
-root-protected host manifest is the target authority. Automation remains
-`python loadtest/control.py --origin ORIGIN --username-file FILE --password-file
-FILE run|stop|collect`, with explicit run parameters and collect output directory.
-
-CI: install `loadtest/requirements-test.txt`, run
-`python -m playwright install --with-deps chromium`, then
-`python -m pytest -q loadtest/tests` as a separate process from scripts unittest
-discovery. The tests require loopback sockets, browser execution and openssl.
-
-Remaining coordinator acceptance: Docker image build/Compose validation
-(Docker is unavailable in this WSL distro), actual root-owned installer mounts,
-matching seeded membership, CloudFront/ALB cookie/header forwarding and auth,
-SG isolation/private scrape, actual Stage smoke/dashboard/CSV reconciliation,
-result retention/readback and independent AWS expiry/destroy/residual checks.
-Live deployment, PR reviews and teammate approval are coordinator-owned.
-
-Official APIs reviewed: [configuration](https://docs.locust.io/en/2.47.0/configuration.html),
-[authentication/extensions](https://docs.locust.io/en/2.47.0/extending-locust.html),
-[distributed execution](https://docs.locust.io/en/2.47.0/running-distributed.html).
-Pinned installed native web, runner and stats implementations were inspected
-and exercised for login routes, request/worker hooks, histogram aggregation,
-CSV writers and runtime timers.
+[도구 사용 방법](README.md) · [실행 계약](CONTRACT.md) · [스테이징 사용·정리 절차](../docs/staging-loadtest.md)

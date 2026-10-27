@@ -1,4 +1,4 @@
-# Stage Locust runtime contract (GD-309 / runtime GD-310)
+# 스테이징 Locust 실행 계약
 
 Official Locust **2.47.0** (`locustio/locust:2.47.0`), Flask-Login native
 `--web-login`, `--web-base-path /locust`. No automatic load at startup.

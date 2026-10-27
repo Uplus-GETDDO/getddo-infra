@@ -9,7 +9,7 @@ PR·스테이징의 이미지 tar 전달 계약은 유지한다.
 
 저장소는 `IMMUTABLE` 태그와 `AES256` 저장 암호화를 사용한다.
 `force_delete=false`와 Terraform `prevent_destroy=true`로 Terraform의 저장소 제거를 방지한다.
-이는 콘솔·API의 모든 삭제를 막는 계정 정책이 아니다.
+콘솔·API 삭제는 IAM 권한으로 별도 관리한다.
 태그 없는 이미지만 push 후 7일 뒤 만료하며 태그 있는 운영·복구 이미지는 자동 만료·아카이브하지 않는다.
 태그 제거 작업과 계정 전체 스캔 설정 변경은 포함하지 않는다.
 정책 적용 전에 lifecycle preview를 확인하고 운영·복구 digest가 만료 대상이 아닌지 대조한다.
@@ -85,7 +85,7 @@ A/C는 pull 후 RepoDigests·config ID·revision·플랫폼을 검사한다.
 2. bootstrap 전체 plan에서 기존 IAM 정책·연결 보존과 최소 ECR 권한 추가를 확인한다. bootstrap IAM 적용에 필요한 작업만 별도 관리자 프로필을 사용한다.
 3. 일반 운영자 프로필로 기존 ECR 저장소 충돌과 registry scanning 설정을 확인한다. 동일 이름 저장소가 있으면 소유권 확인 없이 가져오거나 덮어쓰지 않는다.
 4. 기존 `bootstrap/terraform.tfstate`, `dev/terraform.tfstate`와 잠금을 유지해 전체 prod plan을 검토·적용한다. 무관한 변경·교체·삭제가 있으면 조사하고 `-target`이나 State 조작으로 숨기지 않는다.
-5. Terraform 출력과 실계정·리전을 대조해 변수를 등록하고 실제 권한을 확인한다. 시뮬레이션 allowed는 실제 push/pull 성공 증거가 아니다.
+5. Terraform 출력과 실계정·리전을 대조해 변수를 등록하고 실제 권한을 확인한다. 게시 역할의 push와 서버의 pull 성공을 확인한다.
 6. 현재 운영 image ID·revision과 같은 기존 산출물을 checksum으로 검증한다. 없으면 해당 이미지를 `docker save`로 보존하며 재빌드하지 않는다.
 7. 별도 운영자 인증으로 `baseline-<운영 SHA>-<고유 이전 ID>` 태그로 이전한다. Docker Engine이 없으면 검증한 docker-archive 전송 도구를 사용하고 실제 Docker 검증과 구분한다.
 8. 양쪽 서버가 baseline digest를 pull한 뒤 기존 로컬 ID·revision과 일치하는지 확인한다. 서버에는 상시 push 권한을 추가하지 않는다.
@@ -100,7 +100,7 @@ A/C 모두 후보 digest와 이전 복구 이미지를 준비·검증한 뒤 ALB
 준비 실패 시 current·env·컨테이너·ALB 상태를 유지한다.
 기존 순차 배포·연결 정리·설정 원자 교체·HTTP/지표·ALB 확인을 유지한다.
 새 앱 기동 실패 시 이전 ECR 참조·Compose·직전 환경으로 복구하고 정상 확인 후 재등록한다.
-후순위 서버 실패가 앞 서버까지 자동으로 되돌린다는 보장은 없으므로 최종 혼합 버전을 기록한다.
+C 배포가 실패하면 A는 새 버전을 유지한다. 최종 A/C 버전을 각각 기록한다.
 SSM 결과가 불명확하면 재발행·다음 서버 진행을 중단하고 잠금을 보존한다.
 인증은 서버 역할의 임시 자격 증명, root 전용 임시 `DOCKER_CONFIG`, `--password-stdin`을 사용하고 정리한다.
 

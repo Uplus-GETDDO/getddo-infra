@@ -33,7 +33,7 @@ HTTPS는 기존 CloudFront에서 종료하고 VPC 내부 ALB→Grafana 구간은
 
 - [Grafana 하위 경로·프록시 설정](https://grafana.com/tutorials/run-grafana-behind-a-proxy/)
 - [CloudFront 관리형 Origin Request Policy](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/using-managed-origin-request-policies.html)
-- [기존 구축/백업 검증 기록](monitoring-runtime-verification.md) — GD-299 당시 SSM 접속 결과를 기록한 과거 문서이며, GD-302 적용 후 일반 접속은 이 문서를 따른다.
+- [기존 구축/백업 검증 기록](monitoring-runtime-verification.md)
 
 ## 실제 적용·검증 — 2026-10-22
 
@@ -44,4 +44,4 @@ HTTPS는 기존 CloudFront에서 종료하고 VPC 내부 ALB→Grafana 구간은
 - 모니터 SG 3000 인바운드는 ALB SG만 허용하고 IPv4/IPv6 CIDR 허용 없음. Prometheus 9090을 게시하지 않는다.
 - Terraform mock: bootstrap 6개·prod 21개·monitoring 4개 통과. 스크립트 테스트 14개와 daemon 없는 Compose/Prometheus/14개 PromQL 검증 통과. 로컬 Docker 통합 테스트는 실행하지 않았다.
 - 변경 파일을 실제 Grafana·DB·Redis 비밀번호와 메모리에서 대조하고 AWS access key/private key 패턴도 검사했다. 실제 비밀값, `.env`, 자격 증명, State/plan은 Git/PR에 포함하지 않았다. 비밀번호·세션 쿠키는 검증 출력에 남기지 않았다.
-- 최초 GD-299의 SSM 접속 검증은 과거 기록이며, 현재 일반 접속은 HTTPS `/grafana/`를 사용한다. 브라우저 모든 패널의 육안 검사·부하 시험을 수행한 것은 아니다.
+- 일반 접속은 HTTPS `/grafana/`를 사용한다. 전체 패널의 화면 검수와 부하 시험은 진행하지 않았다.

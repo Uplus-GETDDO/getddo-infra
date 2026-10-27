@@ -52,8 +52,8 @@ A/C는 정상 배포 이미지의 `linux/amd64`를 실행하며 current는 `/opt
 
 ## 시험 범위
 
-실제 운영 시험은 위 표에 기록한 준비 실패·A 기동 실패/자동 복구·정상 순차 배포다. SSM 응답 유실·env 복원 실패·부분 배포 등의 안전장치는 로컬 회귀 범위이며, mock 통과를 실제 권한·배포·복구 성공으로 대신하지 않았다.
+SSM 응답 유실·env 복원 실패·부분 배포는 로컬 회귀 테스트로 확인했다.
 
-필요한 낮은 빈도 GET만 사용했으며 업무 쓰기·프론트 접근·부하 시험은 수행하지 않았다. DB·Redis·WAF·알림 설정도 변경하지 않았다. Terraform `prevent_destroy`는 콘솔·API의 모든 삭제를 막는 정책이 아니며, lifecycle 제외는 모든 수동 삭제에 대한 영구 보존을 뜻하지 않는다.
+낮은 빈도의 GET으로 확인했다. 쓰기·프론트 접근·부하 시험은 진행하지 않았다.
 
 [운영 절차](ecr-deployment.md) · [원본 Build](https://github.com/Uplus-GETDDO/getddo-be/actions/runs/40144472847)

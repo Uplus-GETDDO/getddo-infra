@@ -4,7 +4,7 @@ CloudFront 진입점에서 `/api/`로 시작하는 요청을 접속 IP별로 합
 기준은 최근 60초에 600회다. IPv4와 IPv6를 지원하고 사용자 제공 X-Forwarded-For로 집계하지
 않는다. URI는 URL_DECODE 다음 NORMALIZE_PATH로 검사하고, 변환한 경로가 `/api/`로 시작하는 요청을 집계한다.
 전달 URL은 재작성하지 않는다. 공유 네트워크의 사용자는 같은 IP로 합산될 수 있다. AWS는 요청량을 추정하므로
-601번째 요청부터 정확히 차단하거나 정확히 60초 뒤 해제한다고 보장하지 않는다.
+요청량 추정과 규칙 반영 지연 때문에 차단 순번과 해제 시점은 달라질 수 있다.
 
 2026-10-25 기존 CloudFront에 적용하고 실제 차단·자동 해제·로그 저장과 최종 설정을 확인했다.
 [실측 결과](waf-rate-limit-test-results.md)에서 케이스별 방법과 관측값을 확인할 수 있다.
@@ -25,7 +25,7 @@ credentials 허용 헤더는 보내지 않으며 정상 API의 CORS 정책은 �
 WAF와 로그는 `us-east-1`에서 관리하고 기존 서버·ALB·DB는 `ap-northeast-2`에 둔다.
 로그 그룹 `aws-waf-logs-getddo-dev-api`는 7일 보관한다. 최종 로그 필터는 기본 DROP,
 `action=BLOCK`만 KEEP이다. WAF·로그 그룹·연결은 계속 유지하고 오래된 기록만 만료한다.
-로그의 ALLOW는 앱의 HTTP 200이나 업무 성공을 뜻하지 않는다.
+ALLOW는 WAF 통과 여부다. 앱의 처리 결과는 API 응답과 앱 로그에서 확인한다.
 
 쿼리 문자열과 authorization, proxy-authorization, cookie, x-api-key, x-user-id,
 x-user-role, x-user-membership 헤더는 마스킹한다. 요청 표본 보기는 ACL과 규칙 모두 끈다.
@@ -91,7 +91,7 @@ AWS CLI의 바이너리 `SearchString` 출력은 base64를 해석해 대조한�
 늘리지 않는다. 헤더 변경 때 이미 해제됐다면 우회 성공이나 실패로 단정하지 않고 NOT_RUN을 남긴다.
 
 종료 코드 0은 도구가 수행하는 필수 probe 검사 통과, 1은 응답 계약·자동 해제 실패,
-2는 환경·전파·차단 미관측·로그 미확인 등 검증 미완료다. 0이어도 전체 운영 검증 완료를 뜻하지 않는다.
+2는 환경·전파·차단 미관측·로그 미확인 등 검증 미완료다.
 `verification.json`의 browser, other_ip, normal_reads, options, image, initial_allow_redaction,
 metrics, cleanup은 별도 증거가 없으므로 NOT_RUN이다. CORS와 429 JSON 응답 계약은
 실제 Origin을 넣은 HTTP 요청으로 검사한다. 브라우저/UI 동작은 자동 검사 범위에 포함하지 않는다.
@@ -105,8 +105,7 @@ AWS 읽기 오류의 원문도 출력하지 않는다. 실패 시 생성되지 �
 원본 State·plan·실제 입력·인증정보는 공개하지 않는다.
 
 초기 all 구간에는 가짜 민감 값으로 REDACTED를 확인한다. 주 시험 IP 차단 중에는 이미 존재하는
-별도 서버에서 소수 GET을 보내고 WAF 로그의 clientIp가 다른지 확인한다. 헤더 변경은 다른 IP
-시험을 대신하지 않는다. 기존 정상 읽기 API는 합성 계정으로 각 3회 조회하며 개인정보 본문은
+별도 서버에서 소수 GET을 보내고 WAF 로그의 clientIp가 다른지 확인한다. 헤더 변경과 다른 IP 요청은 각각 시험한다. 기존 정상 읽기 API는 합성 계정으로 각 3회 조회하며 개인정보 본문은
 저장하지 않는다. 실제 BLOCK 로그와 BlockedRequests를 양성 증거로 확인하고, 누락된 지표를
 실제 0으로 해석하지 않는다.
 

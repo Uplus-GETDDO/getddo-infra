@@ -1,8 +1,8 @@
 # 임시 스테이징 부하 테스트
 
-아래 Locust·Grafana 주소는 해당 서버와 연결 인프라가 실행 중일 때만 유효합니다. 환경 종료 후에도 시험 결과를 확인하려면 종료 전에 [결과 수집](#수집과-삭제) 절차로 보관합니다. 실시간 대시보드 주소 자체는 결과 보관 수단이 아닙니다.
+환경을 종료하기 전에 [결과 수집](#수집과-삭제) 절차로 시험 결과를 보관합니다.
 
-이 문서는 반복해서 사용할 환경 생성·팀원 시험·결과 보관·삭제 절차입니다. 특정 실행의 run ID·인스턴스 ID·종료 날짜는 고정하지 않습니다. 실행 담당자가 생성 결과와 현재 상태에서 확인해 공유합니다. 개인 시나리오·DB 터미널 기능은 공통 기능이며, 며칠 동안 서버를 유지할지는 매 실행의 만료 설정으로 정합니다.
+실행 담당자가 현재 run ID·서버 주소·만료 시각을 공유합니다. 환경 유지 기간은 생성할 때 만료 설정으로 지정합니다.
 
 ## 이미 열린 환경을 사용하는 팀원
 
@@ -80,7 +80,7 @@ loadtest apply /opt/getddo-loadtest/scenarios/gyeongju/my-test/events.py
 
 실행 중에는 apply를 거부합니다. 문법·import 검증 실패 시 이전 시나리오를 유지하고, 교체 후 준비 실패 시 이전 상태 복원을 시도합니다. 적용 중에는 다른 사람이 START하지 않도록 합니다. 한 번 적용한 시나리오는 환경 전체에 공유됩니다.
 
-예제 [events.py](../loadtest/examples/events.py)는 `StageUser`를 상속해 `GET /api/v1/events?page=1&size=10`을 반복하고 1~2초 대기합니다. `catch_response=True` 안에서 `self.check(response, events_page)`를 호출해 응답 계약과 업무 결과를 기록합니다. 개인 파일은 일반 Python 파일 하나, 최대 1MiB이며 설치된 패키지를 사용합니다. 다른 개인 파일 import나 임의 패키지 설치를 전제로 작성하지 않습니다.
+예제 [events.py](https://github.com/Uplus-GETDDO/getddo-infra/blob/main/loadtest/examples/events.py)는 `StageUser`를 상속해 `GET /api/v1/events?page=1&size=10`을 반복하고 1~2초 대기합니다. `catch_response=True` 안에서 `self.check(response, events_page)`를 호출해 응답 계약과 업무 결과를 기록합니다. 개인 파일은 일반 Python 파일 하나, 최대 1MiB이며 설치된 패키지를 사용합니다. 다른 개인 파일 import나 임의 패키지 설치를 전제로 작성하지 않습니다.
 
 기본 `smoke_events`는 합성 USER로 `GET /api/v1/events?page=1&size=1`을 검사합니다. 개인 예제 역시 기본적으로 같은 준비된 합성 USER 헤더를 사용합니다. **가상 사용자 50명은 DB 회원 50명이 아닙니다.** 여러 회원이 필요한 시나리오는 회원·권한·멤버십 데이터를 직접 준비하고 요청별 헤더를 맞춥니다. 상대 API 경로, 고정 요청 이름, 명시적 timeout, 업무 계약에 맞는 검증 함수를 사용합니다. 상세 계약은 [런타임 안내](../loadtest/README.md)와 [CONTRACT](../loadtest/CONTRACT.md)를 따릅니다.
 
@@ -307,7 +307,7 @@ aws codebuild batch-get-builds --ids BUILD_ID \
 
 ### Grafana 이력과 수집 제한
 
-공용 Prometheus는 환경 삭제 후에도 유지되며 보존은 **14일 또는20GB 중 먼저 도달하는 한도**입니다. 14일 전부 보장을 뜻하지 않습니다. S3 결과 장기 보관 기간은 별도 미정이며 `staging/` 결과 자동 만료를 추가하지 않았습니다.
+공용 Prometheus는 환경 삭제 후에도 유지됩니다. 지표는 **14일 또는 20GB 중 먼저 도달하는 한도**까지 보관합니다. S3 결과 장기 보관 기간은 별도 미정이며 `staging/` 결과 자동 만료를 추가하지 않았습니다.
 
 환경 전체 수집에서 유효한 24시간 이내 등록은 Grafana 쿼리·시계열 S3 내보내기를 수행합니다. **생성~만료 수명이 24시간을 초과하거나 등록 만료 후 수집하면** 현재 공유 exporter의 지원 범위를 벗어나 `collection_status: partial`, `monitoring_status: unavailable`과 다음 사유를 기록합니다.
 
@@ -326,10 +326,8 @@ aws codebuild batch-get-builds --ids BUILD_ID \
 
 생성·삭제 실패 시 해당 CodeBuild 종료와 manifest·오류를 먼저 확인합니다. 실패한 채 새 up을 반복하거나 살아 있는 실행의 잠금을 강제로 삭제하지 않습니다. 소유권·부분 자원·Terraform 잠금 복구는 [실행 계약](../terraform/staging/README.md#submission-and-recovery)을 따릅니다.
 
-최종 `destroyed`는 실제 run 소유 잔여 자원0과 영구 로그인 설정 보존을 확인한 상태입니다. 담당자는 해당 CodeBuild 성공·manifest·자원 재고를 확인합니다. `/locust/` 접속 불가와 기존 `/grafana/` 계속 접근은 삭제 후 정상이며, Grafana가 열린다는 사실로 Stage가 남았다고 판단하지 않습니다.
+최종 `destroyed`는 실제 run 소유 잔여 자원0과 영구 로그인 설정 보존을 확인한 상태입니다. 담당자는 해당 CodeBuild 성공·manifest·자원 재고를 확인합니다. 삭제 후 `/locust/`는 닫히고 공유 모니터링의 `/grafana/`는 계속 열려 있습니다.
 
 ## 검증 범위
 
 개인 Python 적용·오류 파일 거부·실행 중 교체 거부, 기존 PEM SSH, DB TLS와 데이터 CRUD, 웹·개인 시나리오의 작은 부하와 Grafana 대조, 결과·소스 S3 readback을 실환경에서 확인했습니다. 별도 검증 환경에서 5분 뒤 TTL 정리 작업을 시작하고 전체 삭제·독립 잔여0·Prod/monitor/영구 로그인 보존도 확인했습니다. 5분은 검증용 시작 예약 간격이며 일반 수명 기본값이나 전체 AWS 삭제 완료 시간은 아닙니다.
-
-이는 매 실행의 정상 동작이나 최대 성능을 보장하는 판정이 아닙니다. 새 소스·AMI·권한·환경 변경은 다시 검증하며, 업무별 쓰기/동시성 정합성·부하 한계·SLO 기준은 별도로 정합니다.

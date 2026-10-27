@@ -1,48 +1,40 @@
-# GD-297 validation evidence — 2026-10-22
+# 모니터링 구성 사전 검증 기록
 
-All Terraform plans below were real, full-root plans using `getddo-dev`, with no `-target`, fake infrastructure IDs, apply, import or State move. The authenticated caller was root; non-root operator policy effectiveness and all runtime acceptance remain GD-299 gates. Saved binary plans, JSON, original private prod variables and logs are outside Git in `/tmp/gd297-private/` (directory 0700, files 0600); do not attach them to a PR.
+2026-10-22 모니터링 자원을 적용하기 전에 수행한 계획·설정 검증 기록이다. 실제 설치·재부팅·백업 복원 결과는 [운영 모니터링 검증 결과](../docs/monitoring-runtime-verification.md), 이후 접속 구성은 [Grafana 운영 안내](../docs/grafana-https-access.md)를 따른다.
 
-| Root | Detailed exit | Create | Update | Delete | Replace | No-op |
-| --- | --- | --- | --- | --- | --- | --- |
-| monitoring | 2 | 15 | 0 | 0 | 0 | 0 |
-| prod baseline | 0 | 0 | 0 | 0 | 0 | 74 |
-| bootstrap | 2 | 1 | 4 | 0 | 0 | 23 |
+## 당시 Terraform 계획
 
-Monitoring creates one EC2, one retained EBS, one volume attachment, one SG, three ingress rules (API 9091/9100 and monitor self-9100), five egress rules, one role/profile and two inline runtime policies. No existing API EC2, root disk, database or application resource is replaced/deleted/updated. Bootstrap proposes one planning-access inline policy and updates the four existing operator identity/network/operations/parameters policies; existing policy/resource addresses and descriptions are preserved. None of these grants has been applied.
+| 실행 루트 | 생성 | 수정 | 삭제 | 교체 |
+| --- | --- | --- | --- | --- |
+| monitoring | 15 | 0 | 0 | 0 |
+| prod | 0 | 0 | 0 | 0 |
+| bootstrap | 1 | 4 | 0 | 0 |
 
-Prod baseline detects only external RDS `latest_restorable_time` movement, a computed backup/restore timestamp. There are no desired prod changes. The baseline used privately copied existing variables and random **plan-only ephemeral write-only inputs**, which are not credentials read from the application and trigger no password update at the unchanged version. Nothing was applied.
+모니터링 서버·별도 데이터 EBS·보안 그룹·IAM을 추가하는 계획이었다. 기존 API 서버·DB·앱 자원의 교체·삭제 계획은 없었다.
 
-## Plan source identification
+## 케이스별 결과
 
-Each SHA256 hashes sorted relative filenames plus NUL-delimited contents for root `.tf`, templates `.json/.sh/.tftpl` and `.terraform.lock.hcl`; excludes tests, `.terraform/`, State and private variables. The private binary plan embeds its complete configuration. Code or State changes require fresh plans before approval.
+| 검증 항목 | 확인 방법 | 당시 결과 |
+| --- | --- | --- |
+| Terraform 구성 | Terraform 1.16.5·AWS Provider 6.68.0의 fmt·validate·mock 검사 | 세 루트의 mock 26회 통과 |
+| 설치·백업·복구 스크립트 | Python·Bash·JSON 검사와 대역 시험 | 최초 단위 검사 12개, 후속 보완 13개 통과 |
+| 데이터 볼륨 보호 | 잘못된 UUID·볼륨 식별자·기존 마운트·fstab 입력 대역 | 잘못된 볼륨과 중복 설정 거절 확인 |
+| 백업·복구 실패 처리 | 서비스 시작 상태·명령 실패 조합 대역 | 기존 서비스 상태와 최초 오류를 보존하는 84개 조합 검증 |
+| Compose·Prometheus | 고정 버전 Compose·promtool로 설정 해석 | Compose 설정, 수집 설정과 대시보드 PromQL 14개 검증 통과 |
+| CloudWatch 대시보드 변환 | 당시 실제 차원으로 읽기 전용 변환 | Grafana 패널 23개 생성 확인 |
+| IAM 정책 | Access Analyzer의 정책 검사 | 수정한 정책 네 개에서 검사 지적 없음 |
 
-- `monitoring`: plan timestamp `2026-10-22T10:19:29Z`, source SHA256 `244978f1a801ef7c709d2667a311662eea49cd05e5847b6bd4823f2a655470c4`.
-- `prod`: plan timestamp `2026-10-22T10:11:12Z`, source SHA256 `abfdc78b5e801d9e43043899ccdc799295c258387978d7cd14f7545a18906277`.
-- `bootstrap`: plan timestamp `2026-10-22T10:19:45Z`, source SHA256 `ca0bf509116dd435ad9eaf69ac17dedad4cbc790a41e33b9786e30fb51094ea6`.
+## 당시 모니터링 서버 비용 추정
 
-## Executed verification
+서울 리전에서 모니터링 서버만 730시간 사용할 때의 2026-10-22 견적이다.
 
-- Terraform 1.16.5 / AWS provider 6.68.0: fmt and validate on all three roots; 26 mock runs passed (bootstrap 3, prod 20, monitoring 3).
-- Python/shell/JSON validation and 12 unit tests passed, including absent mount, wrong UUID/volume marker and Docker independent-start guard ordering and quiescing containers when their unit is inactive, and transferred-archive checksum validation.
-- Checksum-pinned Compose 5.6.1 validates configuration without a daemon; Prometheus/promtool 3.15.1 validates scrape syntax and all 14 dashboard PromQL expressions.
-- Live read-only CloudWatch dashboard conversion produced 23 Grafana panels using current actual dimensions; generated output stays private.
-- AWS Access Analyzer validation of all four modified operator policies returned no findings. This is syntax/security-policy validation, not proof that every future request is authorized.
-- CI runs Terraform tests, shell/JSON/Python tests, YAML parsing, pinned Compose configuration and promtool/PromQL checks. CI outcome is recorded in the PR and final handoff.
+| 항목 | 당시 월 추정액 |
+| --- | --- |
+| t3.medium | US$37.96 |
+| gp3 50 GiB: 루트 20 + 데이터 30 | US$4.56 |
+| 사용 중인 공인 IPv4 | US$3.65 |
+| 합계 | US$46.17 |
 
-## Candidate monthly cost
+세금·전송·CloudWatch 조회·추가 백업 비용은 제외했다.
 
-AWS Pricing API queried on 2026-10-22 for Asia Pacific (Seoul), Linux/shared on-demand: t3.medium USD 0.052/hour; gp3 USD 0.0912/GB-month; in-use public IPv4 USD 0.005/hour. At 730 hours, EC2 = 37.96, 50 GiB total EBS = 4.56 (20 root + 30 data), IPv4 = 3.65: **USD 46.17/month**, before tax/credits. Existing IGW/public IPv4 outbound avoids a new NAT. Traffic (including C cross-AZ scraping), CloudWatch API/query usage, external backups/snapshots and future capacity changes are additional. Standard CPU credits avoid unlimited-credit surplus charges but may throttle sustained work. This is a candidate estimate, not measured utilization or a capacity guarantee.
-
-Sources: [EC2 pricing](https://aws.amazon.com/ec2/pricing/on-demand/), [EBS pricing](https://aws.amazon.com/ebs/pricing/), [VPC public IPv4 pricing](https://aws.amazon.com/vpc/pricing/). IMDS/container configuration follows [AWS metadata options](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/configuring-instance-metadata-options.html), retention follows [Prometheus storage](https://prometheus.io/docs/prometheus/latest/storage/), and the SSM parameter-read pitfall is documented in [ManagedInstanceCore](https://docs.aws.amazon.com/aws-managed-policy/latest/reference/AmazonSSMManagedInstanceCore.html).
-
-## Unapplied approval boundary
-
-No cloud resource changes, IAM/SG mutations, password registration/read, SendCommand, live installation/restart, merge, auto-merge or deployment occurred. GD-298 must supply the compatible private management listener and histogram metrics. GD-299 must approve and apply reviewed operator policies/resources, securely register the dedicated secret, install the artifacts and verify SSM/IMDSv2/Grafana credentials, actual metrics, reboot/crash persistence and backup restoration. No runtime success is claimed before that work.
-
-## Follow-up review regressions — 2026-10-22
-
-Verified all five CodeRabbit inline findings against `ac5ce86`: panel 2 legend labels, pre-stop backup recovery registration, mounted-device/fstab guards, missing-disk boot recovery and active-service restore guards. Isolated Bash mocks reproduced 38 failing subcases before correction; no host systemctl, Docker, disk or mount commands ran.
-
-- `python3 scripts/validate.py scripts`: 13 tests passed, plus shell/Python syntax and JSON validation. Backup coverage includes 84 combinations of original unit/container state, stop/running-check/archive/checksum failures and recovery failure, preserving original errors and leaving previously stopped services stopped. Restore covers active Docker, active monitoring and neither active with valid/invalid transferred checksums. Preparation covers mounted-device rejection, existing-fstab rejection and the `nofail` entry; existing Docker mount/UUID/volume guards remain covered.
-- Existing checksum-pinned Compose 5.6.1 and promtool 3.15.1: daemon-free Compose validation, Prometheus syntax and all 14 dashboard PromQL expressions passed.
-- Terraform sources are unchanged from the recorded plans; no cloud plan/apply, installation or runtime restart was performed. Latest-head CI is linked in the PR follow-up replies and handoff.
+당시 참고: [EC2 요금](https://aws.amazon.com/ec2/pricing/on-demand/) · [EBS 요금](https://aws.amazon.com/ebs/pricing/) · [공인 IPv4 요금](https://aws.amazon.com/vpc/pricing/).
